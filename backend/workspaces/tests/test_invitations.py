@@ -152,3 +152,142 @@ def test_invite_member_expiry_set_to_now_plus_seven_days(owner_membership):
 
     assert before + timezone.timedelta(days=7) <= invite.expires_at
     assert invite.expires_at <= after + timezone.timedelta(days=7)
+
+
+# --- D3: accept_invitation -------------------------------------------------
+
+
+def _make_invitation(*, workspace, inviter, email, status="pending", expires_in_days=7):
+    from django.utils import timezone
+
+    from workspaces.models import WorkspaceInvitation
+
+    return WorkspaceInvitation.objects.create(
+        workspace=workspace,
+        email=email,
+        role="member",
+        invited_by=inviter,
+        token=secrets_token(),
+        status=status,
+        expires_at=timezone.now() + timezone.timedelta(days=expires_in_days),
+    )
+
+
+def secrets_token():
+    import secrets
+
+    return secrets.token_urlsafe(32)
+
+
+def test_accept_invitation_valid_accept_creates_membership_and_flips_status(
+    workspace, inviter
+):
+    from workspaces.models import Membership, WorkspaceInvitation
+    from workspaces.services import accept_invitation
+
+    invitee = User.objects.create_user(
+        email="invitee@example.com", password="s3cret-pass"
+    )
+    invite = _make_invitation(
+        workspace=workspace, inviter=inviter, email="invitee@example.com"
+    )
+
+    membership = accept_invitation(user=invitee, token=invite.token)
+
+    assert membership.user_id == invitee.pk
+    assert membership.workspace_id == workspace.pk
+    assert membership.role == "member"
+    invite.refresh_from_db()
+    assert invite.status == WorkspaceInvitation.Status.ACCEPTED
+    assert Membership.objects.filter(user=invitee, workspace=workspace).count() == 1
+
+
+def test_accept_invitation_email_mismatch_rejects(workspace, inviter):
+    from django.core.exceptions import PermissionDenied
+
+    from workspaces.models import Membership, WorkspaceInvitation
+    from workspaces.services import accept_invitation
+
+    someone_else = User.objects.create_user(
+        email="someone-else@example.com", password="s3cret-pass"
+    )
+    invite = _make_invitation(
+        workspace=workspace, inviter=inviter, email="invitee@example.com"
+    )
+
+    with pytest.raises(PermissionDenied):
+        accept_invitation(user=someone_else, token=invite.token)
+
+    invite.refresh_from_db()
+    assert invite.status == WorkspaceInvitation.Status.PENDING
+    assert not Membership.objects.filter(user=someone_else, workspace=workspace).exists()
+
+
+def test_accept_invitation_expired_invite_rejected_and_persists_expired(
+    workspace, inviter
+):
+    from workspaces.models import Membership, WorkspaceInvitation
+    from workspaces.services import accept_invitation
+
+    invitee = User.objects.create_user(
+        email="expired-invitee@example.com", password="s3cret-pass"
+    )
+    invite = _make_invitation(
+        workspace=workspace,
+        inviter=inviter,
+        email="expired-invitee@example.com",
+        expires_in_days=-1,
+    )
+
+    with pytest.raises(ValueError):
+        accept_invitation(user=invitee, token=invite.token)
+
+    invite.refresh_from_db()
+    assert invite.status == WorkspaceInvitation.Status.EXPIRED
+    assert not Membership.objects.filter(user=invitee, workspace=workspace).exists()
+
+
+def test_accept_invitation_terminal_invite_rejected_no_transition(workspace, inviter):
+    from workspaces.models import Membership, WorkspaceInvitation
+    from workspaces.services import accept_invitation
+
+    invitee = User.objects.create_user(
+        email="terminal-invitee@example.com", password="s3cret-pass"
+    )
+    invite = _make_invitation(
+        workspace=workspace,
+        inviter=inviter,
+        email="terminal-invitee@example.com",
+        status=WorkspaceInvitation.Status.REVOKED,
+    )
+
+    with pytest.raises(ValueError):
+        accept_invitation(user=invitee, token=invite.token)
+
+    invite.refresh_from_db()
+    assert invite.status == WorkspaceInvitation.Status.REVOKED
+    assert not Membership.objects.filter(user=invitee, workspace=workspace).exists()
+
+
+def test_accept_invitation_already_member_is_idempotent_no_duplicate(
+    workspace, inviter
+):
+    from workspaces.models import Membership, WorkspaceInvitation
+    from workspaces.services import accept_invitation
+
+    invitee = User.objects.create_user(
+        email="already-member@example.com", password="s3cret-pass"
+    )
+    Membership.objects.create(
+        user=invitee, workspace=workspace, role=Membership.Role.MEMBER
+    )
+    invite = _make_invitation(
+        workspace=workspace, inviter=inviter, email="already-member@example.com"
+    )
+
+    membership = accept_invitation(user=invitee, token=invite.token)
+
+    invite.refresh_from_db()
+    assert invite.status == WorkspaceInvitation.Status.ACCEPTED
+    assert Membership.objects.filter(user=invitee, workspace=workspace).count() == 1
+    assert membership.user_id == invitee.pk

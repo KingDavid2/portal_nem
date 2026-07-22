@@ -45,9 +45,9 @@ without asking. Each delivery below is one commit on that tracker branch.
 
 ## Phase D3: feat(workspaces): accept_invitation service
 
-- [ ] 3.1 RED (append to `test_invitations.py`): valid-accept-creates-Membership-and-flips-status scenario (atomic), email-mismatch-rejected scenario, expired-invite-rejected-and-persists-expired scenario (lazy expiry), terminal-invite-rejected-no-transition scenario, already-member-idempotent-no-duplicate scenario.
-- [ ] 3.2 GREEN: `backend/workspaces/services.py` — `accept_invitation(*, user, token)`: lookup by token; lazy-expire check (`expires_at < now()` → persist `status=expired`, reject) before terminal check; reject non-`pending`; reject `user.email != invite.email`; `transaction.atomic()` wrapping `Membership.objects.get_or_create(...)` (idempotent) + `invite.status=accepted` save.
-- [ ] 3.3 Commit: `feat(workspaces): accept_invitation service`.
+- [x] 3.1 RED (append to `test_invitations.py`): valid-accept-creates-Membership-and-flips-status scenario (atomic), email-mismatch-rejected scenario, expired-invite-rejected-and-persists-expired scenario (lazy expiry), terminal-invite-rejected-no-transition scenario, already-member-idempotent-no-duplicate scenario.
+- [x] 3.2 GREEN: `backend/workspaces/services.py` — `accept_invitation(*, user, token)`: lookup by token; lazy-expire check (`expires_at < now()` → persist `status=expired`, reject) before terminal check; reject non-`pending`; reject `user.email != invite.email`; `transaction.atomic()` wrapping `Membership.objects.get_or_create(...)` (idempotent) + `invite.status=accepted` save.
+- [x] 3.3 Commit: `feat(workspaces): accept_invitation service`.
 
 ## Phase D4: feat(workspaces): revoke_invitation service
 

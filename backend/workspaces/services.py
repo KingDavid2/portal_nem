@@ -54,3 +54,41 @@ def invite_member(
         expires_at=timezone.now() + INVITATION_EXPIRY,
         status=WorkspaceInvitation.Status.PENDING,
     )
+
+
+def accept_invitation(*, user: "User", token: str) -> Membership:
+    """Accept a pending, non-expired invite whose email matches `user`.
+
+    Atomically creates `Membership(user, invite.workspace, invite.role)` and
+    flips `invite.status = accepted` (invitations spec — Accept Flow). Lazy
+    expiry is evaluated first: a `pending` row past `expires_at` is persisted
+    as `expired` and rejected before the terminal-state check. If the user
+    already holds a Membership in the workspace, accept is an idempotent
+    no-op (invitations spec — Idempotent Accept for Existing Members).
+    """
+    invite = WorkspaceInvitation.objects.get(token=token)
+
+    if (
+        invite.status == WorkspaceInvitation.Status.PENDING
+        and invite.expires_at < timezone.now()
+    ):
+        invite.status = WorkspaceInvitation.Status.EXPIRED
+        invite.save(update_fields=["status"])
+        raise ValueError("Invitation has expired.")
+
+    if invite.status != WorkspaceInvitation.Status.PENDING:
+        raise ValueError(f"Invitation is not pending (status={invite.status}).")
+
+    if invite.email != user.email:
+        raise PermissionDenied("This invitation was sent to a different email.")
+
+    with transaction.atomic():
+        membership, _ = Membership.objects.get_or_create(
+            user=user,
+            workspace=invite.workspace,
+            defaults={"role": invite.role},
+        )
+        invite.status = WorkspaceInvitation.Status.ACCEPTED
+        invite.save(update_fields=["status"])
+
+    return membership
