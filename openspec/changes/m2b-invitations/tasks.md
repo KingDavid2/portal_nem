@@ -39,9 +39,9 @@ without asking. Each delivery below is one commit on that tracker branch.
 
 ## Phase D2: feat(workspaces): invite_member service
 
-- [ ] 2.1 RED (append to `test_invitations.py`): owner-can-invite scenario, admin-can-invite scenario, member-denied-invite scenario (no record created), expiry-set-to-now-plus-7-days scenario.
-- [ ] 2.2 GREEN: `backend/workspaces/services.py` — `invite_member(*, inviter_membership, email, role)`: `has_permission(inviter_membership, "manage_members")` gate raising `PermissionDenied`; `token=secrets.token_urlsafe(32)`; `expires_at=timezone.now()+timedelta(days=7)`; create `status=pending`.
-- [ ] 2.3 Commit: `feat(workspaces): invite_member service`.
+- [x] 2.1 RED (append to `test_invitations.py`): owner-can-invite scenario, admin-can-invite scenario, member-denied-invite scenario (no record created), expiry-set-to-now-plus-7-days scenario.
+- [x] 2.2 GREEN: `backend/workspaces/services.py` — `invite_member(*, inviter_membership, email, role)`: `has_permission(inviter_membership, "manage_members")` gate raising `PermissionDenied`; `token=secrets.token_urlsafe(32)`; `expires_at=timezone.now()+timedelta(days=7)`; create `status=pending`.
+- [x] 2.3 Commit: `feat(workspaces): invite_member service`.
 
 ## Phase D3: feat(workspaces): accept_invitation service
 

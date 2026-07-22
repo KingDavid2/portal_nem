@@ -54,3 +54,101 @@ def test_workspace_invitation_table_absent_from_scoped_tables():
 
     rls_module = importlib.import_module("workspaces.migrations.0003_rls")
     assert "workspaces_workspaceinvitation" not in rls_module.SCOPED_TABLES
+
+
+# --- D2: invite_member ----------------------------------------------------
+
+
+@pytest.fixture
+def owner_membership(inviter, workspace):
+    from workspaces.models import Membership
+
+    return Membership.objects.create(
+        user=inviter, workspace=workspace, role=Membership.Role.OWNER
+    )
+
+
+@pytest.fixture
+def admin_membership(workspace):
+    from workspaces.models import Membership
+
+    admin_user = User.objects.create_user(
+        email="admin@example.com", password="s3cret-pass"
+    )
+    return Membership.objects.create(
+        user=admin_user, workspace=workspace, role=Membership.Role.ADMIN
+    )
+
+
+@pytest.fixture
+def member_membership(workspace):
+    from workspaces.models import Membership
+
+    member_user = User.objects.create_user(
+        email="member@example.com", password="s3cret-pass"
+    )
+    return Membership.objects.create(
+        user=member_user, workspace=workspace, role=Membership.Role.MEMBER
+    )
+
+
+def test_invite_member_owner_can_invite(owner_membership):
+    from workspaces.models import WorkspaceInvitation
+    from workspaces.services import invite_member
+
+    invite = invite_member(
+        inviter_membership=owner_membership,
+        email="newuser@example.com",
+        role="member",
+    )
+
+    assert invite.status == WorkspaceInvitation.Status.PENDING
+    assert WorkspaceInvitation.objects.filter(pk=invite.pk).exists()
+
+
+def test_invite_member_admin_can_invite(admin_membership):
+    from workspaces.models import WorkspaceInvitation
+    from workspaces.services import invite_member
+
+    invite = invite_member(
+        inviter_membership=admin_membership,
+        email="newuser2@example.com",
+        role="member",
+    )
+
+    assert invite.status == WorkspaceInvitation.Status.PENDING
+
+
+def test_invite_member_denied_for_member(member_membership):
+    from django.core.exceptions import PermissionDenied
+
+    from workspaces.models import WorkspaceInvitation
+    from workspaces.services import invite_member
+
+    count_before = WorkspaceInvitation.objects.count()
+
+    with pytest.raises(PermissionDenied):
+        invite_member(
+            inviter_membership=member_membership,
+            email="newuser3@example.com",
+            role="member",
+        )
+
+    assert WorkspaceInvitation.objects.count() == count_before
+
+
+def test_invite_member_expiry_set_to_now_plus_seven_days(owner_membership):
+    from django.utils import timezone
+
+    from workspaces.services import invite_member
+
+    before = timezone.now()
+    invite = invite_member(
+        inviter_membership=owner_membership,
+        email="newuser4@example.com",
+        role="member",
+    )
+    after = timezone.now()
+
+    assert before + timezone.timedelta(days=7) <= invite.expires_at
+    assert invite.expires_at <= after + timezone.timedelta(days=7)
