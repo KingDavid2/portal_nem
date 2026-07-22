@@ -92,3 +92,27 @@ def accept_invitation(*, user: "User", token: str) -> Membership:
         invite.save(update_fields=["status"])
 
     return membership
+
+
+def revoke_invitation(
+    *, actor_membership: Membership, invitation: WorkspaceInvitation
+) -> WorkspaceInvitation:
+    """Revoke a `pending` invite, setting `status = revoked`.
+
+    Requires `has_permission(actor_membership, "manage_members")` and that
+    the invitation belongs to the actor's own workspace (explicit filter,
+    not RLS — invitations spec, RLS Exclusion). Revoking a terminal invite
+    is rejected without changing its status.
+    """
+    if not has_permission(actor_membership, "manage_members"):
+        raise PermissionDenied("Only owners and admins may revoke invitations.")
+
+    if invitation.workspace_id != actor_membership.workspace_id:
+        raise PermissionDenied("Invitation does not belong to this workspace.")
+
+    if invitation.status != WorkspaceInvitation.Status.PENDING:
+        raise ValueError(f"Invitation is not pending (status={invitation.status}).")
+
+    invitation.status = WorkspaceInvitation.Status.REVOKED
+    invitation.save(update_fields=["status"])
+    return invitation

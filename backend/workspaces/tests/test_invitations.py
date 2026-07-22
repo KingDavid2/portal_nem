@@ -291,3 +291,58 @@ def test_accept_invitation_already_member_is_idempotent_no_duplicate(
     assert invite.status == WorkspaceInvitation.Status.ACCEPTED
     assert Membership.objects.filter(user=invitee, workspace=workspace).count() == 1
     assert membership.user_id == invitee.pk
+
+
+# --- D4: revoke_invitation --------------------------------------------------
+
+
+def test_revoke_invitation_owner_revokes_pending(workspace, inviter, owner_membership):
+    from workspaces.models import WorkspaceInvitation
+    from workspaces.services import revoke_invitation
+
+    invite = _make_invitation(
+        workspace=workspace, inviter=inviter, email="revoke-me@example.com"
+    )
+
+    revoked = revoke_invitation(actor_membership=owner_membership, invitation=invite)
+
+    assert revoked.status == WorkspaceInvitation.Status.REVOKED
+    invite.refresh_from_db()
+    assert invite.status == WorkspaceInvitation.Status.REVOKED
+
+
+def test_revoke_invitation_terminal_rejected(workspace, inviter, owner_membership):
+    from workspaces.models import WorkspaceInvitation
+    from workspaces.services import revoke_invitation
+
+    invite = _make_invitation(
+        workspace=workspace,
+        inviter=inviter,
+        email="already-accepted@example.com",
+        status=WorkspaceInvitation.Status.ACCEPTED,
+    )
+
+    with pytest.raises(ValueError):
+        revoke_invitation(actor_membership=owner_membership, invitation=invite)
+
+    invite.refresh_from_db()
+    assert invite.status == WorkspaceInvitation.Status.ACCEPTED
+
+
+def test_revoke_invitation_denied_for_member_without_manage_members(
+    workspace, inviter, member_membership
+):
+    from django.core.exceptions import PermissionDenied
+
+    from workspaces.models import WorkspaceInvitation
+    from workspaces.services import revoke_invitation
+
+    invite = _make_invitation(
+        workspace=workspace, inviter=inviter, email="revoke-target@example.com"
+    )
+
+    with pytest.raises(PermissionDenied):
+        revoke_invitation(actor_membership=member_membership, invitation=invite)
+
+    invite.refresh_from_db()
+    assert invite.status == WorkspaceInvitation.Status.PENDING

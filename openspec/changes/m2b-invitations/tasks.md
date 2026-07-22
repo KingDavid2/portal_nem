@@ -51,9 +51,9 @@ without asking. Each delivery below is one commit on that tracker branch.
 
 ## Phase D4: feat(workspaces): revoke_invitation service
 
-- [ ] 4.1 RED (append to `test_invitations.py`): owner-revokes-pending scenario, revoke-terminal-rejected scenario, member-without-manage_members-denied scenario.
-- [ ] 4.2 GREEN: `backend/workspaces/services.py` — `revoke_invitation(*, actor_membership, invitation)`: `has_permission(actor_membership, "manage_members")` gate; explicit `workspace=actor_membership.workspace` check; reject non-`pending`; set `status=revoked`.
-- [ ] 4.3 Commit: `feat(workspaces): revoke_invitation service`.
+- [x] 4.1 RED (append to `test_invitations.py`): owner-revokes-pending scenario, revoke-terminal-rejected scenario, member-without-manage_members-denied scenario.
+- [x] 4.2 GREEN: `backend/workspaces/services.py` — `revoke_invitation(*, actor_membership, invitation)`: `has_permission(actor_membership, "manage_members")` gate; explicit `workspace=actor_membership.workspace` check; reject non-`pending`; set `status=revoked`.
+- [x] 4.3 Commit: `feat(workspaces): revoke_invitation service`.
 
 ## Phase D5: feat(workspaces): signup discovery hook
 
