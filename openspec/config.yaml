@@ -1,0 +1,42 @@
+schema: spec-driven
+
+context: |
+  Tech stack: Django + DRF (API-only), PostgreSQL + pgvector, Celery (later). Python via uv.
+    Frontend Next.js is a separate future service. M0/M1 are throwaway standalone uv spikes
+    (simple_chat_testing/, lesson_plans/) — not part of the real backend.
+  Architecture: Modular monolith. Screaming apps by domain (workspaces, users, later students/
+    grades/attendance). Hexagonal ports only at real seams (LLM/PDF/payments — none in M2a).
+    No repository layer over the ORM. Defense-in-depth tenancy: workspace-scoped ORM manager
+    (primary) + Postgres RLS (backstop) via SET LOCAL app.workspace_id in the per-request txn.
+  Testing: pytest (carried from the spikes). Strict TDD enabled.
+  Style: English identifiers; Spanish UI copy. Conventional commits, no AI attribution.
+
+rules:
+  proposal:
+    - Keep scope to M2a (D1-D9); M2b (invitations, move service, workspace_history, Celery helper) is a separate change.
+    - Honor locked decisions in docs/design-brief.md §2 §5 §7 — do not re-litigate.
+    - Include a rollback plan for the RLS migration and the AUTH_USER_MODEL sequencing risk.
+  specs:
+    - Use Given/When/Then for scenarios.
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY).
+    - Map requirements to the slice-1 acceptance gates in design-brief.md §5.
+  design:
+    - Document architecture decisions with rationale.
+    - Resolve open questions: active-workspace resolution across multiple memberships; contextvars+
+      middleware wiring; two-Postgres-role setup + BYPASSRLS verification; connection-pooling leak-test approach.
+    - Decide the project layout (repo-root vs backend/ subdir given a future Next.js service) and uv package name.
+  tasks:
+    - Group tasks by delivery D1-D9; each delivery is one commit; hierarchical numbering.
+    - Chained PR strategy (force-chained), review budget 400 lines.
+  apply:
+    guidelines:
+      - Follow existing uv/pytest conventions from the spike packages.
+      - One commit per delivery (D1-D9); conventional commit subjects, no AI attribution.
+    tdd: true
+    test_command: pytest
+  verify:
+    test_command: pytest
+    build_command: python manage.py migrate --check
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas.
