@@ -14,7 +14,7 @@ phases:
   design: done
   tasks: done
   apply: done  # D1-D9 all done, 9 local commits on branch m2a-tenancy-core (ef7fc31..b201dbb)
-  verify: pending
-  archive: pending
+  verify: done
+  archive: done
 
-next_recommended: verify
+next_recommended: none

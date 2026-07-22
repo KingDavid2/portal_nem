@@ -39,6 +39,11 @@ open ATOMIC_REQUESTS txn issue `set_config('app.workspace_id', str(ws_id), True)
 **Alternatives**: custom DB backend/cursor wrapper (rejected — locked out by brief §6 + config).
 **Rationale**: contextvar reset per request prevents leakage across the worker's reused context;
 `SET LOCAL` (`is_local=True`) auto-clears at txn end — double safety under pooling.
+**Implementation note (as-built, D7):** `TenancyMiddleware` opens its OWN `transaction.atomic()`
+block rather than relying on `ATOMIC_REQUESTS`, because Django's `ATOMIC_REQUESTS` wraps only the
+view callable, not middleware code — so a `set_config(..., True)` issued in middleware would not
+share the view's transaction otherwise. Verified with a `django_db(transaction=True)` test that the
+`SET LOCAL` lands in the same connection/transaction the scoped queries use.
 
 ### D-4: Two Postgres roles
 **Choice**: owner/migration role (`DATABASES['default']` used by `migrate`, DDL, RLS policy
@@ -127,6 +132,16 @@ CREATE POLICY ws_isolation ON <t> USING
   WITH CHECK (workspace_id = current_setting('app.workspace_id', true)::uuid);
 ```
 `, true` (missing_ok) → no context yields NULL → predicate false → deny (fail-closed).
+
+**As-built (D8/D9):** RLS is applied to a concrete workspace-scoped table `WorkspaceResource`
+(M2a has no NEM domain models yet), NOT to `Membership`. `Membership` is intentionally left
+un-RLS-scoped because `TenancyMiddleware` must read the user's memberships to RESOLVE the active
+workspace *before* `app.workspace_id` is set — RLS on `Membership` would deadlock that bootstrap.
+Consequence carried to M2b: any Membership-backed view MUST filter by `request.user` explicitly
+(no RLS backstop on that model by design). Also (D9 fix, migration `0004`): after a `SET LOCAL`
+transaction ends, `current_setting('app.workspace_id', true)` returns `''` (empty string), not
+`NULL`, so `''::uuid` would raise instead of denying — wrapped in `NULLIF(..., '')` so the empty
+case yields NULL → predicate false → deny. Covered by an empty-string test.
 
 The sentinel is an object identity (not `None`/`0`) so it never collides with a real workspace id
 and generalizes to the M2b Celery task-context path (task sets/resets the same contextvar).
