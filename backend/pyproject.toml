@@ -1,0 +1,25 @@
+[project]
+name = "portal-nem-backend"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "django>=6.0.7",
+    "django-environ>=0.14.0",
+    "djangorestframework>=3.17.1",
+    "drf-spectacular>=0.30.0",
+    "pgvector>=0.5.0",
+    "psycopg[binary]>=3.3.4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-django>=4.12.0",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+python_files = ["test_*.py", "tests.py"]
+testpaths = ["."]

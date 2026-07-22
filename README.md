@@ -29,7 +29,6 @@ Isolation is defense in depth: workspace-scoped querysets at the application lay
 | Layer | Choice |
 |-------|--------|
 | Core backend | Django + DRF |
-| AI service | FastAPI (separate) |
 | Database | PostgreSQL + pgvector |
 | LLM | Self-hosted vLLM behind an `LLMProvider` interface |
 | Frontend | Next.js (App Router) + TypeScript + Tailwind + shadcn/ui |
