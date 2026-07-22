@@ -14,9 +14,11 @@ import re
 from pathlib import Path
 
 from .config import Config
+from .corpus import Corpus
 from .generation import GenerationRequest
 from .pdas import pdas_for
 from .ports.claude import ClaudeProvider
+from .ports.embeddings import OpenAICompatEmbedder
 from .ports.llm import LLMProvider
 from .ports.openai_compat import OpenAICompatProvider
 from .render.docx import render_docx
@@ -38,12 +40,20 @@ def _slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:60]
 
 
+def select_pdas(args: argparse.Namespace, config: Config):
+    """Phase B RAG retrieval when --rag, else the Phase A hardcoded fixture."""
+    if not args.rag:
+        return pdas_for(args.campo)
+    corpus = Corpus.build(OpenAICompatEmbedder.from_config(config))
+    return corpus.retrieve(args.theme, k=args.k, campo=args.campo)
+
+
 def generate(args: argparse.Namespace) -> None:
     config = Config.from_env()
     provider = build_provider(args.provider, config)
     result = provider.generate(
         GenerationRequest(campo=args.campo, grade=args.grade, theme=args.theme),
-        pdas_for(args.campo),
+        select_pdas(args, config),
     )
 
     EXPORT_DIR.mkdir(parents=True, exist_ok=True)
@@ -72,6 +82,8 @@ def main(argv: list[str] | None = None) -> None:
     gen.add_argument("--grade", required=True)
     gen.add_argument("--theme", required=True)
     gen.add_argument("--provider", default="claude", choices=["claude", "qwen"])
+    gen.add_argument("--rag", action="store_true", help="Retrieve PDAs from the corpus (Phase B) instead of the hardcoded fixture.")
+    gen.add_argument("--k", type=int, default=1, help="How many contenidos to retrieve when --rag.")
     gen.set_defaults(func=generate)
 
     args = parser.parse_args(argv)

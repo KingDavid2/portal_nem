@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-from lesson_plans.config import DEFAULT_ANTHROPIC_MODEL, DEFAULT_BASE_URL, Config
+from lesson_plans.config import (
+    DEFAULT_ANTHROPIC_MODEL,
+    DEFAULT_BASE_URL,
+    DEFAULT_EMBED_BASE_URL,
+    DEFAULT_EMBED_MODEL,
+    Config,
+)
 
 
 def test_from_env_defaults_when_unset():
@@ -12,6 +18,14 @@ def test_from_env_defaults_when_unset():
     assert c.api_key == "dummy"
     assert c.anthropic_api_key is None
     assert c.anthropic_model == DEFAULT_ANTHROPIC_MODEL
+    assert c.embed_base_url == DEFAULT_EMBED_BASE_URL
+    assert c.embed_model == DEFAULT_EMBED_MODEL
+
+
+def test_from_env_reads_embed_knobs_and_strips_trailing_slash():
+    c = Config.from_env(env={"EMBED_BASE_URL": " http://box:8001/v1/ ", "EMBED_MODEL": " e5 "})
+    assert c.embed_base_url == "http://box:8001/v1"
+    assert c.embed_model == "e5"
 
 
 def test_from_env_reads_and_trims_and_strips_trailing_slash():

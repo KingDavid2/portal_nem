@@ -15,6 +15,9 @@ from typing import Mapping, Optional
 DEFAULT_BASE_URL = "http://192.168.1.241:8000/v1"
 DEFAULT_API_KEY = "dummy"  # vLLM ignores it, but the OpenAI client requires non-empty.
 DEFAULT_ANTHROPIC_MODEL = "claude-opus-4-8"
+# Phase B RAG: a SECOND vLLM process on the same box serves the embedder (chat is :8000).
+DEFAULT_EMBED_BASE_URL = "http://192.168.1.241:8001/v1"
+DEFAULT_EMBED_MODEL = "Qwen/Qwen3-Embedding-4B"  # 2560-dim, OpenAI-compat /v1/embeddings
 
 
 def _clean(value: Optional[str]) -> Optional[str]:
@@ -31,15 +34,20 @@ class Config:
     api_key: str
     anthropic_api_key: Optional[str]
     anthropic_model: str
+    embed_base_url: str
+    embed_model: Optional[str]  # None -> resolve via model discovery on the embed endpoint
 
     @classmethod
     def from_env(cls, env: Optional[Mapping[str, str]] = None) -> "Config":
         env = os.environ if env is None else env
         base_url = _clean(env.get("LLM_BASE_URL")) or DEFAULT_BASE_URL
+        embed_base_url = _clean(env.get("EMBED_BASE_URL")) or DEFAULT_EMBED_BASE_URL
         return cls(
             base_url=base_url.rstrip("/"),
             model=_clean(env.get("LLM_MODEL")),
             api_key=_clean(env.get("LLM_API_KEY")) or DEFAULT_API_KEY,
             anthropic_api_key=_clean(env.get("ANTHROPIC_API_KEY")),
             anthropic_model=_clean(env.get("ANTHROPIC_MODEL")) or DEFAULT_ANTHROPIC_MODEL,
+            embed_base_url=embed_base_url.rstrip("/"),
+            embed_model=_clean(env.get("EMBED_MODEL")) or DEFAULT_EMBED_MODEL,
         )

@@ -9,6 +9,7 @@ dependencies = [
     "instructor>=1.5",
     "pydantic>=2",
     "python-docx>=1.1",
+    "numpy>=1.26",
 ]
 
 [dependency-groups]

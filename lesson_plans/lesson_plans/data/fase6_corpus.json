@@ -1,0 +1,60 @@
+{
+  "_meta": "SEED corpus for M1 Phase B RAG. Entries marked source=example are verified against designs/examples/*.docx; source=seed are real-style Fase 6 contenidos added so retrieval has genuine choices (and distractors to reject). Roadmap open Q#1: drop the full SEP Fase 6 curriculum into `entries` to scale the baseline-vs-RAG measurement. Schema per entry: {campo, content, pdas[], source}.",
+  "entries": [
+    {
+      "campo": "Ética, Naturaleza y Sociedades",
+      "source": "example",
+      "content": "Las gestas de resistencia y los movimientos independentistas.",
+      "pdas": [
+        "Relaciona la Revolución de Independencia de 1810 en nuestro país con el agotamiento del imperio español para mantener la cohesión de sus colonias ultramarinas.",
+        "Comprende la confluencia de procesos (por ejemplo, las reformas borbónicas) y hechos (como la invasión napoleónica en España) en la configuración de la lucha por la Independencia de la Nueva España.",
+        "Diseña recursos gráficos capaces de transmitir el conocimiento sobre la Independencia de México."
+      ]
+    },
+    {
+      "campo": "Lenguajes",
+      "source": "example",
+      "content": "Recursos lingüísticos y textuales para la comprensión y producción de textos.",
+      "pdas": [
+        "Emplea las reglas de acentuación de palabras agudas, graves, esdrújulas y sobresdrújulas para escribir con corrección.",
+        "Produce textos en los que organiza las ideas en párrafos con coherencia y cohesión para comunicar información a una audiencia determinada."
+      ]
+    },
+    {
+      "campo": "Lenguajes",
+      "source": "seed",
+      "content": "El texto argumentativo y los recursos para sostener una postura.",
+      "pdas": [
+        "Analiza textos argumentativos identificando la tesis, los argumentos y las conclusiones que los sostienen.",
+        "Produce textos argumentativos en los que defiende una postura ante un tema de interés de su comunidad usando argumentos y contraargumentos."
+      ]
+    },
+    {
+      "campo": "Ética, Naturaleza y Sociedades",
+      "source": "seed",
+      "content": "Los derechos humanos y la convivencia democrática en la comunidad.",
+      "pdas": [
+        "Reconoce los derechos humanos como principios que regulan la convivencia y protegen la dignidad de todas las personas.",
+        "Propone acciones para promover la igualdad y la no discriminación en su escuela y su comunidad."
+      ]
+    },
+    {
+      "campo": "Saberes y Pensamiento Científico",
+      "source": "seed",
+      "content": "La materia y sus transformaciones físicas y químicas.",
+      "pdas": [
+        "Distingue los cambios físicos de los cambios químicos de la materia mediante la observación y la experimentación.",
+        "Explica fenómenos cotidianos de su entorno a partir de las propiedades y transformaciones de la materia."
+      ]
+    },
+    {
+      "campo": "De lo Humano y lo Comunitario",
+      "source": "seed",
+      "content": "El cuidado del cuerpo, la salud y los estilos de vida activos.",
+      "pdas": [
+        "Identifica hábitos de alimentación y actividad física que favorecen el bienestar integral en la adolescencia.",
+        "Diseña un plan personal y comunitario para promover estilos de vida saludables."
+      ]
+    }
+  ]
+}
