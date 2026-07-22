@@ -3,6 +3,8 @@ import uuid
 from django.conf import settings
 from django.db import models
 
+from workspaces.managers import ScopedManager
+
 
 class Workspace(models.Model):
     """Tenant boundary. Every scoped resource belongs to exactly one Workspace."""
@@ -65,6 +67,8 @@ class ScopedModel(models.Model):
     """
 
     workspace = models.ForeignKey(Workspace, on_delete=models.CASCADE)
+
+    objects = ScopedManager()
 
     class Meta:
         abstract = True
