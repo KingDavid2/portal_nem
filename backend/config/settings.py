@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "core",
     "users",
+    "workspaces",
 ]
 
 MIDDLEWARE = [
