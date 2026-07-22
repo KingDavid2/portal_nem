@@ -141,3 +141,60 @@ class WorkspaceInvitation(models.Model):
 
     def __str__(self) -> str:
         return f"{self.email}@{self.workspace_id}:{self.status}"
+
+
+class WorkspaceHistory(models.Model):
+    """Cross-workspace audit trail of membership lifecycle events.
+
+    Deliberately a plain `ForeignKey`, NOT a `ScopedModel`: a `moved` row
+    references two distinct workspaces in a single write, and the tenancy
+    middleware sets exactly one `app.workspace_id` per transaction, so a
+    single-workspace RLS `WITH CHECK` could never be satisfied (workspace-
+    history spec — RLS Exclusion). Mirrors the existing exclusion for
+    `Membership` and `WorkspaceInvitation`. Uses the default `Manager` (NOT
+    `ScopedManager`).
+
+    `actor`/`from_workspace`/`to_workspace` use `on_delete=SET_NULL`: this is
+    a deliberate audit-retention choice — history rows MUST outlive the
+    referenced actor/workspace, never cascade-delete with them. Revisit only
+    if a future spec requires hard referential integrity on history rows.
+    """
+
+    class Action(models.TextChoices):
+        INVITED = "invited", "Invited"
+        ACCEPTED = "accepted", "Accepted"
+        REVOKED = "revoked", "Revoked"
+        MOVED = "moved", "Moved"
+
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="workspace_actions",
+    )
+    action = models.CharField(max_length=20, choices=Action.choices)
+    target_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="workspace_history",
+    )
+    from_workspace = models.ForeignKey(
+        Workspace,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="history_from",
+    )
+    to_workspace = models.ForeignKey(
+        Workspace,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="history_to",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    metadata = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        db_table = "workspaces_workspacehistory"
+
+    def __str__(self) -> str:
+        return f"{self.action}:{self.target_user_id}"
