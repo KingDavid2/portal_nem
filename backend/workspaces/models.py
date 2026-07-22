@@ -72,3 +72,23 @@ class ScopedModel(models.Model):
 
     class Meta:
         abstract = True
+
+
+class WorkspaceResource(ScopedModel):
+    """Minimal concrete `ScopedModel`, added only to exercise RLS (D8/D9).
+
+    M2a ships no real NEM domain models yet (those land in M2b+). Without at
+    least one concrete `ScopedModel` subclass there would be no table for
+    the RLS backstop (tenancy-isolation spec) to protect, and the D9
+    cross-tenant leak test would have nothing to query. This model carries
+    no product meaning — replace/remove once real scoped domain models
+    exist.
+    """
+
+    name = models.CharField(max_length=200)
+
+    class Meta:
+        db_table = "workspaces_workspaceresource"
+
+    def __str__(self) -> str:
+        return f"{self.workspace_id}:{self.name}"
