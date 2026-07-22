@@ -148,6 +148,28 @@ NEM domain data attaches to it:
 
 Run and test: see [`backend/README.md`](../backend/README.md).
 
+### M2b — Invitations ✅ Done
+
+Member discovery and invite-by-email for group workspaces; service-layer only, no HTTP yet:
+
+- `WorkspaceInvitation` model (plain FK, excluded from RLS — invitee not yet a member).
+- `invite_member` service (owner/admin-gated; 7-day expiry).
+- `accept_invitation` service (atomic Membership creation; email and expiry guards; idempotent if already member).
+- `revoke_invitation` service (owner/admin-gated; rejects terminal).
+- `discover_pending_invites` hook in signup (surfaces pending invites by email; never creates Membership).
+- `list_invitations` service (owner/admin-gated; explicit workspace filter, not RLS).
+- 62 passing tests (baseline 39 + 23 new), migrations clean, all spec scenarios covered.
+
+SDD artifacts: [`openspec/changes/archive/2026-07-22-m2b-invitations/`](../openspec/changes/archive/2026-07-22-m2b-invitations/).
+Specs merged into main: `openspec/specs/invitations/spec.md` (new), `openspec/specs/workspaces/spec.md` (updated).
+
+### M2c — Move service + workspace history (pending)
+
+Remaining M2 delivery (independent SDD change):
+
+- `move_member_to_workspace` service (atomically revoke old Membership, create new one).
+- `workspace_history` audit trail (tracks membership changes).
+
 ---
 
 ## Open questions (resolved during execution, not blockers)
