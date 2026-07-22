@@ -170,13 +170,69 @@ def move_member_to_workspace(
 ) -> Membership:
     """Atomically move `member` from its source workspace to the target.
 
-    Inside one `transaction.atomic()`: delete the source `Membership`,
+    All validation runs before any write (authorization spec — Dual-
+    Workspace Authorization for Member Moves; workspaces spec — Atomic
+    Member Move Between Workspaces), in order:
+    1. Same-actor-user guard: `actor_source_membership.user` MUST equal
+       `actor_target_membership.user` — a caller may not combine two
+       different people's memberships to authorize a move.
+    2. `has_permission(..., "manage_members")` MUST hold on BOTH the source
+       and target membership.
+    3. `actor_source_membership.workspace` MUST match `member.workspace`.
+    4. `member.role` MUST NOT be `owner`.
+    5. The target workspace MUST be `type="group"` (rejects personal and
+       any other non-group type).
+    6. `member.user` MUST NOT already hold a Membership in the target
+       workspace (honors `unique_user_workspace_membership`).
+
+    Then inside one `transaction.atomic()`: delete the source `Membership`,
     create a target `Membership` (role forced to `member`, regardless of the
     member's source role), then write a `moved` `WorkspaceHistory` row
-    (workspaces spec — Atomic Member Move Between Workspaces; workspace-
-    history spec). Any failure rolls back every step, leaving both sides
-    unchanged (design — single transaction, ordered writes).
+    (workspace-history spec). Any failure rolls back every step, leaving
+    both sides unchanged (design — single transaction, ordered writes).
+
+    Raises `PermissionDenied` for authorization failures (1-3) and
+    `ValueError` for domain-rule violations (4-6).
     """
+    # (1) Same-actor-user guard — CRITICAL security guard, do not remove:
+    # without it a caller could pair their own manage_members membership in
+    # one workspace with someone else's in another to authorize a move.
+    if actor_source_membership.user_id != actor_target_membership.user_id:
+        raise PermissionDenied(
+            "Source and target authorizing memberships must belong to the "
+            "same user."
+        )
+
+    # (2) Dual-workspace capability check — never inline role strings.
+    if not has_permission(actor_source_membership, "manage_members") or not has_permission(
+        actor_target_membership, "manage_members"
+    ):
+        raise PermissionDenied(
+            "Only owners and admins may move members, in both workspaces."
+        )
+
+    # (3) The source authorizing membership must actually belong to the
+    # workspace the moved member is currently in.
+    if actor_source_membership.workspace_id != member.workspace_id:
+        raise PermissionDenied(
+            "Source membership does not belong to the member's workspace."
+        )
+
+    # (4) Owners are never movable.
+    if member.role == Membership.Role.OWNER:
+        raise ValueError("Cannot move a workspace owner.")
+
+    # (5) Target must be a group workspace (rejects personal and any other
+    # non-group type).
+    if actor_target_membership.workspace.type != Workspace.Type.GROUP:
+        raise ValueError("Target workspace must be a group workspace.")
+
+    # (6) No duplicate membership in the target workspace.
+    if Membership.objects.filter(
+        user=member.user, workspace=actor_target_membership.workspace
+    ).exists():
+        raise ValueError("User already has a membership in the target workspace.")
+
     with transaction.atomic():
         source_workspace = member.workspace
         target_workspace = actor_target_membership.workspace
