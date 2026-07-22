@@ -4,12 +4,24 @@ Workspaces, authorization spec — Dual-Workspace Authorization for Member
 Moves).
 """
 
+import psycopg
 import pytest
 from django.contrib.auth import get_user_model
+from django.db import connection
 
 pytestmark = pytest.mark.django_db
 
 User = get_user_model()
+
+
+def _portal_app_connection():
+    db_settings = connection.settings_dict
+    return psycopg.connect(
+        dbname=db_settings["NAME"],
+        host=db_settings["HOST"] or None,
+        port=db_settings["PORT"] or None,
+        user="portal_app",
+    )
 
 
 # --- D1: WorkspaceHistory model / migration --------------------------------
@@ -351,3 +363,41 @@ def test_move_member_edge_source_workspace_mismatch_rejected(
         )
 
     _assert_no_writes(member.pk, source_workspace, target_workspace, member.user_id)
+
+
+# --- D4: RLS backstop for cross-workspace history writes --------------------
+
+
+@pytest.mark.django_db(transaction=True)
+def test_rls_permits_moved_history_row_spanning_two_workspaces_with_no_scoped_context():
+    from workspaces.models import Workspace
+
+    source = Workspace.objects.create(type=Workspace.Type.GROUP)
+    target = Workspace.objects.create(type=Workspace.Type.GROUP)
+    target_user = User.objects.create_user(
+        email="rls-target@example.com", password="s3cret-pass"
+    )
+    actor = User.objects.create_user(
+        email="rls-actor@example.com", password="s3cret-pass"
+    )
+
+    with _portal_app_connection() as conn, conn.cursor() as cur:
+        # No app.workspace_id set at all — a moved row legitimately spans
+        # two workspaces, so it cannot be scoped to a single one.
+        cur.execute(
+            """
+            INSERT INTO workspaces_workspacehistory
+                (action, actor_id, target_user_id, from_workspace_id,
+                 to_workspace_id, created_at, metadata)
+            VALUES (%s, %s, %s, %s, %s, now(), %s)
+            """,
+            ["moved", actor.pk, target_user.pk, str(source.id), str(target.id), "{}"],
+        )
+        conn.commit()
+
+        cur.execute(
+            "SELECT count(*) FROM workspaces_workspacehistory WHERE action = 'moved'"
+        )
+        (count,) = cur.fetchone()
+
+    assert count == 1

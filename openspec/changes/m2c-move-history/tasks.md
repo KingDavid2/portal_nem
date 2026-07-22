@@ -52,6 +52,6 @@ branch.
 
 ## Phase D4: test(workspaces): RLS backstop for cross-workspace history writes
 
-- [ ] 4.1 RED/GREEN (append to `test_move.py`, mirrors `test_rls.py::_portal_app_connection()`): raw-psycopg-as-`portal_app`-writes-moved-row-with-no-scoped-context scenario — open a `portal_app`-role connection with `app.workspace_id` unset (or set only to the source workspace), `INSERT INTO workspaces_workspacehistory (...)` referencing two distinct `workspace_id` values (`from_workspace`, `to_workspace`) directly, assert the insert succeeds with no RLS `WITH CHECK` violation.
-- [ ] 4.2 GREEN: confirm `python manage.py migrate --check` is clean (no missing migrations) after D1-D3; no production code changes expected in this delivery — test-only addition plus final config sanity check.
-- [ ] 4.3 Commit: `test(workspaces): RLS backstop for move history writes`.
+- [x] 4.1 RED/GREEN (append to `test_move.py`, mirrors `test_rls.py::_portal_app_connection()`): raw-psycopg-as-`portal_app`-writes-moved-row-with-no-scoped-context scenario — open a `portal_app`-role connection with `app.workspace_id` unset (or set only to the source workspace), `INSERT INTO workspaces_workspacehistory (...)` referencing two distinct `workspace_id` values (`from_workspace`, `to_workspace`) directly, assert the insert succeeds with no RLS `WITH CHECK` violation.
+- [x] 4.2 GREEN: confirm `python manage.py migrate --check` is clean (no missing migrations) after D1-D3; no production code changes expected in this delivery — test-only addition plus final config sanity check.
+- [x] 4.3 Commit: `test(workspaces): RLS backstop for move history writes`.
