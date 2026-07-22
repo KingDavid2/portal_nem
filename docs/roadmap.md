@@ -11,7 +11,7 @@
 |---|---|---|---|
 | **M0** | Provider-agnostic testing chat | The LLM pipe works end-to-end; provider swap is a config change | ✅ Done |
 | M1 | AI lesson_plan generation — secundaria, standalone spike | The product is viable | ✅ Done (Phase A + B) |
-| M2 | Tenancy foundation (auth + workspace + RLS) — the slice-1 spec | Multi-tenant boundary | 🔨 In progress — **M2a** (tenancy core) done, see `backend/` |
+| M2 | Tenancy foundation (auth + workspace + RLS) — the slice-1 spec | Multi-tenant boundary | ✅ Done — M2a tenancy core + M2b invitations + M2c move/history; 76/76 tests, see `backend/` |
 | M3 | School structure CRUD (school → school_year → group → student) | Data to attach plans/grades to | ⬜ Next |
 | M4 | Attendance + grades entry grids | Daily-use core | ⬜ |
 | M5 | report_card (boleta) PDF export | SEP deliverable | ⬜ |
