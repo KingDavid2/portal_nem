@@ -16,7 +16,12 @@ from django.db import transaction
 from django.db.models import QuerySet
 from django.utils import timezone
 
-from workspaces.models import Membership, Workspace, WorkspaceInvitation
+from workspaces.models import (
+    Membership,
+    Workspace,
+    WorkspaceHistory,
+    WorkspaceInvitation,
+)
 from workspaces.permissions import has_permission
 
 User = get_user_model()
@@ -155,6 +160,45 @@ def list_invitations(*, membership: Membership) -> "QuerySet[WorkspaceInvitation
         workspace=membership.workspace,
         status=WorkspaceInvitation.Status.PENDING,
     )
+
+
+def move_member_to_workspace(
+    *,
+    actor_source_membership: Membership,
+    actor_target_membership: Membership,
+    member: Membership,
+) -> Membership:
+    """Atomically move `member` from its source workspace to the target.
+
+    Inside one `transaction.atomic()`: delete the source `Membership`,
+    create a target `Membership` (role forced to `member`, regardless of the
+    member's source role), then write a `moved` `WorkspaceHistory` row
+    (workspaces spec — Atomic Member Move Between Workspaces; workspace-
+    history spec). Any failure rolls back every step, leaving both sides
+    unchanged (design — single transaction, ordered writes).
+    """
+    with transaction.atomic():
+        source_workspace = member.workspace
+        target_workspace = actor_target_membership.workspace
+        moved_user = member.user
+
+        member.delete()
+
+        new_membership = Membership.objects.create(
+            user=moved_user,
+            workspace=target_workspace,
+            role=Membership.Role.MEMBER,
+        )
+
+        WorkspaceHistory.objects.create(
+            action=WorkspaceHistory.Action.MOVED,
+            actor=actor_source_membership.user,
+            target_user=moved_user,
+            from_workspace=source_workspace,
+            to_workspace=target_workspace,
+        )
+
+    return new_membership
 
 
 def discover_pending_invites(*, user: "User") -> "QuerySet[WorkspaceInvitation]":
