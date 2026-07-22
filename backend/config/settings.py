@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "drf_spectacular",
     "core",
+    "users",
 ]
 
 MIDDLEWARE = [
@@ -107,6 +108,12 @@ DATABASES = {
 # Every request runs inside its own transaction; the D3/D7 tenancy middleware
 # relies on this to issue `SET LOCAL app.workspace_id` safely under pooling.
 DATABASES["default"]["ATOMIC_REQUESTS"] = True
+
+# Custom email-identified user (identity-auth spec). MUST be set before the
+# first migration runs — AUTH_USER_MODEL is irreversible once migrated
+# (design D-2 Migration/Rollout). Greenfield DB: dropped and re-migrated here
+# to enforce that ordering after D1 applied the stock auth.User migration.
+AUTH_USER_MODEL = "users.User"
 
 
 # Password validation
