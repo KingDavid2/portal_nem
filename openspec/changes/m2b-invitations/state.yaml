@@ -1,0 +1,17 @@
+change: m2b-invitations
+artifact_store: openspec
+execution_mode: auto
+delivery_strategy: force-chained
+chain_strategy: feature-branch-chain
+review_budget_lines: 400
+branch: m2b-invitations
+phases:
+  explore: done
+  proposal: done
+  spec: done
+  design: done
+  tasks: done
+  apply: done
+  verify: pending
+  archive: pending
+next_recommended: verify
