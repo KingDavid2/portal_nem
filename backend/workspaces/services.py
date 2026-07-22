@@ -7,11 +7,13 @@ no orphaned User, Workspace, or Membership is left behind.
 """
 
 import secrets
+from dataclasses import dataclass, field
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
+from django.db.models import QuerySet
 from django.utils import timezone
 
 from workspaces.models import Membership, Workspace, WorkspaceInvitation
@@ -23,15 +25,35 @@ INVITATION_TOKEN_BYTES = 32
 INVITATION_EXPIRY = timedelta(days=7)
 
 
-def provision_signup(*, email: str, password: str) -> "User":
-    """Create a User, personal Workspace, and owner Membership atomically."""
+@dataclass
+class SignupResult:
+    """Result of `provision_signup`: the new user plus discovery-only data.
+
+    `pending_invites` never implies Membership — joining an invited
+    workspace always requires a separate `accept_invitation` call
+    (workspaces spec — Signup-Time Invite Discovery).
+    """
+
+    user: "User"
+    pending_invites: list[WorkspaceInvitation] = field(default_factory=list)
+
+
+def provision_signup(*, email: str, password: str) -> SignupResult:
+    """Create a User, personal Workspace, and owner Membership atomically.
+
+    After the atomic block, discover (read-only) any pending invitations
+    matching the new user's email and attach them to the result — this
+    NEVER creates a Membership for the invited workspace.
+    """
     with transaction.atomic():
         workspace = Workspace.objects.create(type=Workspace.Type.PERSONAL)
         user = User.objects.create_user(email=email, password=password)
         Membership.objects.create(
             user=user, workspace=workspace, role=Membership.Role.OWNER
         )
-    return user
+
+    pending_invites = list(discover_pending_invites(user=user))
+    return SignupResult(user=user, pending_invites=pending_invites)
 
 
 def invite_member(
@@ -116,3 +138,17 @@ def revoke_invitation(
     invitation.status = WorkspaceInvitation.Status.REVOKED
     invitation.save(update_fields=["status"])
     return invitation
+
+
+def discover_pending_invites(*, user: "User") -> "QuerySet[WorkspaceInvitation]":
+    """Read-only lookup of actionable pending invites for `user`'s email.
+
+    Only non-expired `pending` rows are actionable; this never persists a
+    lazy `expired` transition and never creates a Membership (invitations
+    spec / workspaces spec — Signup-Time Invite Discovery).
+    """
+    return WorkspaceInvitation.objects.filter(
+        email=user.email,
+        status=WorkspaceInvitation.Status.PENDING,
+        expires_at__gte=timezone.now(),
+    )

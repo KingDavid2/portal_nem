@@ -57,6 +57,6 @@ without asking. Each delivery below is one commit on that tracker branch.
 
 ## Phase D5: feat(workspaces): signup discovery hook
 
-- [ ] 5.1 RED (append to `test_invitations.py`): signup-surfaces-matching-pending-invite scenario (no Membership created for invited workspace), signup-with-no-invites-unaffected scenario, expired-or-terminal-invites-not-surfaced scenario.
-- [ ] 5.2 GREEN: `backend/workspaces/services.py` — `discover_pending_invites(*, user)` read-only QuerySet filtered by `email=user.email, status=pending, expires_at__gte=now()`; call from `provision_signup` after its existing atomic block, attach result to signup return value without creating Membership.
-- [ ] 5.3 Commit: `feat(workspaces): signup discovery hook`.
+- [x] 5.1 RED (append to `test_invitations.py`): signup-surfaces-matching-pending-invite scenario (no Membership created for invited workspace), signup-with-no-invites-unaffected scenario, expired-or-terminal-invites-not-surfaced scenario.
+- [x] 5.2 GREEN: `backend/workspaces/services.py` — `discover_pending_invites(*, user)` read-only QuerySet filtered by `email=user.email, status=pending, expires_at__gte=now()`; call from `provision_signup` after its existing atomic block, attach result to signup return value without creating Membership.
+- [x] 5.3 Commit: `feat(workspaces): signup discovery hook`.

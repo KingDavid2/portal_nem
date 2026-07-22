@@ -13,9 +13,11 @@ def test_successful_signup_creates_user_workspace_and_owner_membership():
     from workspaces.models import Membership, Workspace
     from workspaces.services import provision_signup
 
-    user = provision_signup(email="new.teacher@example.com", password="s3cret-pass")
+    result = provision_signup(email="new.teacher@example.com", password="s3cret-pass")
+    user = result.user
 
     assert User.objects.filter(pk=user.pk).exists()
+    assert result.pending_invites == []
 
     workspace = Workspace.objects.get(memberships__user=user)
     assert workspace.type == Workspace.Type.PERSONAL

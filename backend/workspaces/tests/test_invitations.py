@@ -346,3 +346,80 @@ def test_revoke_invitation_denied_for_member_without_manage_members(
 
     invite.refresh_from_db()
     assert invite.status == WorkspaceInvitation.Status.PENDING
+
+
+# --- D5: signup discovery hook ----------------------------------------------
+
+
+def test_discover_pending_invites_surfaces_matching_invite_and_creates_no_membership(
+    workspace, inviter
+):
+    from workspaces.models import Membership
+    from workspaces.services import discover_pending_invites
+
+    invite = _make_invitation(
+        workspace=workspace, inviter=inviter, email="discoverable@example.com"
+    )
+    invitee = User.objects.create_user(
+        email="discoverable@example.com", password="s3cret-pass"
+    )
+
+    discovered = list(discover_pending_invites(user=invitee))
+
+    assert discovered == [invite]
+    assert not Membership.objects.filter(user=invitee).exists()
+
+
+def test_signup_surfaces_matching_pending_invite(workspace, inviter):
+    from workspaces.models import Membership
+    from workspaces.services import provision_signup
+
+    _make_invitation(
+        workspace=workspace, inviter=inviter, email="newuser5@example.com"
+    )
+
+    result = provision_signup(email="newuser5@example.com", password="s3cret-pass")
+
+    assert len(result.pending_invites) == 1
+    assert result.pending_invites[0].workspace_id == workspace.pk
+    assert not Membership.objects.filter(
+        user=result.user, workspace=workspace
+    ).exists()
+
+
+def test_signup_with_no_invites_is_unaffected(workspace, inviter):
+    from workspaces.models import Membership, Workspace
+    from workspaces.services import provision_signup
+
+    result = provision_signup(
+        email="newuser6@example.com", password="s3cret-pass"
+    )
+
+    assert result.pending_invites == []
+    personal_workspace = Workspace.objects.get(memberships__user=result.user)
+    assert personal_workspace.type == Workspace.Type.PERSONAL
+    assert Membership.objects.filter(
+        user=result.user, workspace=personal_workspace, role=Membership.Role.OWNER
+    ).exists()
+
+
+def test_signup_does_not_surface_expired_or_terminal_invites(workspace, inviter):
+    from workspaces.models import WorkspaceInvitation
+    from workspaces.services import provision_signup
+
+    _make_invitation(
+        workspace=workspace,
+        inviter=inviter,
+        email="newuser7@example.com",
+        status=WorkspaceInvitation.Status.ACCEPTED,
+    )
+    _make_invitation(
+        workspace=workspace,
+        inviter=inviter,
+        email="newuser7@example.com",
+        expires_in_days=-1,
+    )
+
+    result = provision_signup(email="newuser7@example.com", password="s3cret-pass")
+
+    assert result.pending_invites == []
