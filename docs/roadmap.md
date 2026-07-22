@@ -163,12 +163,18 @@ Member discovery and invite-by-email for group workspaces; service-layer only, n
 SDD artifacts: [`openspec/changes/archive/2026-07-22-m2b-invitations/`](../openspec/changes/archive/2026-07-22-m2b-invitations/).
 Specs merged into main: `openspec/specs/invitations/spec.md` (new), `openspec/specs/workspaces/spec.md` (updated).
 
-### M2c — Move service + workspace history (pending)
+### M2c — Move service + workspace history ✅ Done
 
-Remaining M2 delivery (independent SDD change):
+Atomic member relocation between workspaces + auditable membership trail; service-layer only, no HTTP:
 
-- `move_member_to_workspace` service (atomically revoke old Membership, create new one).
-- `workspace_history` audit trail (tracks membership changes).
+- `WorkspaceHistory` audit model (plain FKs, `on_delete=SET_NULL` to retain rows, excluded from RLS — a `moved` row spans two workspaces).
+- `move_member_to_workspace` service — single `transaction.atomic()`: delete source `Membership`, create target with role forced to `member`, write a `moved` history row; full rollback on failure.
+- Authorization: `manage_members` required in BOTH source and target, plus a same-actor-user guard (both actor memberships must belong to the same user).
+- Edge-case rejections: workspace-owner move, personal/non-group target, duplicate target membership.
+- RLS backstop test writes a `moved` row as `portal_app` with no scoped context; 76 passing tests (baseline 62 + 14 new), migrations clean.
+
+SDD artifacts: `openspec/changes/archive/<date>-m2c-move-history/` (after archive).
+Commits on `main`: `dfbcc62` model+migration, `45babe1` move core, `869dec5` auth+guards, `9f69dee` RLS backstop.
 
 ---
 
