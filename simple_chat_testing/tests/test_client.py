@@ -2,8 +2,8 @@
 
 import pytest
 
-from m0chat.client import list_models, resolve_model, stream_chat
-from m0chat.history import History
+from simple_chat_testing.client import list_models, resolve_model, stream_chat
+from simple_chat_testing.history import History
 
 
 class _FakeModels:

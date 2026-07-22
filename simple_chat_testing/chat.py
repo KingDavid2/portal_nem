@@ -18,9 +18,9 @@ import argparse
 import sys
 from typing import Optional
 
-from m0chat.client import build_client, list_models, resolve_model, stream_chat
-from m0chat.config import Config
-from m0chat.history import History
+from simple_chat_testing.client import build_client, list_models, resolve_model, stream_chat
+from simple_chat_testing.config import Config
+from simple_chat_testing.history import History
 
 
 def _format_usage(usage) -> Optional[str]:

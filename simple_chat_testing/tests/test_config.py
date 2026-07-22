@@ -1,6 +1,6 @@
 """Config resolution — env-driven, provider-agnostic by construction."""
 
-from m0chat.config import Config
+from simple_chat_testing.config import Config
 
 
 def test_defaults_when_env_empty():
