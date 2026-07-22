@@ -127,11 +127,12 @@ Aprendizaje Servicio, and ABPr have different structures — out of M1 scope.
 
 ---
 
-## Milestone 2 — Tenancy foundation (auth + workspace + RLS)
+## Milestone 2 — Tenancy foundation (auth + workspace + RLS) ✅ Complete
 
 First real Django backend, under [`backend/`](../backend/). Split into commitable
-deliveries, one commit each, strict TDD. Built via the SDD cycle; design lives in
-`openspec/changes/archive/m2a-tenancy-core/`.
+deliveries, one commit each, strict TDD. Built via the SDD cycle; designs live under
+`openspec/changes/archive/` (`m2a-tenancy-core`, `2026-07-22-m2b-invitations`,
+`2026-07-22-m2c-move-history`). All three sub-milestones done; 76/76 tests green.
 
 ### M2a — Tenancy core ✅ Done
 
