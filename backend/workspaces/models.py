@@ -92,3 +92,52 @@ class WorkspaceResource(ScopedModel):
 
     def __str__(self) -> str:
         return f"{self.workspace_id}:{self.name}"
+
+
+class WorkspaceInvitation(models.Model):
+    """Pending/terminal invite to join a Workspace by email.
+
+    Deliberately a plain `ForeignKey(Workspace)`, NOT a `ScopedModel`: an
+    invitee has no `Membership`-derived active workspace yet, so RLS/
+    `ScopedManager` would hide their own invite (invitations spec —
+    RLS Exclusion). Authorization is enforced explicitly in services.py:
+    inviter-side by `workspace=` filter + `has_permission`, invitee-side by
+    token + email ownership. Uses the default `Manager` (NOT `ScopedManager`).
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        ACCEPTED = "accepted", "Accepted"
+        REVOKED = "revoked", "Revoked"
+        EXPIRED = "expired", "Expired"
+
+    workspace = models.ForeignKey(
+        Workspace,
+        on_delete=models.CASCADE,
+        related_name="invitations",
+    )
+    email = models.EmailField()
+    role = models.CharField(max_length=20, choices=Membership.Role.choices)
+    invited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="sent_invitations",
+    )
+    token = models.CharField(max_length=64, unique=True)
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.PENDING
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    # Computed by the invite service (now() + 7 days), not a model default —
+    # invitations spec: "Expiry computed at creation".
+    expires_at = models.DateTimeField()
+
+    class Meta:
+        db_table = "workspaces_workspaceinvitation"
+        indexes = [
+            models.Index(fields=["workspace", "status"]),
+            models.Index(fields=["email", "status"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.email}@{self.workspace_id}:{self.status}"
