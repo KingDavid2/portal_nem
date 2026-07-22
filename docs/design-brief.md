@@ -61,18 +61,71 @@ Model is **Notion/GitHub-style workspaces**, NOT rigid school-as-tenant. Users a
 
 ## 3. Stack
 
+**Two services: Django API + Next.js frontend.** Django serves no end-user HTML; every user-facing screen is Next.js.
+
 | Layer | Choice | Why |
 |-------|--------|-----|
-| Core backend | **Django + DRF** | ORM fit for relational school model, free admin panel for school ops, DRF permissions map to workspace roles |
-| AI service | **FastAPI** (separate) | async/streaming, Pydantic, `instructor` for schema-locked output; isolated at a clean HTTP seam |
-| DB | **PostgreSQL + pgvector** | RLS tenancy; pgvector for RAG corpus of official SEP curriculum |
-| LLM | **self-hosted vLLM** on ASUS Ascent GX10 (GB10 Grace-Blackwell, 128GB unified, ARM64), OpenAI-compat endpoint | behind `LLMProvider` interface (`ClaudeProvider` \| `OpenAICompatProvider`) — vLLM/Claude swap by config; dev via Ollama |
-| Frontend | **Next.js (App Router) + TS + Tailwind + shadcn/ui + TanStack Query/Table** | data-grid-heavy grade/attendance entry |
-| Style | modular monolith core + isolated FastAPI AI | Clean/Hexagonal/Screaming architecture, atomic design, container-presentational |
+| Backend | **Django + DRF**, API-only | ORM fit for relational school model; admin panel for internal ops; DRF is the single API surface, Next.js its only consumer |
+| Async | **Celery** | lesson-plan generation and report-card PDF export are long-running — jobs, not held HTTP requests |
+| DB | **PostgreSQL + pgvector** | RLS tenancy; pgvector for RAG corpus of official SEP curriculum, queried in-process by Django |
+| LLM | **self-hosted vLLM** on ASUS Ascent GX10 (GB10 Grace-Blackwell, 128GB unified, ARM64), OpenAI-compat endpoint | called directly from Django/Celery behind an `LLMProvider` port (`ClaudeProvider` \| `OpenAICompatProvider`) — vLLM/Claude swap by config; dev via Ollama |
+| Frontend | **Next.js (App Router) + TS + Tailwind + shadcn/ui + TanStack Query/Table** | attendance, grades and activities are spreadsheet-style bulk-entry grids; lesson plans stream into an editable draft |
+| Style | modular monolith | Screaming apps + Hexagonal ports at real boundaries; atomic design + container-presentational on the frontend |
 
-### AI planeaciones (future) — RAG, not raw prompt
+### No separate AI service
 
-PDAs and ejes are fixed official text. Model must **retrieve real PDA** from embedded SEP corpus (pgvector), then only sequence activities around it. Human-in-loop always: AI = draft, teacher edits + approves. Corpus = global (public curriculum); generated planeaciones = workspace-scoped. Track cost/tokens per generation.
+An earlier draft placed a FastAPI service between Django and the model. Dropped:
+
+- vLLM already exposes an OpenAI-compatible HTTP endpoint — that *is* the service. A FastAPI layer in front of it is a pass-through hop.
+- Pydantic and `instructor` are libraries, not a reason for a service. They import fine inside Django.
+- The real concern — long LLM calls starving request workers — is solved by Celery, not by another service.
+- RAG retrieval is a pgvector query against the same Postgres Django already connects to, so it is a queryset, not a network call.
+
+**Revisit if** Django ends up cloud-hosted in an MX region for PII residency while the GX10 sits on-prem. A thin service next to the GPU makes sense then, and not before.
+
+### Architecture style — scope
+
+- **Screaming**: Django apps named by domain — `workspaces`, `students`, `attendance`, `grades`, `lesson_plans`, `report_cards` — not `models/`, `views/`, `serializers/`. Name apps after the domain concept, never the screen (`grades`, not `grade_entry_form`) — screens change, concepts do not.
+- **Hexagonal ports at real boundaries only**: `LLMProvider`, report-card PDF export, payments, SEP corpus ingestion. These have genuine swappable adapters.
+- **No repository layer over the ORM** for school CRUD. Django's ORM is active-record; wrapping it discards querysets and the admin — the reasons Django was chosen. There is no second persistence adapter coming.
+- **Atomic design + container-presentational** apply to the Next.js app.
+
+### Naming — English codebase, Spanish product
+
+**All code identifiers are English**: Django apps, models, fields, services, API payload keys, TS types, functions, variables. UI labels and copy stay Spanish — end users are Mexican NEM teachers. A form input labeled "Apellido paterno" binds to `last_name_paternal`.
+
+Domain glossary — the canonical translation, use it consistently:
+
+| NEM / Spanish | Code |
+|---|---|
+| alumno | `student` |
+| asistencia | `attendance` |
+| calificación | `grade` |
+| actividad | `activity` |
+| planeación | `lesson_plan` |
+| boleta | `report_card` |
+| escuela | `school` |
+| grupo | `group` |
+| ciclo escolar | `school_year` |
+| periodo | `term` |
+| campo formativo | `formative_field` |
+| eje articulador | `articulating_axis` |
+| fase | `phase` |
+| nivel | `level` |
+
+**Not translated — government/SEP acronyms, treated as proper nouns**: `CURP`, `PDA`, `SEP`, `SIGED`, `NEM`. These are the official identifiers in SEP source documents; translating them breaks the trace back to the curriculum.
+
+Since the translations above are lossy (`lesson_plan` is the NEM artifact built from ejes + PDAs, not a generic lesson plan; `report_card` is the SEP-format boleta), each app's module docstring must state the NEM term it implements.
+
+### Frontend seam — non-negotiables
+
+- **Auth**: httpOnly session cookie on a shared parent domain (`api.*` / `app.*`), CORS with credentials, CSRF enabled. Not JWT in localStorage — student PII must not be readable by XSS.
+- **Types**: DRF → OpenAPI (`drf-spectacular`) → generated TS client, wired into CI from day one. Manual codegen rots and frontend types become lies.
+- **Admin**: Django admin stays, staff-only, restricted at the network/SSO layer. Internal ops surface, not a user surface.
+
+### AI lesson plans (future) — RAG, not raw prompt
+
+PDAs and articulating axes are fixed official text. Model must **retrieve real PDA** from embedded SEP corpus (pgvector), then only sequence activities around it. Human-in-loop always: AI = draft, teacher edits + approves. Corpus = global (public curriculum); generated lesson plans = workspace-scoped. Track cost/tokens per generation.
 
 ---
 
@@ -116,6 +169,7 @@ PDAs and ejes are fixed official text. Model must **retrieve real PDA** from emb
 ## 7. Known risks
 
 - **`SET LOCAL` discipline** — plain `SET` leaks tenants across pooled connections. Needs an active leak test, not just review.
+- **Celery workers bypass request middleware** — background jobs (planeación generation, boleta export) never pass through the middleware that sets `app.workspace_id`, so they run with no workspace context. Every task must establish it explicitly, and the fail-closed sentinel must be verified for the worker path too. This is the classic leak route once async work exists.
 - **Managed Postgres (RDS) roles** may bypass RLS even when not nominally superuser — verify the app role.
 - **Data residency** — student PII + SEP data may require MX-hosted infra; verify before committing cloud region (could force cloud choice and rule out US LLM APIs → reinforces self-hosted vLLM).
 - **Engram persistence** — MCP `mem_*` tools not exposed in current session; SDD artifacts held in-conversation + this brief until wired.
