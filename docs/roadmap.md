@@ -7,16 +7,16 @@
 
 ## Global milestones
 
-| # | Milestone | Proves |
-|---|---|---|
-| **M0** | Provider-agnostic testing chat | The LLM pipe works end-to-end; provider swap is a config change |
-| M1 | AI lesson_plan generation — secundaria, standalone spike | The product is viable |
-| M2 | Tenancy foundation (auth + workspace + RLS) — the slice-1 spec | Multi-tenant boundary |
-| M3 | School structure CRUD (school → school_year → group → student) | Data to attach plans/grades to |
-| M4 | Attendance + grades entry grids | Daily-use core |
-| M5 | report_card (boleta) PDF export | SEP deliverable |
-| M6 | Billing + subscription | Revenue |
-| M7 | Tutor/parent read-only portal | Future |
+| # | Milestone | Proves | Status |
+|---|---|---|---|
+| **M0** | Provider-agnostic testing chat | The LLM pipe works end-to-end; provider swap is a config change | ✅ Done |
+| M1 | AI lesson_plan generation — secundaria, standalone spike | The product is viable | ✅ Done (Phase A + B) |
+| M2 | Tenancy foundation (auth + workspace + RLS) — the slice-1 spec | Multi-tenant boundary | 🔨 In progress — **M2a** (tenancy core) done, see `backend/` |
+| M3 | School structure CRUD (school → school_year → group → student) | Data to attach plans/grades to | ⬜ Next |
+| M4 | Attendance + grades entry grids | Daily-use core | ⬜ |
+| M5 | report_card (boleta) PDF export | SEP deliverable | ⬜ |
+| M6 | Billing + subscription | Revenue | ⬜ |
+| M7 | Tutor/parent read-only portal | Future | ⬜ |
 
 M0/M1 code is throwaway-tolerant: the `LLMProvider` port, the Pydantic output schema, and the prompt/eval
 assets carry forward into M2+; the standalone project wiring does not have to.
@@ -124,6 +124,29 @@ Aprendizaje Servicio, and ABPr have different structures — out of M1 scope.
   is achievable, then find the cheapest thing that clears the same bar. The eval scorecard turns "least
   viable open-weight model" from a guess into a measurement — and the served `Qwen3.6-35B-A3B` sits right
   in the expected ~30B floor.
+
+---
+
+## Milestone 2 — Tenancy foundation (auth + workspace + RLS)
+
+First real Django backend, under [`backend/`](../backend/). Split into commitable
+deliveries, one commit each, strict TDD. Built via the SDD cycle; design lives in
+`openspec/changes/archive/m2a-tenancy-core/`.
+
+### M2a — Tenancy core ✅ Done
+
+Defense-in-depth multi-tenancy proven safe under connection pooling **before** any
+NEM domain data attaches to it:
+
+- Custom email-identified `User` (identity-auth).
+- `Workspace` (`personal`/`group`) + `Membership(user, workspace, role)`; personal
+  workspace auto-provisioned at signup.
+- Workspace-scoped querysets at the application layer (primary boundary) +
+  Postgres **RLS** via `SET LOCAL app.workspace_id` inside `ATOMIC_REQUESTS`
+  (backstop), enforced through a restricted `portal_app` role.
+- Cross-tenant leak test under pooling; 39/39 tests green.
+
+Run and test: see [`backend/README.md`](../backend/README.md).
 
 ---
 

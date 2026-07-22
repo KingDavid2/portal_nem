@@ -4,7 +4,7 @@ Administrative school platform for Mexico, aligned to the **Nueva Escuela Mexica
 
 Teachers and principals record student **grades** and **attendance**. Future scope adds AI-generated **planeaciones** (lesson plans) grounded in the official SEP curriculum.
 
-> **Status:** greenfield. No application code yet — the repository currently holds design artifacts only.
+> **Status:** early build. The Django backend tenancy foundation (auth, workspaces, RBAC, RLS) is implemented under [`backend/`](backend/). See [`backend/README.md`](backend/README.md) to run and test it.
 
 ## Domain
 
@@ -49,10 +49,23 @@ Architecture style: modular monolith core with an isolated FastAPI AI service at
 
 | Path | Contents |
 |------|----------|
+| `backend/` | Django + DRF core backend (runnable — see its README) |
 | `docs/design-brief.md` | Full architecture brief — domain, tenancy, stack, risks |
+| `openspec/` | Spec-driven change proposals, specs, and archived designs |
 | `designs/` | Pencil (`.pen`) UI design files |
 | `.atl/` | Tooling metadata |
 
 ## Getting started
 
-There is no runnable application yet. Start with [`docs/design-brief.md`](docs/design-brief.md) for the architecture decisions behind the first slice.
+Run and test the backend:
+
+```bash
+cd backend
+uv sync
+uv run python manage.py migrate
+uv run pytest
+```
+
+Full prerequisites (Postgres + pgvector, env config, DB roles) are in
+[`backend/README.md`](backend/README.md). For the architecture behind the
+current slice, read [`docs/design-brief.md`](docs/design-brief.md).
