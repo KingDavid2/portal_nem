@@ -2,7 +2,7 @@
 
 **Mode**: Strict TDD
 **Branch**: `m2b-invitations` (feature-branch-chain, one commit per delivery)
-**Status**: 5/5 deliveries complete. All tasks `[x]` in `tasks.md`.
+**Status**: 6/6 deliveries complete (D6 gap-fix added post-verify). All tasks `[x]` in `tasks.md`.
 
 ## TDD Cycle Evidence
 
@@ -13,6 +13,7 @@
 | D3 accept_invitation | 5 tests appended — all 5 failed on `ImportError: cannot import name 'accept_invitation'` | `accept_invitation()` — lazy-expiry-first check, terminal-state guard, email-ownership guard, atomic get_or_create Membership + status flip — 5/5 passed | None needed |
 | D4 revoke_invitation | 3 tests appended — all 3 failed on `ImportError: cannot import name 'revoke_invitation'` | `revoke_invitation()` — has_permission gate, explicit workspace-ownership check, terminal-state guard — 3/3 passed | None needed |
 | D5 discovery hook | 4 tests appended — 1 failed on `ImportError` (discover_pending_invites), 3 failed on `AttributeError: 'User' object has no attribute 'pending_invites'` (provision_signup still returned bare `User`) | `discover_pending_invites()` + `provision_signup()` now returns `SignupResult(user, pending_invites)`; discovery called after the atomic block, never creates Membership — 4/4 passed | Updated `test_services.py`'s existing assertion (`user = provision_signup(...)` → `result = provision_signup(...); user = result.user`) since D5 changed `provision_signup`'s return contract — required to keep the pre-existing M2a test green |
+| D6 list_invitations (gap-fix) | 4 tests appended (owner-can-list, admin-can-list, member-denied, other-workspace-not-leaked) — all 4 failed on `ImportError: cannot import name 'list_invitations'` before the function existed | `list_invitations(*, membership)` in `services.py` — `has_permission(membership, "manage_members")` gate, explicit `WorkspaceInvitation.objects.filter(workspace=membership.workspace, status=pending)` (no RLS/`ScopedManager`) — 4/4 passed | None needed |
 
 ## Work Unit Evidence
 
@@ -24,7 +25,7 @@
 | D4 | `uv run pytest workspaces/tests/test_invitations.py -k revoke_invitation -q` → 3 passed | N/A — same as D2 | Revert `revoke_invitation`; commit `b08e73e` |
 | D5 | `uv run pytest workspaces/tests/test_invitations.py -k discover -q` → 1 passed (`discover`-substring match); full `-k "discover or signup"` → 4 passed | Exercised via `provision_signup(...)` end-to-end (workspace+user+membership+discovery in one call), matching the real signup call path | Remove `discover_pending_invites` call + revert `provision_signup`/`SignupResult`; also revert the `test_services.py` assertion update; commit `171f637` |
 
-Full suite after every GREEN step: 42 → 46 → 51 → 54 → 58 passed, 0 failed (final: `uv run pytest -q` → **58 passed**).
+Full suite after every GREEN step: 42 → 46 → 51 → 54 → 58 → 62 passed, 0 failed (final: `uv run pytest -q` → **62 passed**).
 
 ## Commits
 
@@ -33,6 +34,7 @@ Full suite after every GREEN step: 42 → 46 → 51 → 54 → 58 passed, 0 fail
 3. `df98c03` feat(workspaces): accept_invitation service
 4. `b08e73e` feat(workspaces): revoke_invitation service
 5. `171f637` feat(workspaces): signup discovery hook
+6. (pending) feat(workspaces): list_invitations service
 
 ## Deviations from Design
 
@@ -43,10 +45,40 @@ Full suite after every GREEN step: 42 → 46 → 51 → 54 → 58 passed, 0 fail
 
 None.
 
+## D6: list_invitations (gap-fix)
+
+Verify (`verify-report.md`) found one CRITICAL gap: `specs/invitations/spec.md`'s RLS Exclusion
+requirement includes the scenario "Inviter-side access is filtered explicitly, not by RLS" —
+owner/admin listing pending invites for their workspace via an explicit `workspace=` filter,
+gated by `has_permission(membership, "manage_members")`. This was never scheduled in
+design.md/tasks.md for D1-D5 and had no implementation or test.
+
+Implemented `list_invitations(*, membership)` in `backend/workspaces/services.py`, matching
+`invite_member`'s/`revoke_invitation`'s existing denial pattern (`has_permission` gate →
+`PermissionDenied`) and `revoke_invitation`'s explicit-workspace-filter pattern. The spec
+scenario text says only "filter by an explicit `workspace=` clause... not rely on RLS" with no
+expiry-semantics wording, so this returns a plain filtered read (`status=pending`, scoped to the
+caller's own `membership.workspace`) — no lazy-expiry mutation was added, since that behavior is
+only specified for the accept flow (`accept_invitation`), not for listing.
+
+### Work Unit Evidence (D6)
+
+| Evidence | Value |
+|---|---|
+| Focused test command + result | `uv run pytest workspaces/tests/test_invitations.py -k list_invitations -q` → 4 passed |
+| Runtime harness | N/A — pure service call exercised directly by tests (owner/admin/member/other-workspace paths), same as D2/D4 (no separate shell/process boundary) |
+| Rollback boundary | Revert `list_invitations` from `services.py` and the 4 `test_list_invitations_*` tests from `test_invitations.py`; D1-D5 unaffected |
+
+### Deviations from Design (D6)
+
+None — `list_invitations` was absent from design.md entirely (this was the gap itself); the
+implementation follows the spec scenario text directly and reuses the exact authorization/filter
+patterns already established by `invite_member` and `revoke_invitation` in D2/D4.
+
 ## Remaining Tasks
 
-None — all D1-D5 tasks are `[x]` in `tasks.md`.
+None — all D1-D6 tasks are `[x]` in `tasks.md`.
 
 ## Status
 
-5/5 deliveries complete. Ready for verify.
+6/6 deliveries complete. Ready for verify.

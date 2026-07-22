@@ -12,6 +12,6 @@ phases:
   design: done
   tasks: done
   apply: done
-  verify: pending
+  verify: blocked
   archive: pending
-next_recommended: verify
+next_recommended: sdd-verify

@@ -423,3 +423,59 @@ def test_signup_does_not_surface_expired_or_terminal_invites(workspace, inviter)
     result = provision_signup(email="newuser7@example.com", password="s3cret-pass")
 
     assert result.pending_invites == []
+
+
+# --- D6: list_invitations ----------------------------------------------------
+
+
+def test_list_invitations_owner_can_list_workspace_pending_invites(
+    workspace, inviter, owner_membership
+):
+    from workspaces.services import list_invitations
+
+    invite = _make_invitation(
+        workspace=workspace, inviter=inviter, email="listed@example.com"
+    )
+
+    invitations = list(list_invitations(membership=owner_membership))
+
+    assert invitations == [invite]
+
+
+def test_list_invitations_admin_can_list_workspace_pending_invites(
+    workspace, inviter, admin_membership
+):
+    from workspaces.services import list_invitations
+
+    invite = _make_invitation(
+        workspace=workspace, inviter=inviter, email="listed-admin@example.com"
+    )
+
+    invitations = list(list_invitations(membership=admin_membership))
+
+    assert invitations == [invite]
+
+
+def test_list_invitations_denied_for_member_without_manage_members(member_membership):
+    from django.core.exceptions import PermissionDenied
+
+    from workspaces.services import list_invitations
+
+    with pytest.raises(PermissionDenied):
+        list(list_invitations(membership=member_membership))
+
+
+def test_list_invitations_does_not_leak_other_workspace_invites(
+    inviter, owner_membership
+):
+    from workspaces.models import Workspace
+    from workspaces.services import list_invitations
+
+    other_workspace = Workspace.objects.create(type=Workspace.Type.GROUP)
+    _make_invitation(
+        workspace=other_workspace, inviter=inviter, email="other-workspace@example.com"
+    )
+
+    invitations = list(list_invitations(membership=owner_membership))
+
+    assert invitations == []

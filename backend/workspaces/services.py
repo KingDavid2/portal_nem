@@ -140,6 +140,23 @@ def revoke_invitation(
     return invitation
 
 
+def list_invitations(*, membership: Membership) -> "QuerySet[WorkspaceInvitation]":
+    """List pending invites for `membership`'s workspace (inviter-side).
+
+    Requires `has_permission(membership, "manage_members")` (owner/admin).
+    Filtered by an explicit `workspace=` clause scoped to the caller's own
+    membership — never RLS or `ScopedManager` (invitations spec — RLS
+    Exclusion, "Inviter-side access is filtered explicitly, not by RLS").
+    """
+    if not has_permission(membership, "manage_members"):
+        raise PermissionDenied("Only owners and admins may list invitations.")
+
+    return WorkspaceInvitation.objects.filter(
+        workspace=membership.workspace,
+        status=WorkspaceInvitation.Status.PENDING,
+    )
+
+
 def discover_pending_invites(*, user: "User") -> "QuerySet[WorkspaceInvitation]":
     """Read-only lookup of actionable pending invites for `user`'s email.
 
