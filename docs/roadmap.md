@@ -19,7 +19,7 @@
 
 | # | Milestone | Backend | Frontend (Next.js) |
 |---|---|---|---|
-| M3 | School structure CRUD (school → school_year → group → student) | ✅ Done — schools + students apps, RLS, services, first DRF HTTP surface; 131/131 tests | ⬜ **Next.js foundation** (see M3 — Frontend below): auth seam + generated TS client + school/year/group/student CRUD screens |
+| M3 | School structure CRUD (school → school_year → group → student) | ✅ Done — schools + students apps, RLS, services, first DRF HTTP surface; 131/131 tests | ✅ Done — Next.js foundation (see M3 — Frontend below): auth seam + generated TS client + school/year/group/student CRUD screens; 142 backend / 22 frontend tests |
 | M4 | Attendance + grades entry grids (daily-use core) | ⬜ Next | ⬜ Attendance + grades entry grids (TanStack Table) |
 | M5 | report_card (boleta) PDF export (SEP deliverable) | ⬜ | ⬜ Boleta preview/download surface |
 | M6 | Billing + subscription | ⬜ | ⬜ Plan/checkout + billing settings screens |
@@ -218,10 +218,17 @@ Specs merged into main: `openspec/specs/school-structure/spec.md` (new),
 Deferred follow-up: retire the `WorkspaceResource` placeholder model (M2 scaffold), now that
 real scoped models exist.
 
-### M3 — Frontend (Next.js foundation) ⬜
+### M3 — Frontend (Next.js foundation) ✅ Complete
 
 The one-time frontend bootstrap, shipped as M3's frontend slice because M3 is the first API worth
-consuming. Everything M4–M7 UI depends on lands here once.
+consuming. Everything M4–M7 UI depends on lands here once. Built via the SDD cycle (8 deliveries,
+one commit each); designs archived under `openspec/changes/archive/2026-07-23-m3-frontend-foundation/`.
+142 backend / 22 frontend tests green, zero schema drift. Resolved forks: dedicated
+`GET /api/auth/csrf/` bootstrap; `openapi-typescript` + `openapi-fetch` (types-only) codegen;
+`frontend/` sibling subdir; same-site cookie topology (`SameSite=Lax`, env-gated dev/prod domains).
+Backend added: corsheaders + `CSRF_TRUSTED_ORIGINS`, session `login`/`logout`/`me` + CSRF-bootstrap
+endpoints, `GET /api/workspaces/` (RLS-excluded caller memberships). **Pending:** the manual browser
+exit-gate walkthrough is code-complete and test-verified but not yet run live locally.
 
 - **App scaffold** — Next.js (App Router) + TS + Tailwind + shadcn/ui + TanStack Query/Table, as a
   separate service (`frontend/`). Django serves no end-user HTML.

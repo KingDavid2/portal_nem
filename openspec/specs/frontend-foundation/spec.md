@@ -89,3 +89,7 @@ SchoolYear, Group, and Student, each executed through the generated TS client.
 - GIVEN the user submits an invalid create/edit payload (e.g., missing required field)
 - WHEN the generated client sends the request
 - THEN the backend's validation error MUST be surfaced in the screen, not silently swallowed
+
+---
+
+**Source**: M3 — Frontend Foundation (proposal: `m3-frontend-foundation`)
