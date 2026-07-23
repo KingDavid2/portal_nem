@@ -18,7 +18,7 @@ paths:
       - {}
       responses:
         '200':
-          description: No response body
+          description: CSRF cookie set
   /api/auth/login/:
     post:
       operationId: auth_login_create
@@ -28,12 +28,28 @@ paths:
         cookie via `django.contrib.auth.login`.
       tags:
       - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Login'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Login'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Login'
+        required: true
       security:
       - cookieAuth: []
       - {}
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
   /api/auth/logout/:
     post:
       operationId: auth_logout_create
@@ -43,8 +59,8 @@ paths:
       security:
       - cookieAuth: []
       responses:
-        '200':
-          description: No response body
+        '204':
+          description: Session cleared
   /api/auth/me/:
     get:
       operationId: auth_me_retrieve
@@ -55,7 +71,11 @@ paths:
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
   /api/groups/:
     get:
       operationId: groups_list
@@ -673,6 +693,18 @@ components:
         * `preescolar` - Preescolar
         * `primaria` - Primaria
         * `secundaria` - Secundaria
+    Login:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          writeOnly: true
+      required:
+      - email
+      - password
     MembershipList:
       type: object
       description: |-
@@ -852,6 +884,19 @@ components:
       - id
       - last_name_paternal
       - workspace
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        email:
+          type: string
+          format: email
+          maxLength: 254
+      required:
+      - email
+      - id
   securitySchemes:
     cookieAuth:
       type: apiKey

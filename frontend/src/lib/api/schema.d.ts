@@ -243,6 +243,11 @@ export interface components {
          * @enum {string}
          */
         LevelEnum: "preescolar" | "primaria" | "secundaria";
+        Login: {
+            /** Format: email */
+            email: string;
+            password: string;
+        };
         /**
          * @description One row per caller membership (workspaces spec — "Workspace-List
          *     Endpoint Returns Only the Caller's Memberships").
@@ -319,6 +324,11 @@ export interface components {
             /** Format: uuid */
             readonly workspace: string;
         };
+        User: {
+            readonly id: number;
+            /** Format: email */
+            email: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -337,7 +347,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
+            /** @description CSRF cookie set */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -353,14 +363,21 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Login"];
+                "application/x-www-form-urlencoded": components["schemas"]["Login"];
+                "multipart/form-data": components["schemas"]["Login"];
+            };
+        };
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
             };
         };
     };
@@ -373,8 +390,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
-            200: {
+            /** @description Session cleared */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -391,12 +408,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
             };
         };
     };
