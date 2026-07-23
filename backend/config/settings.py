@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 
 import environ
+from corsheaders.defaults import default_headers
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -202,6 +203,10 @@ CORS_ALLOWED_ORIGINS = env.list(
     "CORS_ALLOWED_ORIGINS", default=["http://localhost:3000"]
 )
 CORS_ALLOW_CREDENTIALS = True
+# The tenancy fetch layer sends a custom `X-Workspace-Id` header on every data
+# request. It is not in django-cors-headers' default allow-list, so without
+# this the CORS preflight strips it and the browser blocks the request.
+CORS_ALLOW_HEADERS = (*default_headers, "x-workspace-id")
 CSRF_TRUSTED_ORIGINS = env.list(
     "CSRF_TRUSTED_ORIGINS", default=["http://localhost:3000"]
 )
