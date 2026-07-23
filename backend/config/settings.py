@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "drf_spectacular",
+    "corsheaders",
     "core",
     "users",
     "workspaces",
@@ -52,6 +53,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -185,3 +187,26 @@ SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = False  # CSRF cookie must stay JS-readable for the SPA to echo it back as a header
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
+
+# CORS + CSRF trusted origins (design "same-site cookie topology (Lax
+# preserved)"; tenancy-isolation spec — "Cross-Origin Credentialed Requests
+# Restricted to Trusted Origins"). Frontend and backend stay on the same
+# registrable domain in every environment, so SameSite=Lax cookies keep
+# flowing on credentialed cross-origin fetch without moving to SameSite=None.
+#
+# Dev default: localhost:3000 (frontend) -> localhost:8000 (backend), no
+# SESSION_COOKIE_DOMAIN (host-only cookie, port-agnostic).
+CORS_ALLOWED_ORIGINS = env.list(
+    "CORS_ALLOWED_ORIGINS", default=["http://localhost:3000"]
+)
+CORS_ALLOW_CREDENTIALS = True
+CSRF_TRUSTED_ORIGINS = env.list(
+    "CSRF_TRUSTED_ORIGINS", default=["http://localhost:3000"]
+)
+
+# Prod shape (env-gated, unset in dev): app.example.com -> api.example.com,
+# shared eTLD+1 via SESSION_COOKIE_DOMAIN/CSRF_COOKIE_DOMAIN, secure cookies.
+SESSION_COOKIE_DOMAIN = env("SESSION_COOKIE_DOMAIN", default=None)
+CSRF_COOKIE_DOMAIN = env("CSRF_COOKIE_DOMAIN", default=None)
+SESSION_COOKIE_SECURE = env.bool("SESSION_COOKIE_SECURE", default=False)
+CSRF_COOKIE_SECURE = env.bool("CSRF_COOKIE_SECURE", default=False)
