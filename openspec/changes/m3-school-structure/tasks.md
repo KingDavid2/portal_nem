@@ -46,11 +46,11 @@ Satisfies: school-structure §CRUD Gated by edit_content Capability; §Cross-Ent
 
 Sequential, depends on D1+D2. ~180 lines.
 
-- [ ] D3.1 RED: write failing unit tests for `schools/services.py` (`create_school`, `update_school`, `delete_school`, `create_school_year`, `update_school_year`, `delete_school_year`, `create_group`, `update_group`, `delete_group`) — keyword-only args, `PermissionDenied` when membership lacks `edit_content`, `ValueError` when parent's workspace does not match `membership.workspace`, workspace assigned from `membership.workspace` (never client input) — in `backend/schools/tests/test_services.py`.
-- [ ] D3.2 RED: write failing unit tests for `students/services.py` (`create_student`, `update_student`, `delete_student`) with same permission/consistency contract, including group-must-belong-to-membership-workspace check, in `backend/students/tests/test_services.py`.
-- [ ] D3.3 GREEN: implement `backend/schools/services.py` — each function keyword-only, wrapped in `transaction.atomic`, asserts `has_permission(membership, "edit_content")` else raises `PermissionDenied`, asserts parent `workspace_id == membership.workspace_id` else raises `ValueError`.
-- [ ] D3.4 GREEN: implement `backend/students/services.py` with same pattern, validating `group.workspace_id == membership.workspace_id`.
-- [ ] D3.5 Verify: `uv run pytest backend/schools/ backend/students/` green; migrations check clean (no model changes expected, so this step is a no-op guard).
+- [x] D3.1 RED: write failing unit tests for `schools/services.py` (`create_school`, `update_school`, `delete_school`, `create_school_year`, `update_school_year`, `delete_school_year`, `create_group`, `update_group`, `delete_group`) — keyword-only args, `PermissionDenied` when membership lacks `edit_content`, `ValueError` when parent's workspace does not match `membership.workspace`, workspace assigned from `membership.workspace` (never client input) — in `backend/schools/tests/test_services.py`.
+- [x] D3.2 RED: write failing unit tests for `students/services.py` (`create_student`, `update_student`, `delete_student`) with same permission/consistency contract, including group-must-belong-to-membership-workspace check, in `backend/students/tests/test_services.py`.
+- [x] D3.3 GREEN: implement `backend/schools/services.py` — each function keyword-only, wrapped in `transaction.atomic`, asserts `has_permission(membership, "edit_content")` else raises `PermissionDenied`, asserts parent `workspace_id == membership.workspace_id` else raises `ValueError`.
+- [x] D3.4 GREEN: implement `backend/students/services.py` with same pattern, validating `group.workspace_id == membership.workspace_id`.
+- [x] D3.5 Verify: `uv run pytest backend/schools/ backend/students/` green; migrations check clean (no model changes expected, so this step is a no-op guard).
 
 ---
 
