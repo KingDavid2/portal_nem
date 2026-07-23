@@ -55,11 +55,19 @@ _Spec: identity-auth "Session Login/Logout/Me Endpoints"_ — depends on D1 (CSR
 ### D3 — workspace-list endpoint
 _Spec: workspaces "Workspace-List Endpoint Returns Only the Caller's Memberships"; tenancy-isolation "Workspace-List Read Exposes Only the Caller's Own Membership Rows"_ — depends on D1 (auth/session available for APIClient login in tests)
 
-- [ ] 3.1 RED: `backend/workspaces/tests/test_workspace_list.py` — `GET /api/workspaces/` returns only caller's memberships (id, name, type, role); never includes another user's workspace; anonymous request denied; no `X-Workspace-Id` required.
-- [ ] 3.2 GREEN: `MembershipListSerializer` + `WorkspaceListView` in `backend/workspaces/views.py`, querying `Membership.objects.filter(user=request.user)` via the default (RLS-excluded) manager — no `WorkspacePermission`/`capability_map`.
-- [ ] 3.3 GREEN: mount `GET /api/workspaces/` in `backend/workspaces/urls.py`; include under `api/` in `backend/config/urls.py`.
-- [ ] 3.4 Run `cd backend && uv run pytest -q` and `uv run manage.py makemigrations --check --dry-run` — both clean.
-- [ ] 3.5 Commit: `feat(workspaces): add workspace-list endpoint`.
+- [x] 3.1 RED: `backend/workspaces/tests/test_workspace_list.py` — `GET /api/workspaces/` returns only caller's memberships (id, name, type, role); never includes another user's workspace; anonymous request denied; no `X-Workspace-Id` required.
+- [x] 3.2 GREEN: `MembershipListSerializer` + `WorkspaceListView` in `backend/workspaces/views.py`, querying `Membership.objects.filter(user=request.user)` via the default (RLS-excluded) manager — no `WorkspacePermission`/`capability_map`.
+- [x] 3.3 GREEN: mount `GET /api/workspaces/` in `backend/workspaces/urls.py`; include under `api/` in `backend/config/urls.py`.
+- [x] 3.4 Run `cd backend && uv run pytest -q` and `uv run manage.py makemigrations --check --dry-run` — both clean.
+- [x] 3.5 Commit: `feat(workspaces): add workspace-list endpoint`.
+
+> Deviation from design.md: the `workspaces spec` response contract requires
+> a `name` field per membership entry, but the existing `Workspace` model had
+> no `name` column. Added an additive, blank-default `name = CharField(blank=
+> True, default="")` field + migration `0007_workspace_name` (non-breaking:
+> every existing `Workspace.objects.create(type=...)` call site keeps
+> working unchanged). Not listed in design.md's File Changes table — flagged
+> here for visibility.
 
 ## Phase 2: Frontend scaffold + codegen (Slice 2) — depends on D1-D3
 

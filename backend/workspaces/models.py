@@ -15,6 +15,11 @@ class Workspace(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     type = models.CharField(max_length=20, choices=Type.choices)
+    # Blank-by-default display name (workspaces spec — "Workspace-List
+    # Endpoint Returns Only the Caller's Memberships" requires a `name`
+    # field on every list entry). Additive/nullable-safe: every existing
+    # `Workspace.objects.create(type=...)` call site keeps working unchanged.
+    name = models.CharField(max_length=200, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
