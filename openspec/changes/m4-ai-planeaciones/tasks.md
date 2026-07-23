@@ -65,15 +65,15 @@ Chain strategy: stacked-to-main
 
 ## Phase 4: Celery Infra + Task + Leak Test (D4)
 
-- [ ] 4.1 Create `backend/config/celery.py` — Celery app bound to `config.settings`, autodiscover tasks.
-- [ ] 4.2 Modify `backend/config/__init__.py` to import the Celery app.
-- [ ] 4.3 Modify `backend/config/settings.py` — `CELERY_BROKER_URL` (Redis), `CELERY_TASK_ALWAYS_EAGER=True` in test settings only.
-- [ ] 4.4 RED (non-eager, CRITICAL): `test_tasks.py::test_task_without_context_fails_closed` — dispatch task body with no inherited contextvar/request context (fresh thread or real worker path); assert zero rows read/written for any workspace before `workspace_scope` is entered (Scenario: Task without established context fails closed, not cross-tenant; Tenancy Isolation delta).
-- [ ] 4.5 RED (non-eager, CRITICAL): `test_tasks.py::test_task_sets_own_context` — task resolves `workspace_id` from enqueue args, calls `workspace_scope(workspace_id)`, context is set then cleared after commit/rollback (Scenario: Task sets its own workspace context before reading/writing).
-- [ ] 4.6 Document in the test module why `CELERY_TASK_ALWAYS_EAGER` is insufficient for 4.4/4.5 (Scenario: Test proves the behavior under real non-eager task execution).
-- [ ] 4.7 GREEN: Create `backend/lesson_plans/tasks.py::generate_lesson_plan_task(*, workspace_id, lesson_plan_id)` — `build_provider()` + `provider.generate(...)` outside any txn; on success `with workspace_scope(workspace_id):` persist `proyecto`, provenance, `invented_pdas`, `status=ready`; on parse/validation/`KeyError` → `status=failed` + truncated `failure_reason`; `max_retries=2` exponential backoff for transient provider errors only, soft time limit ~90s.
-- [ ] 4.8 GREEN: confirm 4.4-4.5 pass under real (non-eager) execution against local Redis.
-- [ ] 4.9 Integration RED/GREEN: `test_tasks.py` — success path sets `status=ready` with provenance; schema-parse failure sets `status=failed` with reason (Scenarios: Celery task completes generation successfully; Celery task fails on schema-parse failure; LLM Provider Requirement: Generation Failures Surface as a Failed Status).
+- [x] 4.1 Create `backend/config/celery.py` — Celery app bound to `config.settings`, autodiscover tasks.
+- [x] 4.2 Modify `backend/config/__init__.py` to import the Celery app.
+- [x] 4.3 Modify `backend/config/settings.py` — `CELERY_BROKER_URL` (Redis), `CELERY_TASK_ALWAYS_EAGER=True` in test settings only.
+- [x] 4.4 RED (non-eager, CRITICAL): `test_tasks.py::test_task_without_established_context_fails_closed_not_cross_tenant` — dispatch task body with no inherited contextvar/request context (fresh thread or real worker path); assert zero rows read/written for any workspace before `workspace_scope` is entered (Scenario: Task without established context fails closed, not cross-tenant; Tenancy Isolation delta).
+- [x] 4.5 RED (non-eager, CRITICAL): `test_tasks.py::test_task_sets_own_workspace_context_from_a_cold_thread` — task resolves `workspace_id` from enqueue args, calls `workspace_scope(workspace_id)`, context is set then cleared after commit/rollback (Scenario: Task sets its own workspace context before reading/writing).
+- [x] 4.6 Document in the test module why `CELERY_TASK_ALWAYS_EAGER` is insufficient for 4.4/4.5 (Scenario: Test proves the behavior under real non-eager task execution).
+- [x] 4.7 GREEN: Create `backend/lesson_plans/tasks.py::generate_lesson_plan_task(*, workspace_id, lesson_plan_id)` — `build_provider()` + `provider.generate(...)` outside any txn; on success `with workspace_scope(workspace_id):` persist `proyecto`, provenance, `invented_pdas`, `status=ready`; on parse/validation/`KeyError` → `status=failed` + truncated `failure_reason`; `max_retries=2` exponential backoff for transient provider errors only, soft time limit ~90s.
+- [x] 4.8 GREEN: confirm 4.4-4.5 pass under real (non-eager) execution — cold `ThreadPoolExecutor` thread (fresh contextvars, separate DB connection via `transaction=True`), not `CELERY_TASK_ALWAYS_EAGER`.
+- [x] 4.9 Integration RED/GREEN: `test_tasks.py` — success path sets `status=ready` with provenance; schema-parse failure sets `status=failed` with reason (Scenarios: Celery task completes generation successfully; Celery task fails on schema-parse failure; LLM Provider Requirement: Generation Failures Surface as a Failed Status).
 
 ## Phase 5: Generation Service + Create/List/Retrieve/Destroy (D5)
 

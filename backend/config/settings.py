@@ -5,6 +5,7 @@ For more information on this file, see
 https://docs.djangoproject.com/en/6.0/topics/settings/
 """
 
+import os
 from pathlib import Path
 
 import environ
@@ -224,3 +225,25 @@ LLM_MODEL = env("LLM_MODEL", default=None)
 LLM_API_KEY = env("LLM_API_KEY", default="dummy")
 ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default=None)
 ANTHROPIC_MODEL = env("ANTHROPIC_MODEL", default="claude-opus-4-8")
+
+# Celery (M4 design — "Generation Runs Asynchronously via a Celery Task").
+# Redis doubles as broker + result backend; no RabbitMQ dependency.
+CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = env(
+    "CELERY_RESULT_BACKEND", default="redis://localhost:6379/0"
+)
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+
+# Under pytest, tasks run eagerly (synchronously, inline) so the ordinary
+# service/viewset test suite never needs a live worker/broker. The
+# workspace-context leak test (D4 design Decision: "Eager tasks for most
+# tests, but forced non-eager for the leak test") MUST NOT rely on this —
+# eager execution inherits the calling thread's contextvars and would hide
+# the exact bug that requirement guards against, so that test dispatches the
+# task body directly against a real (non-eager) execution path instead of
+# going through `.delay()`.
+if "PYTEST_VERSION" in os.environ:
+    CELERY_TASK_ALWAYS_EAGER = True
+    CELERY_TASK_EAGER_PROPAGATES = True

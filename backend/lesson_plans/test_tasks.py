@@ -1,0 +1,256 @@
+"""Tests for `generate_lesson_plan_task` (design D4 — "Generation Runs
+Asynchronously via a Celery Task"; tenancy-isolation spec — "Celery
+Generation Tasks Must Establish Their Own Workspace RLS Context").
+
+Why `CELERY_TASK_ALWAYS_EAGER` is insufficient for the workspace-context
+tests (tenancy-isolation spec, Scenario "Test proves the behavior under real
+(non-eager) task execution"):
+
+`config/settings.py` sets `CELERY_TASK_ALWAYS_EAGER = True` under pytest so
+the ordinary test suite never needs a live worker/broker. But eager mode
+runs the task body inline, on the *same thread*, as whatever called
+`.delay()`. Python `contextvars.ContextVar` values (here, `active_workspace`)
+are inherited by code running later on the same thread — so if the
+enqueuing test had already set `active_workspace` (e.g. via a prior
+`workspace_scope` block, or because it runs inside `TenancyMiddleware`),
+eager execution would silently see that already-set context even if the
+task itself never called `workspace_scope`. That would make a task with the
+context-setting step *removed* pass the test anyway — exactly the
+regression this requirement guards against.
+
+Each new Python thread gets its own default `contextvars.Context` — values
+set on one thread are NOT visible on another. `test_task_sets_own_workspace_context_from_a_cold_thread`
+below therefore dispatches the task body on a fresh `ThreadPoolExecutor`
+thread with no `active_workspace` set, which is a real cold-context
+execution path distinct from the enqueuing test thread — not
+`CELERY_TASK_ALWAYS_EAGER`. (`@pytest.mark.django_db(transaction=True)` is
+required alongside this: a second thread opens its own DB connection, which
+only sees rows committed to the database, not rows sitting inside another
+connection's uncommitted transaction.)
+"""
+
+from __future__ import annotations
+
+from concurrent.futures import ThreadPoolExecutor
+from unittest.mock import patch
+
+import pytest
+from django.core.exceptions import ObjectDoesNotExist
+from django.db import connections
+
+from lesson_plans.core.ports.llm import GenerationResult, Usage
+from lesson_plans.core.schema import (
+    ArticulatingAxis,
+    ContentPda,
+    Datos,
+    Proyecto,
+    Rubric,
+    RubricCriterion,
+)
+from lesson_plans.models import LessonPlan
+from lesson_plans.tasks import generate_lesson_plan_task
+from workspaces.context import active_workspace
+
+
+def _canned_proyecto() -> Proyecto:
+    return Proyecto(
+        datos=Datos(
+            school_name="Escuela Uno",
+            grade="SEGUNDO",
+            campo_formativo="Lenguajes",
+            date="2026-01-01",
+        ),
+        title="Héroes y Gestas",
+        purpose="Comprender la independencia.",
+        articulating_axes=[ArticulatingAxis(name="Vida saludable", justification="x")],
+        problem_or_theme="La independencia",
+        contents_and_pdas=[
+            ContentPda(
+                content="Recursos lingüísticos y textuales para la comprensión y "
+                "producción de textos.",
+                pdas=[
+                    "Emplea las reglas de acentuación de palabras agudas, graves, "
+                    "esdrújulas y sobresdrújulas para escribir con corrección.",
+                ],
+            )
+        ],
+        stages=[],
+        rubric=Rubric(criteria=[RubricCriterion(criterion="Participación", levels=["a", "b", "c", "d"])]),
+    )
+
+
+class _FakeProvider:
+    name = "fake"
+    model = "fake-model"
+
+    def __init__(self, result=None, error=None):
+        self._result = result
+        self._error = error
+
+    def generate(self, request, pdas):
+        if self._error is not None:
+            raise self._error
+        return self._result
+
+
+def _make_group(workspace):
+    from schools.models import Group, School, SchoolYear
+
+    school = School.objects.create(
+        workspace=workspace, name="Escuela Uno", level=School.Level.SECUNDARIA
+    )
+    school_year = SchoolYear.objects.create(
+        workspace=workspace, school=school, label="2024-2025"
+    )
+    return Group.objects.create(workspace=workspace, school_year=school_year, grado=1, grupo="A")
+
+
+def _create_pending_plan(workspace, group, *, campo="Lenguajes", grade="SEGUNDO", theme="La independencia"):
+    token = active_workspace.set(workspace.id)
+    try:
+        return LessonPlan.objects.create(
+            workspace=workspace, group=group, campo=campo, grade=grade, theme=theme
+        )
+    finally:
+        active_workspace.reset(token)
+
+
+def _run_task_in_cold_thread(**kwargs):
+    """Run the task on a fresh thread (no inherited `active_workspace`
+    contextvar) and close the thread's own DB connection afterwards so
+    pytest-django's test-database teardown doesn't race a still-open
+    connection from a non-main thread."""
+
+    def _call():
+        try:
+            generate_lesson_plan_task(**kwargs)
+        finally:
+            connections.close_all()
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        pool.submit(_call).result(timeout=10)
+
+
+def _read_plan_in(workspace, plan_id):
+    token = active_workspace.set(workspace.id)
+    try:
+        return LessonPlan.objects.get(pk=plan_id)
+    finally:
+        active_workspace.reset(token)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_task_sets_own_workspace_context_from_a_cold_thread():
+    """Scenario: Task sets its own workspace context before reading/writing.
+
+    Dispatches the task body on a fresh thread with no inherited
+    `active_workspace` contextvar — see module docstring for why this,
+    rather than eager execution, is required to prove the task establishes
+    context itself.
+    """
+    from workspaces.models import Workspace
+
+    workspace = Workspace.objects.create(type=Workspace.Type.GROUP)
+    other_workspace = Workspace.objects.create(type=Workspace.Type.GROUP)
+    group = _make_group(workspace)
+    plan = _create_pending_plan(workspace, group)
+
+    assert active_workspace.get() is not workspace.id  # sanity: caller thread not scoped to it either
+
+    fake = _FakeProvider(
+        result=GenerationResult(
+            proyecto=_canned_proyecto(),
+            usage=Usage(input_tokens=10, output_tokens=20),
+            invented_pdas=[],
+        )
+    )
+
+    with patch("lesson_plans.tasks.build_provider", return_value=fake):
+        # New thread => fresh contextvars.Context => no inherited
+        # active_workspace, proving the task must set it itself.
+        _run_task_in_cold_thread(workspace_id=workspace.id, lesson_plan_id=plan.id)
+
+    updated = _read_plan_in(workspace, plan.id)
+    assert updated.status == LessonPlan.Status.READY
+    assert updated.proyecto["title"] == "Héroes y Gestas"
+    assert updated.provider == "fake"
+    assert updated.model_name == "fake-model"
+    assert updated.prompt_tokens == 10
+    assert updated.completion_tokens == 20
+    assert updated.invented_pdas is False
+    assert updated.generated_at is not None
+
+    # The task must not have touched any row in the other workspace.
+    assert not _list_plans_in(other_workspace)
+
+
+def _list_plans_in(workspace):
+    token = active_workspace.set(workspace.id)
+    try:
+        return list(LessonPlan.objects.all())
+    finally:
+        active_workspace.reset(token)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_task_provider_schema_failure_sets_status_failed_with_reason():
+    """Scenarios: Celery task fails on schema-parse failure; Generation
+    Failures Surface as a Failed Status."""
+    from workspaces.models import Workspace
+
+    workspace = Workspace.objects.create(type=Workspace.Type.GROUP)
+    group = _make_group(workspace)
+    plan = _create_pending_plan(workspace, group)
+
+    fake = _FakeProvider(error=ValueError("Proyecto schema validation failed: missing 'title'"))
+
+    with patch("lesson_plans.tasks.build_provider", return_value=fake):
+        _run_task_in_cold_thread(workspace_id=workspace.id, lesson_plan_id=plan.id)
+
+    updated = _read_plan_in(workspace, plan.id)
+    assert updated.status == LessonPlan.Status.FAILED
+    assert updated.failure_reason != ""
+    assert updated.proyecto is None
+
+
+@pytest.mark.django_db(transaction=True)
+def test_task_unknown_campo_sets_status_failed():
+    """`pdas_for` raises `KeyError` for a campo with no fixture — terminal,
+    not retried, surfaces as `status=failed`."""
+    from workspaces.models import Workspace
+
+    workspace = Workspace.objects.create(type=Workspace.Type.GROUP)
+    group = _make_group(workspace)
+    plan = _create_pending_plan(workspace, group, campo="No existe este campo")
+
+    _run_task_in_cold_thread(workspace_id=workspace.id, lesson_plan_id=plan.id)
+
+    updated = _read_plan_in(workspace, plan.id)
+    assert updated.status == LessonPlan.Status.FAILED
+    assert "No existe este campo" in updated.failure_reason
+
+
+@pytest.mark.django_db
+def test_task_without_established_context_fails_closed_not_cross_tenant():
+    """Scenario: Task without established context fails closed, not
+    cross-tenant.
+
+    Simulates a regression where the workspace-context-setting step is
+    omitted entirely: reading a `LessonPlan` row with no `workspace_scope`
+    active MUST return zero rows (via `ScopedManager`'s fail-closed
+    `_scoped()`), never fall through to an unscoped or wrong-workspace view,
+    even when a row for a *different* workspace exists and is queried by id.
+    """
+    from workspaces.models import Workspace
+
+    workspace_a = Workspace.objects.create(type=Workspace.Type.GROUP)
+    workspace_b = Workspace.objects.create(type=Workspace.Type.GROUP)
+    group_b = _make_group(workspace_b)
+    plan_b = _create_pending_plan(workspace_b, group_b)
+
+    assert active_workspace.get() is not workspace_b.id
+
+    with pytest.raises(ObjectDoesNotExist):
+        LessonPlan.objects.get(pk=plan_b.id)
+
+    assert list(LessonPlan.objects.all()) == []
