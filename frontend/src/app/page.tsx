@@ -19,6 +19,9 @@ export default function Home() {
         <>
           <p className="text-muted-foreground">Signed in as {user.email}</p>
           <WorkspaceSwitcher enabled={Boolean(user)} />
+          <Button render={<Link href="/schools" />} variant="outline">
+            Ir a Escuelas
+          </Button>
           <LogoutButton />
         </>
       ) : (

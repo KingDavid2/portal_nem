@@ -106,10 +106,10 @@ _Spec: frontend-foundation "Session/CSRF Auth Lifecycle", "Active-Workspace Cont
 ### D7 — school + school_year CRUD screens
 _Spec: frontend-foundation "CRUD Screens Cover School Structure Entities" (School, SchoolYear)_
 
-- [ ] 7.1 School list/create/edit/delete screens over the generated client + TanStack Table (`frontend/src/app/(app)/schools/*`).
-- [ ] 7.2 SchoolYear list/create/edit/delete screens (`frontend/src/app/(app)/school-years/*`).
-- [ ] 7.3 Surface backend validation errors on invalid create/edit payloads.
-- [ ] 7.4 Commit: `feat(frontend): add School and SchoolYear CRUD screens`.
+- [x] 7.1 School list/create/edit/delete screens over the generated client + TanStack Table (`frontend/src/app/(app)/schools/*`).
+- [x] 7.2 SchoolYear list/create/edit/delete screens (`frontend/src/app/(app)/school-years/*`).
+- [x] 7.3 Surface backend validation errors on invalid create/edit payloads.
+- [x] 7.4 Commit: `feat(frontend): add School and SchoolYear CRUD screens`.
 
 ### D8 — group + student CRUD screens + exit-gate
 _Spec: frontend-foundation "CRUD Screens Cover School Structure Entities" (Group, Student)_
