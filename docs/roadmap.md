@@ -12,8 +12,8 @@
 | **M0** | Provider-agnostic testing chat | The LLM pipe works end-to-end; provider swap is a config change | ✅ Done |
 | M1 | AI lesson_plan generation — secundaria, standalone spike | The product is viable | ✅ Done (Phase A + B) |
 | M2 | Tenancy foundation (auth + workspace + RLS) — the slice-1 spec | Multi-tenant boundary | ✅ Done — M2a tenancy core + M2b invitations + M2c move/history; 76/76 tests, see `backend/` |
-| M3 | School structure CRUD (school → school_year → group → student) | Data to attach plans/grades to | ⬜ Next |
-| M4 | Attendance + grades entry grids | Daily-use core | ⬜ |
+| M3 | School structure CRUD (school → school_year → group → student) | Data to attach plans/grades to | ✅ Done — schools + students apps, RLS, services, first DRF HTTP surface; 131/131 tests |
+| M4 | Attendance + grades entry grids | Daily-use core | ⬜ Next |
 | M5 | report_card (boleta) PDF export | SEP deliverable | ⬜ |
 | M6 | Billing + subscription | Revenue | ⬜ |
 | M7 | Tutor/parent read-only portal | Future | ⬜ |
@@ -176,6 +176,35 @@ Atomic member relocation between workspaces + auditable membership trail; servic
 
 SDD artifacts: `openspec/changes/archive/<date>-m2c-move-history/` (after archive).
 Commits on `main`: `dfbcc62` model+migration, `45babe1` move core, `869dec5` auth+guards, `9f69dee` RLS backstop.
+
+---
+
+## Milestone 3 — School structure CRUD ✅ Complete
+
+The NEM domain hierarchy `school → school_year → group → student` — the data that lesson
+plans (M4), grades, and attendance (M5) attach to. Also the backend's **first real HTTP
+surface**. Built via the SDD cycle; designs archived under
+`openspec/changes/archive/2026-07-22-m3-school-structure/`. 6 deliveries, one commit each,
+strict TDD; 131/131 tests green.
+
+- Two screaming apps: **`schools`** (`School`, `SchoolYear`, `Group`) + **`students`** (`Student`),
+  all `ScopedModel` subclasses with their own denormalized `workspace` FK (never join-through
+  for RLS). `Group→Student` FK is `PROTECT`; `curp` is a plain field, no uniqueness (design-brief §2).
+- Uniqueness: `SchoolYear(school, label)`, `Group(school_year, grado, grupo)`; `grado` bounded 1–3.
+- Per-app RLS migrations enable the `ws_isolation` policy on the four new tables in the `0004`
+  NULLIF form, via an extracted `workspaces/rls.py` helper (`0003`/`0004` stay frozen).
+- Keyword-only atomic services (`schools/services.py`, `students/services.py`): `edit_content`-gated,
+  cross-entity workspace-consistency checks, workspace taken from membership never the client.
+- DRF `ModelViewSet` per entity — reads via `ScopedManager`, writes delegate to services;
+  `X-Workspace-Id` gating, cross-workspace isolation, `PROTECT` surfaces a clean 4xx.
+- Closed two latent M2 auth gaps: `TenancyMiddleware` now attaches `request.membership`; and
+  `WorkspacePermission` maps DRF actions → capabilities via a `capability_map` (was feeding raw
+  verbs into the capability matrix → always-deny).
+
+Specs merged into main: `openspec/specs/school-structure/spec.md` (new),
+`openspec/specs/authorization/spec.md` + `openspec/specs/tenancy-isolation/spec.md` (updated).
+Deferred follow-up: retire the `WorkspaceResource` placeholder model (M2 scaffold), now that
+real scoped models exist.
 
 ---
 
