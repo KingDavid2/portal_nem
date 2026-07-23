@@ -88,11 +88,11 @@ Satisfies: school-structure §DRF CRUD Endpoints Are Workspace-Scoped and Isolat
 
 Sequential, depends on D1-D5. ~120 lines.
 
-- [ ] D6.1 RED: write failing HTTP tests for Student CRUD (same pattern as D5.1: scoped isolation, capability gating, cross-workspace 404/empty) in `backend/students/tests/test_api.py`.
-- [ ] D6.2 GREEN: `backend/students/serializers.py` — `StudentSerializer`.
-- [ ] D6.3 GREEN: `backend/students/viewsets.py` — `StudentViewSet` (same shape as D5.3, delegating to `students/services.py`).
-- [ ] D6.4 GREEN: `backend/students/urls.py` registered via `DefaultRouter`; include into `backend/config/urls.py` under `api/`.
-- [ ] D6.5 Verify: `uv run pytest` (full suite) green; migrations check clean.
+- [x] D6.1 RED: write failing HTTP tests for Student CRUD (same pattern as D5.1: scoped isolation, capability gating, cross-workspace 404/empty) in `backend/students/tests/test_api.py`.
+- [x] D6.2 GREEN: `backend/students/serializers.py` — `StudentSerializer`.
+- [x] D6.3 GREEN: `backend/students/viewsets.py` — `StudentViewSet` (same shape as D5.3, delegating to `students/services.py`).
+- [x] D6.4 GREEN: `backend/students/urls.py` registered via `DefaultRouter`; include into `backend/config/urls.py` under `api/`.
+- [x] D6.5 Verify: `uv run pytest` (full suite) green; migrations check clean.
 
 ---
 

@@ -28,4 +28,5 @@ urlpatterns = [
         name="swagger-ui",
     ),
     path("api/", include("schools.urls")),
+    path("api/", include("students.urls")),
 ]
