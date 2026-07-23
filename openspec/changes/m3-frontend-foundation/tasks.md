@@ -74,18 +74,18 @@ _Spec: workspaces "Workspace-List Endpoint Returns Only the Caller's Memberships
 ### D4 — Next.js App Router scaffold
 _Spec: frontend-foundation (project shell, prerequisite for all Requirements)_
 
-- [ ] 4.1 Scaffold `frontend/` (Next.js App Router + TypeScript + Tailwind), own `package.json`, sibling to `backend/`.
-- [ ] 4.2 Install + configure shadcn/ui and TanStack Query/Table.
-- [ ] 4.3 Minimal runnable app shell (`frontend/src/app/layout.tsx`, `page.tsx`) — builds and runs with `npm run dev`.
-- [ ] 4.4 Commit: `feat(frontend): scaffold Next.js app shell`.
+- [x] 4.1 Scaffold `frontend/` (Next.js App Router + TypeScript + Tailwind), own `package.json`, sibling to `backend/`.
+- [x] 4.2 Install + configure shadcn/ui and TanStack Query/Table.
+- [x] 4.3 Minimal runnable app shell (`frontend/src/app/layout.tsx`, `page.tsx`) — builds and runs with `npm run dev`.
+- [x] 4.4 Commit: `feat(frontend): scaffold Next.js app shell`.
 
 ### D5 — type pipeline: schema dump + TS codegen + CI drift check
 _Spec: frontend-foundation "Generated TypeScript Client Tracks the OpenAPI Schema"_ — depends on D4
 
-- [ ] 5.1 Add `backend/schema.yaml` dump script (`manage.py spectacular --file schema.yaml --validate`), commit initial dump.
-- [ ] 5.2 Add `openapi-typescript` + `openapi-fetch` deps to `frontend/package.json`; generate `frontend/src/lib/api/schema.d.ts` and a thin client wrapper.
-- [ ] 5.3 Add CI job (`.github/workflows/schema-drift.yml` or equivalent) that regenerates `schema.yaml` and `schema.d.ts` and fails on `git diff --exit-code`.
-- [ ] 5.4 Commit: `feat(frontend): add OpenAPI schema→TS codegen pipeline with drift check`.
+- [x] 5.1 Add `backend/schema.yaml` dump script (`manage.py spectacular --file schema.yaml --validate`), commit initial dump.
+- [x] 5.2 Add `openapi-typescript` + `openapi-fetch` deps to `frontend/package.json`; generate `frontend/src/lib/api/schema.d.ts` and a thin client wrapper.
+- [x] 5.3 Add CI job (`.github/workflows/schema-drift.yml` or equivalent) that regenerates `schema.yaml` and `schema.d.ts` and fails on `git diff --exit-code`.
+- [x] 5.4 Commit: `feat(frontend): add OpenAPI schema→TS codegen pipeline with drift check`.
 
 ### D6 — fetch-layer auth/session/workspace wiring
 _Spec: frontend-foundation "Session/CSRF Auth Lifecycle", "Active-Workspace Context on Every Data Request"_ — depends on D2, D3, D5
