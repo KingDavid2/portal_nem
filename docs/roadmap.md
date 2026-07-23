@@ -21,19 +21,26 @@
 |---|---|---|---|
 | M3 | School structure CRUD (school → school_year → group → student) | ✅ Done — schools + students apps, RLS, services, first DRF HTTP surface; 131/131 tests | ✅ Done — Next.js foundation (see M3 — Frontend below): auth seam + generated TS client + school/year/group/student CRUD screens; 142 backend / 22 frontend tests |
 | M4 | **AI planeaciones** (persisted + attached to group / school_year) | ✅ Done — `lesson_plans` app: ported M1 core behind `LLMProvider` port, `LessonPlan` ScopedModel + RLS, Celery generation task, DRF generate/CRUD/export; 189 backend tests | ✅ Done — Planeaciones screen: generate form + async poll + proyecto viewer + docx export; 35 frontend tests |
-| M5 | Attendance + grades entry grids (daily-use core) | ⬜ | ⬜ Attendance + grades entry grids (TanStack Table) |
-| M6 | report_card (boleta) PDF export (SEP deliverable) | ⬜ | ⬜ Boleta preview/download surface |
-| M7 | Billing + subscription | ⬜ | ⬜ Plan/checkout + billing settings screens |
-| M8 | Tutor/parent read-only portal | ⬜ | ⬜ Read-only tutor/parent portal |
+| M5 | **Frontend design alignment** — align built screens to `designs/teachers.pen` + lock the design system | — (frontend-only; no new API) | ⬜ Re-skin auth + school CRUD + planeaciones to `teachers.pen`; extract the shared components (Nav Item, Stat Card, Status Chip, Form Field, …) as the design-system baseline every later screen builds on |
+| M6 | Attendance + grades entry grids (daily-use core) | ⬜ | ⬜ Attendance + grades entry grids (TanStack Table) |
+| M7 | report_card (boleta) PDF export (SEP deliverable) | ⬜ | ⬜ Boleta preview/download surface |
+| M8 | Billing + subscription | ⬜ | ⬜ Plan/checkout + billing settings screens |
+| M9 | Tutor/parent read-only portal | ⬜ | ⬜ Read-only tutor/parent portal |
 
 **Frontend is interleaved, not a trailing phase.** From M3 onward every milestone ships its own Next.js
-surface in the same slice as its API. Reason: the daily-use value (M5 attendance, M6 grades) IS the grid UI —
+surface in the same slice as its API. Reason: the daily-use value (M6 attendance + grades) IS the grid UI —
 building the API and bolting the UI on later means re-deriving the auth seam and type pipeline under pressure.
-M3 carries the one-time **frontend foundation** (auth seam + generated TS client); M4–M8 build screens on it.
+M3 carries the one-time **frontend foundation** (auth seam + generated TS client); M4–M9 build screens on it.
 
 **M4 pulls the AI path forward.** The M1 spike proved a model can produce an acceptable NEM planeación;
 M4 turns that into a real, tenant-scoped, persisted product feature (the highest-value screen) before the
 daily-use grids. All later milestones shift down one number.
+
+**M5 locks the visual foundation.** M3–M4 shipped screens thin-on-purpose (prove the pipe, not the polish).
+M5 aligns everything already built (auth, school CRUD, planeaciones) to the finished `designs/teachers.pen`
+and extracts its reusable components into the frontend's design system — so M6–M9 build against a settled
+visual language instead of re-inventing it per screen. Frontend-only; no new backend. Inserting it here
+shifts the old M5–M8 (attendance/grades, boleta, billing, tutor) down one number to M6–M9.
 
 M0/M1 code is throwaway-tolerant: the `LLMProvider` port, the Pydantic output schema, and the prompt/eval
 assets carry forward into M2+; the standalone project wiring does not have to.
@@ -199,7 +206,7 @@ Commits on `main`: `dfbcc62` model+migration, `45babe1` move core, `869dec5` aut
 ## Milestone 3 — School structure CRUD ✅ Complete
 
 The NEM domain hierarchy `school → school_year → group → student` — the data that lesson
-plans (M4), grades, and attendance (M5) attach to. Also the backend's **first real HTTP
+plans (M4), grades, and attendance (M6) attach to. Also the backend's **first real HTTP
 surface**. Built via the SDD cycle; designs archived under
 `openspec/changes/archive/2026-07-22-m3-school-structure/`. 6 deliveries, one commit each,
 strict TDD; 131/131 tests green.
@@ -226,7 +233,7 @@ real scoped models exist.
 ### M3 — Frontend (Next.js foundation) ✅ Complete
 
 The one-time frontend bootstrap, shipped as M3's frontend slice because M3 is the first API worth
-consuming. Everything M4–M7 UI depends on lands here once. Built via the SDD cycle (8 deliveries,
+consuming. Everything M4–M9 UI depends on lands here once. Built via the SDD cycle (8 deliveries,
 one commit each); designs archived under `openspec/changes/archive/2026-07-23-m3-frontend-foundation/`.
 142 backend / 22 frontend tests green, zero schema drift. Resolved forks: dedicated
 `GET /api/auth/csrf/` bootstrap; `openapi-typescript` + `openapi-fetch` (types-only) codegen;
@@ -244,7 +251,7 @@ exit-gate walkthrough is code-complete and test-verified but not yet run live lo
   TS client, wired into CI from day one. Manual codegen rots; generated types are the contract.
 - **Workspace context** — the active-workspace switcher sends `X-Workspace-Id` on every request.
 - **First screens** — school / school_year / group / student CRUD, proving the whole pipe end-to-end
-  (auth → typed client → scoped data → grid). Thin on purpose; the real grids are M5/M6.
+  (auth → typed client → scoped data → grid). Thin on purpose; the real grids are M6/M7.
 
 **Exit gate:** a logged-in teacher can create a school → ciclo → grupo → alumno through Next.js screens
 backed by the generated TS client, with the session cookie + CSRF + workspace scoping all live.
@@ -303,15 +310,54 @@ reopen, edit, and export it to docx — with tenancy + RLS enforced throughout.
 assumed yet); RAG on/off for the first cut (M1 corpus is available); exact `LessonPlan` ↔ hierarchy FK
 shape (Group vs SchoolYear vs both); how much of the proyecto is editable vs regenerate-only.
 
-### Frontend per milestone (M5–M8) ⬜
+---
 
-Each builds on the M3 foundation — no new auth/type plumbing, just screens + the milestone's API.
+## Milestone 5 — Frontend design alignment (`designs/teachers.pen`) ⬜
 
-- **M5 — Attendance + grades:** the daily-use entry grids (TanStack Table) — attendance bulk-mark and
+**Goal:** bring the frontend built through M3–M4 up to the finished design in
+[`designs/teachers.pen`](../designs/teachers.pen), and turn that file's reusable components into the
+project's real design system — so every later screen (M6–M9) is built against a settled visual language
+instead of styling ad-hoc. **Frontend-only; no new backend API.** This is the visual counterpart to M3's
+one-time frontend foundation: M3 locked the plumbing (auth seam + typed client), M5 locks the look.
+
+**Why now.** M3 and M4 shipped screens thin-on-purpose — enough to prove the auth → typed-client → scoped-data
+→ UI pipe end to end, not to be pretty. `teachers.pen` is now the finished visual source of truth for the
+whole product. Aligning once, before the daily-use grids, means M6 attendance/grades and M7 boleta inherit
+the component library rather than re-deriving spacing, states, and tokens under pressure.
+
+**Design source — `designs/teachers.pen`** covers the full product surface (25 screens, 10 reusable
+components). Only the screens whose backend already exists are *aligned* in M5; the rest are the visual
+contract M6–M9 implement against.
+
+- **Reusable components → design system (the core deliverable):** Nav Item, Stat Card, Status Chip, Estado
+  Button, Avatar, Form Field, PDA Row, Paso Row, Contenido Card, Momento Card. Extract these into the
+  `frontend/` component library (shadcn/ui + Tailwind tokens) as the shared primitives every screen composes.
+- **Screens to align now (backend already shipped):**
+  - Auth — Crear cuenta, Iniciar sesión, Verificar correo, Aceptar invitación, Onboarding (M2/M3 auth seam).
+  - School structure — Alumnos, Nuevo Alumno (M3 CRUD).
+  - Planeaciones — Planeaciones list, Nueva planeación, Selector de contenidos y PDAs, Proyecto — Detalle,
+    Proyecto — Generando (M4).
+- **Screens that stay design-only until their milestone** (visual contract, not built in M5): Asistencia,
+  Calificaciones (+ Secundaria), Actividades (+ Modal / Por alumno) → **M6**; Boletas, Boleta — Vista previa
+  → **M7**; Planes, Checkout, Pago pendiente — OXXO, Suscripción, Límite alcanzado → **M8**.
+
+**Exit gate:** the auth, school-CRUD, and planeaciones screens match `teachers.pen` (layout, tokens, states)
+using shared design-system components; the reusable-component library is in `frontend/` and documented; a
+new screen can be assembled from those primitives with no bespoke restyling. No backend change, no schema
+drift, existing frontend tests still green.
+
+---
+
+### Frontend per milestone (M6–M9) ⬜
+
+Each builds on the M3 foundation (auth/type plumbing) **and the M5 design system** — just screens + the
+milestone's API, composed from the shared component library.
+
+- **M6 — Attendance + grades:** the daily-use entry grids (TanStack Table) — attendance bulk-mark and
   grades (campos formativos × periodos + observaciones).
-- **M6 — Boleta:** the report_card preview/download surface over the PDF export endpoint.
-- **M7 — Billing:** plan selection / checkout + billing-settings screens over the subscription API.
-- **M8 — Tutor/parent portal:** read-only portal (attendance + grades + boleta) for a restricted role.
+- **M7 — Boleta:** the report_card preview/download surface over the PDF export endpoint.
+- **M8 — Billing:** plan selection / checkout + billing-settings screens over the subscription API.
+- **M9 — Tutor/parent portal:** read-only portal (attendance + grades + boleta) for a restricted role.
 
 ---
 
