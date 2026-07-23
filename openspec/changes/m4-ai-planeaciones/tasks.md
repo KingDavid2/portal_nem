@@ -77,26 +77,26 @@ Chain strategy: stacked-to-main
 
 ## Phase 5: Generation Service + Create/List/Retrieve/Destroy (D5)
 
-- [ ] 5.1 RED: `test_services.py` — caller without `edit_content` cannot create a generation request, no row persisted (Scenario: Caller without edit_content cannot request generation).
-- [ ] 5.2 RED: `test_services.py` — client-supplied `workspace_id` ignored, row assigned to `membership.workspace` (Scenario: Client-supplied workspace_id is ignored on generation).
-- [ ] 5.3 RED: `test_services.py` — `group.workspace_id != membership.workspace_id` raises `ValueError`/400 (Requirement: `workspace == group.workspace` invariant, `tenancy-isolation`).
-- [ ] 5.4 GREEN: Create `backend/lesson_plans/services.py::generate_lesson_plan(*, membership, group, campo, grade, theme)` — keyword-only, `edit_content`-gated, creates `pending` row, enqueues `generate_lesson_plan_task.delay(...)`.
-- [ ] 5.5 RED/GREEN: PDA-fidelity guard flags an invented PDA and withholds `status=ready` without surfacing the flag (Scenario: Generated proyecto invents a PDA not in the source set).
-- [ ] 5.6 Create `backend/lesson_plans/serializers.py` — request/response serializers including `status`, `proyecto`, `failure_reason`.
-- [ ] 5.7 Create `backend/lesson_plans/viewsets.py::LessonPlanViewSet` — `ModelViewSet` + `WorkspacePermission` + `capability_map` (`create`→edit_content 202+id, `list`→view_workspace `?group=`, `retrieve`→view_workspace, `destroy`→edit_content).
-- [ ] 5.8 Create `backend/lesson_plans/urls.py` and wire into project urls.
-- [ ] 5.9 RED: `test_viewsets.py` — POST generate returns 202 with pending `LessonPlan` id, does not block on LLM call (Scenario: POST generate returns a pending LessonPlan immediately).
-- [ ] 5.10 RED: `test_viewsets.py` — list scoped to `?group=` returns only that group's workspace-A rows; cross-workspace list/retrieve returns empty/404 (Scenarios: List endpoint returns only the requested group's plans; Retrieve of a foreign-workspace LessonPlan returns 404).
-- [ ] 5.11 RED: `test_viewsets.py` — repeated polling of retrieve reflects `pending`→`ready`/`failed` transitions (Scenario: Client polls until generation completes).
-- [ ] 5.12 GREEN: confirm all 5.1-5.11 pass; full suite green.
+- [x] 5.1 RED: `test_services.py` — caller without `edit_content` cannot create a generation request, no row persisted (Scenario: Caller without edit_content cannot request generation).
+- [x] 5.2 RED: `test_services.py` — client-supplied `workspace_id` ignored, row assigned to `membership.workspace` (Scenario: Client-supplied workspace_id is ignored on generation).
+- [x] 5.3 RED: `test_services.py` — `group.workspace_id != membership.workspace_id` raises `ValueError`/400 (Requirement: `workspace == group.workspace` invariant, `tenancy-isolation`).
+- [x] 5.4 GREEN: Create `backend/lesson_plans/services.py::generate_lesson_plan(*, membership, group, campo, grade, theme)` — keyword-only, `edit_content`-gated, creates `pending` row, enqueues `generate_lesson_plan_task.delay(...)`.
+- [x] 5.5 RED/GREEN: PDA-fidelity guard flags an invented PDA and withholds `status=ready` without surfacing the flag (Scenario: Generated proyecto invents a PDA not in the source set).
+- [x] 5.6 Create `backend/lesson_plans/serializers.py` — request/response serializers including `status`, `proyecto`, `failure_reason`.
+- [x] 5.7 Create `backend/lesson_plans/viewsets.py::LessonPlanViewSet` — `ModelViewSet` + `WorkspacePermission` + `capability_map` (`create`→edit_content 202+id, `list`→view_workspace `?group=`, `retrieve`→view_workspace, `destroy`→edit_content).
+- [x] 5.8 Create `backend/lesson_plans/urls.py` and wire into project urls.
+- [x] 5.9 RED: `test_viewsets.py` — POST generate returns 202 with pending `LessonPlan` id, does not block on LLM call (Scenario: POST generate returns a pending LessonPlan immediately).
+- [x] 5.10 RED: `test_viewsets.py` — list scoped to `?group=` returns only that group's workspace-A rows; cross-workspace list/retrieve returns empty/404 (Scenarios: List endpoint returns only the requested group's plans; Retrieve of a foreign-workspace LessonPlan returns 404).
+- [x] 5.11 RED: `test_viewsets.py` — repeated polling of retrieve reflects `pending`→`ready`/`failed` transitions (Scenario: Client polls until generation completes).
+- [x] 5.12 GREEN: confirm all 5.1-5.11 pass; full suite green.
 
 ## Phase 6: Export Action (D6)
 
-- [ ] 6.1 RED: `test_export.py` — export of a `pending` `LessonPlan` is rejected, no partial/empty document returned (Scenario: Export of a pending plan is rejected).
-- [ ] 6.2 GREEN: Add `export` `@action` to `LessonPlanViewSet` (`GET /api/lesson-plans/<id>/export?format=docx|md`), `view_workspace`-gated, `@extend_schema(responses={200: OpenApiTypes.BINARY})`.
-- [ ] 6.3 RED/GREEN: `test_export.py` — docx export of a `ready` plan returns a valid docx binary reflecting the stored proyecto (Scenario: Export ready plan as docx).
-- [ ] 6.4 RED/GREEN: markdown export of a `ready` plan returns text reflecting the stored proyecto.
-- [ ] 6.5 Verify drf-spectacular schema generation includes the BINARY annotation without error.
+- [x] 6.1 RED: `test_export.py` — export of a `pending` `LessonPlan` is rejected, no partial/empty document returned (Scenario: Export of a pending plan is rejected).
+- [x] 6.2 GREEN: Add `export` `@action` to `LessonPlanViewSet` (`GET /api/lesson-plans/<id>/export?format=docx|md`), `view_workspace`-gated, `@extend_schema(responses={200: OpenApiTypes.BINARY})`.
+- [x] 6.3 RED/GREEN: `test_export.py` — docx export of a `ready` plan returns a valid docx binary reflecting the stored proyecto (Scenario: Export ready plan as docx).
+- [x] 6.4 RED/GREEN: markdown export of a `ready` plan returns text reflecting the stored proyecto.
+- [x] 6.5 Verify drf-spectacular schema generation includes the BINARY annotation without error.
 
 ## Phase 7: Frontend List + Generate + Poll (D7)
 
