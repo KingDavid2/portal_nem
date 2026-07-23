@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "vitest run",
     "gen:schema": "cd ../backend && uv run manage.py spectacular --file schema.yaml --validate",
     "gen:api": "openapi-typescript ../backend/schema.yaml -o src/lib/api/schema.d.ts",
     "gen:all": "npm run gen:schema && npm run gen:api"
@@ -33,8 +34,10 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.11",
+    "jsdom": "^29.1.1",
     "openapi-typescript": "^7.13.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   }
 }

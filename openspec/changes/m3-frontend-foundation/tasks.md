@@ -90,11 +90,16 @@ _Spec: frontend-foundation "Generated TypeScript Client Tracks the OpenAPI Schem
 ### D6 — fetch-layer auth/session/workspace wiring
 _Spec: frontend-foundation "Session/CSRF Auth Lifecycle", "Active-Workspace Context on Every Data Request"_ — depends on D2, D3, D5
 
-- [ ] 6.1 `createClient({baseUrl, credentials:'include'})` wrapper in `frontend/src/lib/api/client.ts`; middleware reads `csrftoken` cookie → sets `X-CSRFToken` on unsafe methods.
-- [ ] 6.2 Login/logout flow calling `POST /api/auth/csrf/` → `POST /api/auth/login/` → `POST /api/auth/logout/`; `GET /api/auth/me/` bootstrap on app load.
-- [ ] 6.3 Active-workspace store + switcher UI backed by `GET /api/workspaces/`; middleware sets `X-Workspace-Id` on every data request; block data requests when no workspace selected.
-- [ ] 6.4 `frontend` test: `npm test -- fetch-client` — credentials always included, CSRF rejection surfaces, workspace header follows switcher.
-- [ ] 6.5 Commit: `feat(frontend): wire session/CSRF/workspace fetch layer`.
+> Prerequisite fix (own commit, before 6.1): declared `serializer_class`/`@extend_schema`
+> on the 4 auth `APIView`s (`CsrfBootstrapView`/`LoginView`/`LogoutView`/`MeView`) so
+> `login`/`me` get precise generated request/response types — closes the D5 risk note
+> about loosely-typed auth operations in `schema.d.ts`.
+
+- [x] 6.1 `createClient({baseUrl, credentials:'include'})` wrapper in `frontend/src/lib/api/client.ts`; middleware reads `csrftoken` cookie → sets `X-CSRFToken` on unsafe methods.
+- [x] 6.2 Login/logout flow calling `POST /api/auth/csrf/` → `POST /api/auth/login/` → `POST /api/auth/logout/`; `GET /api/auth/me/` bootstrap on app load.
+- [x] 6.3 Active-workspace store + switcher UI backed by `GET /api/workspaces/`; middleware sets `X-Workspace-Id` on every data request; block data requests when no workspace selected.
+- [x] 6.4 `frontend` test: `npm test -- fetch-client` — credentials always included, CSRF rejection surfaces, workspace header follows switcher.
+- [x] 6.5 Commit: `feat(frontend): wire session/CSRF/workspace fetch layer`.
 
 ## Phase 3: CRUD screens (Slice 3) — depends on D6
 
