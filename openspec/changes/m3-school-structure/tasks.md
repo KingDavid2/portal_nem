@@ -31,12 +31,12 @@ Satisfies: school-structure §Entity Field Shapes and Constraints (Student.curp 
 
 Sequential, depends on D1. ~110 lines.
 
-- [ ] D2.1 RED: write failing tests for `Student` model — curp non-unique (two students same curp allowed), `group` FK is `PROTECT` (deleting a `Group` with students raises `ProtectedError`), field shapes — in `backend/students/tests/test_models.py`.
-- [ ] D2.2 RED: write failing RLS backstop test for `students_student` (foreign-workspace row invisible, no-context denies) in `backend/students/tests/test_rls.py`.
-- [ ] D2.3 GREEN: create `backend/students/` app — `Student(ScopedModel)` with `group` FK (string ref `"schools.Group"`, `on_delete=PROTECT`, `related_name="students"`), `curp = CharField(18, blank=True, db_index=True)` (no `unique=True`), name fields per design.
-- [ ] D2.4 GREEN: `backend/students/migrations/0001_initial.py` (depends on `schools.0001_initial`) + `backend/students/migrations/0002_rls.py` (reuse `rls.py` helper) for `students_student`.
-- [ ] D2.5 GREEN: register `students` in `INSTALLED_APPS` after `schools`.
-- [ ] D2.6 Verify: `uv run pytest backend/students/ backend/schools/` green; migrations check clean.
+- [x] D2.1 RED: write failing tests for `Student` model — curp non-unique (two students same curp allowed), `group` FK is `PROTECT` (deleting a `Group` with students raises `ProtectedError`), field shapes — in `backend/students/tests/test_models.py`.
+- [x] D2.2 RED: write failing RLS backstop test for `students_student` (foreign-workspace row invisible, no-context denies) in `backend/students/tests/test_rls.py`.
+- [x] D2.3 GREEN: create `backend/students/` app — `Student(ScopedModel)` with `group` FK (string ref `"schools.Group"`, `on_delete=PROTECT`, `related_name="students"`), `curp = CharField(18, blank=True, db_index=True)` (no `unique=True`), name fields per design.
+- [x] D2.4 GREEN: `backend/students/migrations/0001_initial.py` (depends on `schools.0001_initial`) + `backend/students/migrations/0002_rls.py` (reuse `rls.py` helper) for `students_student`.
+- [x] D2.5 GREEN: register `students` in `INSTALLED_APPS` after `schools`.
+- [x] D2.6 Verify: `uv run pytest backend/students/ backend/schools/` green; migrations check clean.
 
 ---
 
