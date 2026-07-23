@@ -7,16 +7,28 @@
 
 ## Global milestones
 
+### Shipped (backend-only foundations)
+
 | # | Milestone | Proves | Status |
 |---|---|---|---|
 | **M0** | Provider-agnostic testing chat | The LLM pipe works end-to-end; provider swap is a config change | ✅ Done |
 | M1 | AI lesson_plan generation — secundaria, standalone spike | The product is viable | ✅ Done (Phase A + B) |
 | M2 | Tenancy foundation (auth + workspace + RLS) — the slice-1 spec | Multi-tenant boundary | ✅ Done — M2a tenancy core + M2b invitations + M2c move/history; 76/76 tests, see `backend/` |
-| M3 | School structure CRUD (school → school_year → group → student) | Data to attach plans/grades to | ✅ Done — schools + students apps, RLS, services, first DRF HTTP surface; 131/131 tests |
-| M4 | Attendance + grades entry grids | Daily-use core | ⬜ Next |
-| M5 | report_card (boleta) PDF export | SEP deliverable | ⬜ |
-| M6 | Billing + subscription | Revenue | ⬜ |
-| M7 | Tutor/parent read-only portal | Future | ⬜ |
+
+### Product slices (backend + frontend per milestone)
+
+| # | Milestone | Backend | Frontend (Next.js) |
+|---|---|---|---|
+| M3 | School structure CRUD (school → school_year → group → student) | ✅ Done — schools + students apps, RLS, services, first DRF HTTP surface; 131/131 tests | ⬜ **Next.js foundation** (see M3 — Frontend below): auth seam + generated TS client + school/year/group/student CRUD screens |
+| M4 | Attendance + grades entry grids (daily-use core) | ⬜ Next | ⬜ Attendance + grades entry grids (TanStack Table) |
+| M5 | report_card (boleta) PDF export (SEP deliverable) | ⬜ | ⬜ Boleta preview/download surface |
+| M6 | Billing + subscription | ⬜ | ⬜ Plan/checkout + billing settings screens |
+| M7 | Tutor/parent read-only portal | ⬜ | ⬜ Read-only tutor/parent portal |
+
+**Frontend is interleaved, not a trailing phase.** From M3 onward every milestone ships its own Next.js
+surface in the same slice as its API. Reason: the daily-use value (M4 attendance, M5 grades) IS the grid UI —
+building the API and bolting the UI on later means re-deriving the auth seam and type pipeline under pressure.
+M3 carries the one-time **frontend foundation** (auth seam + generated TS client); M4–M7 build screens on it.
 
 M0/M1 code is throwaway-tolerant: the `LLMProvider` port, the Pydantic output schema, and the prompt/eval
 assets carry forward into M2+; the standalone project wiring does not have to.
@@ -205,6 +217,35 @@ Specs merged into main: `openspec/specs/school-structure/spec.md` (new),
 `openspec/specs/authorization/spec.md` + `openspec/specs/tenancy-isolation/spec.md` (updated).
 Deferred follow-up: retire the `WorkspaceResource` placeholder model (M2 scaffold), now that
 real scoped models exist.
+
+### M3 — Frontend (Next.js foundation) ⬜
+
+The one-time frontend bootstrap, shipped as M3's frontend slice because M3 is the first API worth
+consuming. Everything M4–M7 UI depends on lands here once.
+
+- **App scaffold** — Next.js (App Router) + TS + Tailwind + shadcn/ui + TanStack Query/Table, as a
+  separate service (`frontend/`). Django serves no end-user HTML.
+- **Auth seam (non-negotiable, design-brief §3)** — httpOnly session cookie on a shared parent domain
+  (`api.*` / `app.*`), CORS with credentials, CSRF enabled. Not JWT in localStorage — student PII must
+  not be XSS-readable. Backend work: DRF session-auth login/logout endpoints + CORS/CSRF config.
+- **Type pipeline (non-negotiable)** — DRF → OpenAPI (`drf-spectacular`, already installed) → generated
+  TS client, wired into CI from day one. Manual codegen rots; generated types are the contract.
+- **Workspace context** — the active-workspace switcher sends `X-Workspace-Id` on every request.
+- **First screens** — school / school_year / group / student CRUD, proving the whole pipe end-to-end
+  (auth → typed client → scoped data → grid). Thin on purpose; the real grids are M4/M5.
+
+**Exit gate:** a logged-in teacher can create a school → ciclo → grupo → alumno through Next.js screens
+backed by the generated TS client, with the session cookie + CSRF + workspace scoping all live.
+
+### Frontend per milestone (M4–M7) ⬜
+
+Each builds on the M3 foundation — no new auth/type plumbing, just screens + the milestone's API.
+
+- **M4 — Attendance + grades:** the daily-use entry grids (TanStack Table) — attendance bulk-mark and
+  grades (campos formativos × periodos + observaciones).
+- **M5 — Boleta:** the report_card preview/download surface over the PDF export endpoint.
+- **M6 — Billing:** plan selection / checkout + billing-settings screens over the subscription API.
+- **M7 — Tutor/parent portal:** read-only portal (attendance + grades + boleta) for a restricted role.
 
 ---
 
