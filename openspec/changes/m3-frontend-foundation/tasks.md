@@ -45,12 +45,12 @@ _Spec: identity-auth "CSRF-Bootstrap Path Sets the CSRF Cookie"; tenancy-isolati
 ### D2 — session login/logout/me endpoints
 _Spec: identity-auth "Session Login/Logout/Me Endpoints"_ — depends on D1 (CSRF cookie + real `/api/auth/` mount point)
 
-- [ ] 2.1 RED: retarget `backend/users/tests/test_auth.py` from throwaway urlconf to real `/api/auth/login/`, `/logout/`, `/me/` routes; cover valid login (200 + cookie), invalid login (4xx, no cookie), logout clears session, `/me/` authed vs anon (401/403).
-- [ ] 2.2 GREEN: `LoginSerializer`/`UserSerializer` in `backend/users/serializers.py`.
-- [ ] 2.3 GREEN: `login`/`logout`/`me` views in `backend/users/views.py` (session auth, no JWT).
-- [ ] 2.4 GREEN: mount `/api/auth/login/`, `/api/auth/logout/`, `/api/auth/me/` in `backend/users/urls.py`; include `users.urls` under `api/` in `backend/config/urls.py`.
-- [ ] 2.5 Run `cd backend && uv run pytest -q` — full suite green.
-- [ ] 2.6 Commit: `feat(auth): add session login/logout/me endpoints`.
+- [x] 2.1 RED: retarget `backend/users/tests/test_auth.py` from throwaway urlconf to real `/api/auth/login/`, `/logout/`, `/me/` routes; cover valid login (200 + cookie), invalid login (4xx, no cookie), logout clears session, `/me/` authed vs anon (401/403).
+- [x] 2.2 GREEN: `LoginSerializer`/`UserSerializer` in `backend/users/serializers.py`.
+- [x] 2.3 GREEN: `login`/`logout`/`me` views in `backend/users/views.py` (session auth, no JWT).
+- [x] 2.4 GREEN: mount `/api/auth/login/`, `/api/auth/logout/`, `/api/auth/me/` in `backend/users/urls.py`; include `users.urls` under `api/` in `backend/config/urls.py`.
+- [x] 2.5 Run `cd backend && uv run pytest -q` — full suite green.
+- [x] 2.6 Commit: `feat(auth): add session login/logout/me endpoints`.
 
 ### D3 — workspace-list endpoint
 _Spec: workspaces "Workspace-List Endpoint Returns Only the Caller's Memberships"; tenancy-isolation "Workspace-List Read Exposes Only the Caller's Own Membership Rows"_ — depends on D1 (auth/session available for APIClient login in tests)
