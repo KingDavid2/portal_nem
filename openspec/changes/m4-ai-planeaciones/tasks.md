@@ -108,7 +108,7 @@ Chain strategy: stacked-to-main
 
 ## Phase 8: Frontend Proyecto Viewer + Export Download (D8)
 
-- [ ] 8.1 Create read-only proyecto viewer (stages → moments → sessions → rubric) rendering the stored `proyecto` JSON.
-- [ ] 8.2 Add docx export download via a plain credentialed `fetch` + `Blob` anchor, outside the typed client (binary bodies unsupported by openapi-fetch).
-- [ ] 8.3 Add regenerate action from the viewer (regenerate-only, no in-app partial editing per proposal scope).
-- [ ] 8.4 Test: viewer renders a `ready` plan's full structure; export download triggers a file save with correct content-type; regenerate re-enters `pending`/poll flow.
+- [x] 8.1 Create read-only proyecto viewer (stages → moments → sessions → rubric) rendering the stored `proyecto` JSON.
+- [x] 8.2 Add docx export download via a plain credentialed `fetch` + `Blob` anchor, outside the typed client (binary bodies unsupported by openapi-fetch).
+- [x] 8.3 Add regenerate action from the viewer (regenerate-only, no in-app partial editing per proposal scope).
+- [x] 8.4 Test: viewer renders a `ready` plan's full structure; export download triggers a file save with correct content-type; regenerate re-enters `pending`/poll flow.
