@@ -20,15 +20,20 @@
 | # | Milestone | Backend | Frontend (Next.js) |
 |---|---|---|---|
 | M3 | School structure CRUD (school → school_year → group → student) | ✅ Done — schools + students apps, RLS, services, first DRF HTTP surface; 131/131 tests | ✅ Done — Next.js foundation (see M3 — Frontend below): auth seam + generated TS client + school/year/group/student CRUD screens; 142 backend / 22 frontend tests |
-| M4 | Attendance + grades entry grids (daily-use core) | ⬜ Next | ⬜ Attendance + grades entry grids (TanStack Table) |
-| M5 | report_card (boleta) PDF export (SEP deliverable) | ⬜ | ⬜ Boleta preview/download surface |
-| M6 | Billing + subscription | ⬜ | ⬜ Plan/checkout + billing settings screens |
-| M7 | Tutor/parent read-only portal | ⬜ | ⬜ Read-only tutor/parent portal |
+| M4 | **AI planeaciones** (persisted + attached to group / school_year) | ⬜ Next — `lesson_plans` app: port M1 generation core behind the `LLMProvider` port, `LessonPlan` ScopedModel, generate + CRUD DRF endpoints | ⬜ Planeaciones screen: generate form + list/edit + docx export |
+| M5 | Attendance + grades entry grids (daily-use core) | ⬜ | ⬜ Attendance + grades entry grids (TanStack Table) |
+| M6 | report_card (boleta) PDF export (SEP deliverable) | ⬜ | ⬜ Boleta preview/download surface |
+| M7 | Billing + subscription | ⬜ | ⬜ Plan/checkout + billing settings screens |
+| M8 | Tutor/parent read-only portal | ⬜ | ⬜ Read-only tutor/parent portal |
 
 **Frontend is interleaved, not a trailing phase.** From M3 onward every milestone ships its own Next.js
-surface in the same slice as its API. Reason: the daily-use value (M4 attendance, M5 grades) IS the grid UI —
+surface in the same slice as its API. Reason: the daily-use value (M5 attendance, M6 grades) IS the grid UI —
 building the API and bolting the UI on later means re-deriving the auth seam and type pipeline under pressure.
-M3 carries the one-time **frontend foundation** (auth seam + generated TS client); M4–M7 build screens on it.
+M3 carries the one-time **frontend foundation** (auth seam + generated TS client); M4–M8 build screens on it.
+
+**M4 pulls the AI path forward.** The M1 spike proved a model can produce an acceptable NEM planeación;
+M4 turns that into a real, tenant-scoped, persisted product feature (the highest-value screen) before the
+daily-use grids. All later milestones shift down one number.
 
 M0/M1 code is throwaway-tolerant: the `LLMProvider` port, the Pydantic output schema, and the prompt/eval
 assets carry forward into M2+; the standalone project wiring does not have to.
@@ -239,20 +244,62 @@ exit-gate walkthrough is code-complete and test-verified but not yet run live lo
   TS client, wired into CI from day one. Manual codegen rots; generated types are the contract.
 - **Workspace context** — the active-workspace switcher sends `X-Workspace-Id` on every request.
 - **First screens** — school / school_year / group / student CRUD, proving the whole pipe end-to-end
-  (auth → typed client → scoped data → grid). Thin on purpose; the real grids are M4/M5.
+  (auth → typed client → scoped data → grid). Thin on purpose; the real grids are M5/M6.
 
 **Exit gate:** a logged-in teacher can create a school → ciclo → grupo → alumno through Next.js screens
 backed by the generated TS client, with the session cookie + CSRF + workspace scoping all live.
 
-### Frontend per milestone (M4–M7) ⬜
+---
+
+## Milestone 4 — AI planeaciones (persisted + attached) ⬜
+
+Turn the M1 standalone spike into a real, tenant-scoped, persisted product feature: a teacher generates a
+NEM/ABPC planeación from within the app, it saves against a group / school_year in their workspace, and
+they can list, edit, and re-export it. This is the highest-value screen — the reason the product exists —
+so it leads the product slices.
+
+**Carry-forward from M1** (`lesson_plans/` standalone project): the `LLMProvider` port
+(`ports/llm.py` + `claude.py` + `openai_compat.py`), the Pydantic ABPC proyecto schema (`schema.py`), the
+prompt assembly (`generation.py`), the RAG corpus (`corpus.py` + `data/fase6_corpus.json`), and the docx
+renderer (`render/docx.py`). The standalone project wiring (its own `.venv`, `cli.py`, `config.py`) does
+**not** carry forward — the core is ported into a real `backend/` Django app.
+
+**Backend — new `lesson_plans` screaming app in `backend/`:**
+- **`LessonPlan` ScopedModel** — workspace-scoped (own denormalized `workspace` FK + per-table RLS, per
+  the M3 pattern), FK to `Group` and/or `SchoolYear` (`PROTECT`), storing the generated proyecto (the
+  ABPC schema as JSON) + provenance (provider, model, tokens/cost, generated_at) + status.
+- **Generation service + DRF endpoint** — port `generation.py` behind the `LLMProvider` port; a
+  keyword-only atomic service (`edit_content`-gated, workspace from membership) that calls the provider,
+  validates against the Pydantic schema, and persists. LLM latency (~10-30s) means generation is **async**
+  (job + poll or task) rather than blocking the request — design decides the exact mechanism.
+- **CRUD endpoints** — list / retrieve / update / delete `LessonPlan` via `ScopedManager` + services,
+  `X-Workspace-Id`-gated like the M3 viewsets; plus a docx/markdown export endpoint over `render/`.
+- **Provider config** — selection is **config-driven via env** (`LLM_PROVIDER`, `LLM_BASE_URL`,
+  `LLM_MODEL`, `LLM_API_KEY`), **default self-hosted vLLM for now** (the LAN Qwen endpoint); Claude
+  remains a config swap through the same port. No provider name hardcoded.
+
+**Frontend — planeaciones screen (`frontend/`):** over the generated TS client + TanStack Query:
+a list of planeaciones per group, a generate form (campo formativo, grado, theme/PDAs), an async
+generate-and-poll flow, a proyecto viewer/editor (stages → moments → sessions → rubric), and a docx export
+action. Built on the M3 foundation (auth seam + typed client + workspace scoping) — no new plumbing.
+
+**Exit gate:** a logged-in teacher selects a group, generates a NEM/ABPC planeación through the Next.js
+screen (via the config-selected provider), it persists workspace-scoped against that group, and they can
+reopen, edit, and export it to docx — with tenancy + RLS enforced throughout.
+
+**Open decisions for design:** async mechanism (Django task/queue vs simple job-row polling — no Celery
+assumed yet); RAG on/off for the first cut (M1 corpus is available); exact `LessonPlan` ↔ hierarchy FK
+shape (Group vs SchoolYear vs both); how much of the proyecto is editable vs regenerate-only.
+
+### Frontend per milestone (M5–M8) ⬜
 
 Each builds on the M3 foundation — no new auth/type plumbing, just screens + the milestone's API.
 
-- **M4 — Attendance + grades:** the daily-use entry grids (TanStack Table) — attendance bulk-mark and
+- **M5 — Attendance + grades:** the daily-use entry grids (TanStack Table) — attendance bulk-mark and
   grades (campos formativos × periodos + observaciones).
-- **M5 — Boleta:** the report_card preview/download surface over the PDF export endpoint.
-- **M6 — Billing:** plan selection / checkout + billing-settings screens over the subscription API.
-- **M7 — Tutor/parent portal:** read-only portal (attendance + grades + boleta) for a restricted role.
+- **M6 — Boleta:** the report_card preview/download surface over the PDF export endpoint.
+- **M7 — Billing:** plan selection / checkout + billing-settings screens over the subscription API.
+- **M8 — Tutor/parent portal:** read-only portal (attendance + grades + boleta) for a restricted role.
 
 ---
 
