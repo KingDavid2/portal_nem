@@ -18,3 +18,10 @@ the correct contenido, 0 invented PDAs). Two items remain before the roadmap exi
       `python -m lesson_plans.eval.lift` to get the baseline-vs-RAG fidelity table.
 
 Neither blocks the RAG code — both block the final measured exit-gate number.
+
+## M4 — AI planeaciones
+
+- [ ] **RAG implementation** pending. M4 generation currently runs without retrieval —
+      port the M1 Phase B RAG machinery (Fase 6 corpus retrieval + PDA grounding) into
+      the tenant-scoped M4 generation service so planeaciones ground on real SEP
+      contenido instead of pure model output.
