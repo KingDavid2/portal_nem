@@ -74,11 +74,11 @@ Satisfies: school-structure §DRF CRUD Endpoints Are Workspace-Scoped and Isolat
 
 Sequential, depends on D1-D4. ~220 lines.
 
-- [ ] D5.1 RED: write failing HTTP tests (APIClient + `X-Workspace-Id` header) for School/SchoolYear/Group CRUD — create/list/retrieve/update/destroy scoped to workspace, cross-workspace request returns empty list / 404, `edit_content`-lacking membership gets 403 on write actions, deleting a `Group` with `Student` rows returns a clean 4xx (not a 500) — in `backend/schools/tests/test_api.py`.
-- [ ] D5.2 GREEN: `backend/schools/serializers.py` — `SchoolSerializer`, `SchoolYearSerializer`, `GroupSerializer` (workspace field read-only/excluded from input).
-- [ ] D5.3 GREEN: `backend/schools/viewsets.py` — `SchoolViewSet`, `SchoolYearViewSet`, `GroupViewSet` (`ModelViewSet`, `permission_classes=[IsAuthenticated, WorkspacePermission]`, `capability_map`, `get_queryset` returns `Model.objects.all()` relying on `ScopedManager`, `perform_create`/`perform_update`/`perform_destroy` delegate to `schools/services.py`); catch `ProtectedError` on `Group` destroy and translate to a clean 4xx response.
-- [ ] D5.4 GREEN: `backend/schools/urls.py` with `DefaultRouter` registering all three viewsets; wire into `backend/config/urls.py` via `path("api/", include(...))` (first real API routes in the project).
-- [ ] D5.5 Verify: `uv run pytest backend/schools/` green; migrations check clean.
+- [x] D5.1 RED: write failing HTTP tests (APIClient + `X-Workspace-Id` header) for School/SchoolYear/Group CRUD — create/list/retrieve/update/destroy scoped to workspace, cross-workspace request returns empty list / 404, `edit_content`-lacking membership gets 403 on write actions, deleting a `Group` with `Student` rows returns a clean 4xx (not a 500) — in `backend/schools/tests/test_api.py`.
+- [x] D5.2 GREEN: `backend/schools/serializers.py` — `SchoolSerializer`, `SchoolYearSerializer`, `GroupSerializer` (workspace field read-only/excluded from input).
+- [x] D5.3 GREEN: `backend/schools/viewsets.py` — `SchoolViewSet`, `SchoolYearViewSet`, `GroupViewSet` (`ModelViewSet`, `permission_classes=[IsAuthenticated, WorkspacePermission]`, `capability_map`, `get_queryset` returns `Model.objects.all()` relying on `ScopedManager`, `perform_create`/`perform_update`/`perform_destroy` delegate to `schools/services.py`); catch `ProtectedError` on `Group` destroy and translate to a clean 4xx response.
+- [x] D5.4 GREEN: `backend/schools/urls.py` with `DefaultRouter` registering all three viewsets; wire into `backend/config/urls.py` via `path("api/", include(...))` (first real API routes in the project).
+- [x] D5.5 Verify: `uv run pytest backend/schools/` green; migrations check clean.
 
 ---
 
