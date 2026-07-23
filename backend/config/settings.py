@@ -211,3 +211,16 @@ SESSION_COOKIE_DOMAIN = env("SESSION_COOKIE_DOMAIN", default=None)
 CSRF_COOKIE_DOMAIN = env("CSRF_COOKIE_DOMAIN", default=None)
 SESSION_COOKIE_SECURE = env.bool("SESSION_COOKIE_SECURE", default=False)
 CSRF_COOKIE_SECURE = env.bool("CSRF_COOKIE_SECURE", default=False)
+
+# LLM provider selection (M4 design Decision: "Provider factory reading
+# LLM_PROVIDER"). `lesson_plans.core.factory.build_provider()` is the only
+# reader of these settings — swapping providers never touches service/task
+# code. Default targets the self-hosted vLLM (OpenAI-compatible) endpoint
+# from the M1 spike; no secret is hardcoded (vLLM ignores the dummy key,
+# ANTHROPIC_API_KEY has no default and must come from the environment).
+LLM_PROVIDER = env("LLM_PROVIDER", default="vllm")
+LLM_BASE_URL = env("LLM_BASE_URL", default="http://192.168.1.241:8000/v1")
+LLM_MODEL = env("LLM_MODEL", default=None)
+LLM_API_KEY = env("LLM_API_KEY", default="dummy")
+ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default=None)
+ANTHROPIC_MODEL = env("ANTHROPIC_MODEL", default="claude-opus-4-8")
