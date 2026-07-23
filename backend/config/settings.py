@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "workspaces",
     "schools",
     "students",
+    "lesson_plans",
 ]
 
 MIDDLEWARE = [
