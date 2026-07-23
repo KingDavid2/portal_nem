@@ -2,9 +2,12 @@
 
 Administrative school platform for Mexico, aligned to the **Nueva Escuela Mexicana (NEM)**.
 
-Teachers and principals record student **grades** and **attendance**. Future scope adds AI-generated **planeaciones** (lesson plans) grounded in the official SEP curriculum.
+Teachers and principals record student **grades** and **attendance**, and generate AI **planeaciones** (lesson plans) grounded in the official SEP curriculum.
 
-> **Status:** early build. The Django backend tenancy foundation (auth, workspaces, RBAC, RLS) is implemented under [`backend/`](backend/). See [`backend/README.md`](backend/README.md) to run and test it.
+> **Status:** active build — not production-ready. Milestone progress and what
+> is shipped vs. pending live in [`docs/roadmap.md`](docs/roadmap.md), the
+> single source of truth. See [`backend/README.md`](backend/README.md) to run
+> and test the API.
 
 ## Domain
 
@@ -37,19 +40,22 @@ Architecture style: modular monolith core with an isolated FastAPI AI service at
 
 ## Build order
 
-1. Auth + RBAC + workspace/membership tenancy ← current slice
-2. Escuela → ciclo → grupo → alumno CRUD
-3. Attendance (daily grid)
-4. Grades (campos formativos, periodos, observaciones)
-5. Boleta PDF export
-6. AI planeaciones (RAG over the SEP corpus)
-7. Tutor/parent read-only portal
+Work is sliced into numbered milestones. The ordering principle: tenancy first
+(every later model is workspace-scoped), then school structure, then the
+daily-use teaching surfaces. From M3 onward each milestone ships its API and its
+Next.js screens in the same slice rather than deferring the frontend to a
+trailing phase — the daily-use value *is* the UI.
+
+**[`docs/roadmap.md`](docs/roadmap.md) holds the milestone list and their
+current state.** It is the single source of truth; this README deliberately does
+not duplicate it.
 
 ## Repository layout
 
 | Path | Contents |
 |------|----------|
 | `backend/` | Django + DRF core backend (runnable — see its README) |
+| `frontend/` | Next.js (App Router) web client |
 | `docs/design-brief.md` | Full architecture brief — domain, tenancy, stack, risks |
 | `openspec/` | Spec-driven change proposals, specs, and archived designs |
 | `designs/` | Pencil (`.pen`) UI design files |
@@ -57,15 +63,43 @@ Architecture style: modular monolith core with an isolated FastAPI AI service at
 
 ## Getting started
 
-Run and test the backend:
+Prerequisites: PostgreSQL + pgvector, Redis (Celery broker/result backend),
+Node.js, and [`uv`](https://docs.astral.sh/uv/).
+
+### 1. Backend (Django API)
 
 ```bash
 cd backend
 uv sync
 uv run python manage.py migrate
-uv run pytest
+uv run python manage.py runserver   # http://localhost:8000
 ```
 
-Full prerequisites (Postgres + pgvector, env config, DB roles) are in
+Run the test suite with `uv run pytest`.
+
+### 2. Celery worker (lesson-plan generation)
+
+Lesson-plan generation runs asynchronously, so a worker is required for those
+endpoints to complete. From `backend/`, in a separate terminal:
+
+```bash
+uv run celery -A config worker -l info
+```
+
+The broker and result backend default to `redis://localhost:6379/0`; override
+with `CELERY_BROKER_URL` / `CELERY_RESULT_BACKEND`. Under pytest, tasks run
+eagerly and no worker is needed.
+
+### 3. Frontend (Next.js)
+
+```bash
+cd frontend
+npm install
+npm run dev   # http://localhost:3000
+```
+
+The client calls `NEXT_PUBLIC_API_URL`, defaulting to `http://localhost:8000`.
+
+Full backend prerequisites (env config, DB roles, RLS setup) are in
 [`backend/README.md`](backend/README.md). For the architecture behind the
 current slice, read [`docs/design-brief.md`](docs/design-brief.md).
