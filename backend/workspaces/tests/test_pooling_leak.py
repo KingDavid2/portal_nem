@@ -160,13 +160,15 @@ def test_negative_control_plain_set_demonstrates_the_leak_it_guards_against(
 
 
 def test_production_code_path_uses_set_local_not_plain_set():
-    """`TenancyMiddleware` must issue `set_config(..., True)` (SET LOCAL
-    semantics), never `is_local=False` — the negative control above shows
-    exactly what would happen otherwise.
+    """`TenancyMiddleware` delegates to `workspace_scope` (design Decision:
+    "Shared workspace-scope helper reused by middleware and task"), which
+    must issue `set_config(..., True)` (SET LOCAL semantics), never
+    `is_local=False` — the negative control above shows exactly what would
+    happen otherwise.
     """
-    from workspaces import middleware
+    from workspaces import scope
 
-    source = inspect.getsource(middleware)
+    source = inspect.getsource(scope)
     assert "set_config('app.workspace_id', %s, %s)" in source
     assert "[str(workspace_id), True]" in source
     assert "False]" not in source

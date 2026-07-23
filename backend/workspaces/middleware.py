@@ -11,21 +11,21 @@ header against the authenticated user's memberships:
   scoped rows downstream.
 
 While a workspace is resolved, the remaining request/response cycle runs
-inside an explicit `transaction.atomic()` block so `SET LOCAL
-app.workspace_id` (issued via `set_config(..., true)`) is scoped to exactly
-that transaction — it is cleared automatically when the transaction commits
-or rolls back, so it can never leak into a subsequent request that reuses
-the same pooled connection.
+inside `workspaces.scope.workspace_scope()` (design Decision: "Shared
+workspace-scope helper reused by middleware and task"), which opens its own
+`transaction.atomic()` block so `SET LOCAL app.workspace_id` (issued via
+`set_config(..., true)`) is scoped to exactly that transaction — it is
+cleared automatically when the transaction commits or rolls back, so it can
+never leak into a subsequent request that reuses the same pooled connection.
 """
 
 import uuid
 
 from django.contrib.auth.models import AnonymousUser
-from django.db import connection, transaction
 from django.http import JsonResponse
 
-from workspaces.context import active_workspace
 from workspaces.models import Membership, Workspace
+from workspaces.scope import workspace_scope
 
 WORKSPACE_HEADER = "HTTP_X_WORKSPACE_ID"
 
@@ -71,15 +71,6 @@ class TenancyMiddleware:
 
         request.membership = membership
 
-        token = active_workspace.set(workspace_id)
-        try:
-            with transaction.atomic():
-                with connection.cursor() as cursor:
-                    cursor.execute(
-                        "SELECT set_config('app.workspace_id', %s, %s)",
-                        [str(workspace_id), True],
-                    )
-                response = self.get_response(request)
-        finally:
-            active_workspace.reset(token)
+        with workspace_scope(workspace_id):
+            response = self.get_response(request)
         return response
