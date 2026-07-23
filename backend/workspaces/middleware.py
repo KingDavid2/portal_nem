@@ -47,27 +47,29 @@ class TenancyMiddleware:
                 return JsonResponse(
                     {"detail": "Invalid X-Workspace-Id header."}, status=403
                 )
-            is_member = Membership.objects.filter(
+            membership = Membership.objects.filter(
                 user=user, workspace_id=workspace_id
-            ).exists()
-            if not is_member:
+            ).first()
+            if membership is None:
                 return JsonResponse(
                     {"detail": "Not a member of this workspace."}, status=403
                 )
         else:
-            personal_membership = (
+            membership = (
                 Membership.objects.filter(
                     user=user, workspace__type=Workspace.Type.PERSONAL
                 )
                 .order_by("created_at")
                 .first()
             )
-            if personal_membership is None:
+            if membership is None:
                 return JsonResponse(
                     {"detail": "No personal workspace found for this user."},
                     status=403,
                 )
-            workspace_id = personal_membership.workspace_id
+            workspace_id = membership.workspace_id
+
+        request.membership = membership
 
         token = active_workspace.set(workspace_id)
         try:

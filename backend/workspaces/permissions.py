@@ -47,10 +47,24 @@ class WorkspacePermission(BasePermission):
 
     Never compares `membership.role` against a literal string itself —
     that would defeat the single-source-of-truth guarantee (authorization
-    spec, gate: no inline role-string comparisons).
+    spec, gate: no inline role-string comparisons). Raw DRF action verbs
+    (`list`, `create`, ...) are never fed directly into `has_permission` —
+    they are first resolved to a capability via `view.capability_map`
+    (authorization spec — WorkspacePermission Implements has_permission via
+    a Capability Map).
     """
+
+    def _resolve_capability(self, view) -> str | None:
+        capability_map = getattr(view, "capability_map", {})
+        action = getattr(view, "action", None)
+        return capability_map.get(action)
+
+    def has_permission(self, request, view) -> bool:
+        membership = getattr(request, "membership", None)
+        capability = self._resolve_capability(view)
+        return has_permission(membership, capability)
 
     def has_object_permission(self, request, view, obj) -> bool:
         membership = getattr(request, "membership", None)
-        action = getattr(view, "action", None)
-        return has_permission(membership, action)
+        capability = self._resolve_capability(view)
+        return has_permission(membership, capability)

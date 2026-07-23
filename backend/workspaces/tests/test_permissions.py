@@ -63,7 +63,8 @@ def test_drf_permission_class_delegates_to_has_permission(membership_factory, mo
     monkeypatch.setattr(permissions, "has_permission", fake_has_permission)
 
     class FakeView:
-        action = "delete_workspace"
+        action = "destroy"
+        capability_map = {"destroy": "edit_content"}
 
     class FakeRequest:
         pass
@@ -75,7 +76,108 @@ def test_drf_permission_class_delegates_to_has_permission(membership_factory, mo
     assert (
         permission.has_object_permission(request, FakeView(), membership) is True
     )
-    assert calls == [(membership, "delete_workspace")]
+    assert calls == [(membership, "edit_content")]
+
+
+def test_has_permission_resolves_via_capability_map_for_read_actions(
+    membership_factory, monkeypatch
+):
+    from workspaces import permissions
+
+    membership = membership_factory("member")
+    calls = []
+
+    def fake_has_permission(passed_membership, action):
+        calls.append((passed_membership, action))
+        return True
+
+    monkeypatch.setattr(permissions, "has_permission", fake_has_permission)
+
+    class FakeView:
+        action = "list"
+        capability_map = {
+            "list": "view_workspace",
+            "retrieve": "view_workspace",
+            "create": "edit_content",
+            "update": "edit_content",
+            "partial_update": "edit_content",
+            "destroy": "edit_content",
+        }
+
+    class FakeRequest:
+        pass
+
+    permission = permissions.WorkspacePermission()
+    request = FakeRequest()
+    request.membership = membership
+
+    assert permission.has_permission(request, FakeView()) is True
+    assert calls == [(membership, "view_workspace")]
+
+
+def test_has_permission_resolves_via_capability_map_for_write_actions(
+    membership_factory, monkeypatch
+):
+    from workspaces import permissions
+
+    membership = membership_factory("member")
+    calls = []
+
+    def fake_has_permission(passed_membership, action):
+        calls.append((passed_membership, action))
+        return True
+
+    monkeypatch.setattr(permissions, "has_permission", fake_has_permission)
+
+    class FakeView:
+        action = "create"
+        capability_map = {
+            "list": "view_workspace",
+            "retrieve": "view_workspace",
+            "create": "edit_content",
+            "update": "edit_content",
+            "partial_update": "edit_content",
+            "destroy": "edit_content",
+        }
+
+    class FakeRequest:
+        pass
+
+    permission = permissions.WorkspacePermission()
+    request = FakeRequest()
+    request.membership = membership
+
+    assert permission.has_permission(request, FakeView()) is True
+    assert calls == [(membership, "edit_content")]
+
+
+def test_has_object_permission_also_resolves_via_capability_map(
+    membership_factory, monkeypatch
+):
+    from workspaces import permissions
+
+    membership = membership_factory("member")
+    calls = []
+
+    def fake_has_permission(passed_membership, action):
+        calls.append((passed_membership, action))
+        return True
+
+    monkeypatch.setattr(permissions, "has_permission", fake_has_permission)
+
+    class FakeView:
+        action = "destroy"
+        capability_map = {"destroy": "edit_content"}
+
+    class FakeRequest:
+        pass
+
+    permission = permissions.WorkspacePermission()
+    request = FakeRequest()
+    request.membership = membership
+
+    assert permission.has_object_permission(request, FakeView(), membership) is True
+    assert calls == [(membership, "edit_content")]
 
 
 def test_permissions_module_has_no_inline_role_string_comparisons():

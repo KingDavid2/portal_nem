@@ -29,6 +29,8 @@ class _ContextProbe(APIView):
             cursor.execute("SELECT current_setting('app.workspace_id', true)")
             (db_setting,) = cursor.fetchone()
 
+        membership = getattr(request, "membership", None)
+
         return Response(
             {
                 "context_set": workspace_id is not WORKSPACE_UNSET,
@@ -36,6 +38,10 @@ class _ContextProbe(APIView):
                     str(workspace_id) if workspace_id is not WORKSPACE_UNSET else None
                 ),
                 "db_setting": db_setting,
+                "membership_pk": membership.pk if membership is not None else None,
+                "membership_workspace_id": (
+                    str(membership.workspace_id) if membership is not None else None
+                ),
             }
         )
 
@@ -99,6 +105,36 @@ def test_header_present_but_not_member_returns_403(
     response = client.get("/probe/", HTTP_X_WORKSPACE_ID=str(foreign_workspace_id))
 
     assert response.status_code == 403
+
+
+def test_header_path_attaches_resolved_membership_object(
+    client: Client, user_with_personal_and_group_workspace
+):
+    from workspaces.models import Membership
+
+    user, _personal, group = user_with_personal_and_group_workspace
+    client.force_login(user)
+
+    response = client.get("/probe/", HTTP_X_WORKSPACE_ID=str(group.id))
+
+    expected = Membership.objects.get(user=user, workspace=group)
+    assert response.data["membership_pk"] == expected.pk
+    assert response.data["membership_workspace_id"] == str(group.id)
+
+
+def test_personal_path_attaches_resolved_membership_object(
+    client: Client, user_with_personal_and_group_workspace
+):
+    from workspaces.models import Membership
+
+    user, personal, _group = user_with_personal_and_group_workspace
+    client.force_login(user)
+
+    response = client.get("/probe/")
+
+    expected = Membership.objects.get(user=user, workspace=personal)
+    assert response.data["membership_pk"] == expected.pk
+    assert response.data["membership_workspace_id"] == str(personal.id)
 
 
 def test_unauthenticated_request_has_no_context_set(client: Client):

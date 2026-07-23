@@ -60,11 +60,11 @@ Satisfies: tenancy-isolation §TenancyMiddleware Attaches Resolved Membership to
 
 Sequential, depends on D1-D3 conceptually independent but ordered before D5/D6 (viewsets need both fixes). ~90 lines.
 
-- [ ] D4.1 RED: write failing test asserting `TenancyMiddleware` sets `request.membership` to the resolved `Membership` object (not merely checking `.exists()`) on both the header-based (`X-Workspace-Id`) and personal-workspace resolution paths, in `backend/workspaces/tests/test_middleware.py`.
-- [ ] D4.2 RED: write failing test asserting `WorkspacePermission.has_permission(request, view)` reads `view.capability_map.get(view.action)` and calls `has_permission(membership, capability)` — verify `list`/`retrieve` map to `view_workspace` and `create`/`update`/`partial_update`/`destroy` map to `edit_content`, and that raw DRF action verbs are never passed directly into `has_permission`, in `backend/workspaces/tests/test_permissions.py`.
-- [ ] D4.3 GREEN: update `TenancyMiddleware` to fetch and attach the `Membership` object to `request.membership` on both resolution paths.
-- [ ] D4.4 GREEN: update `WorkspacePermission.has_permission` (and `has_object_permission` for consistency) to resolve via `capability_map`.
-- [ ] D4.5 Verify: run the FULL `backend/workspaces/` test suite (`uv run pytest backend/workspaces/`) to prove no regression against M1/M2 behavior; migrations check clean.
+- [x] D4.1 RED: write failing test asserting `TenancyMiddleware` sets `request.membership` to the resolved `Membership` object (not merely checking `.exists()`) on both the header-based (`X-Workspace-Id`) and personal-workspace resolution paths, in `backend/workspaces/tests/test_middleware.py`.
+- [x] D4.2 RED: write failing test asserting `WorkspacePermission.has_permission(request, view)` reads `view.capability_map.get(view.action)` and calls `has_permission(membership, capability)` — verify `list`/`retrieve` map to `view_workspace` and `create`/`update`/`partial_update`/`destroy` map to `edit_content`, and that raw DRF action verbs are never passed directly into `has_permission`, in `backend/workspaces/tests/test_permissions.py`.
+- [x] D4.3 GREEN: update `TenancyMiddleware` to fetch and attach the `Membership` object to `request.membership` on both resolution paths.
+- [x] D4.4 GREEN: update `WorkspacePermission.has_permission` (and `has_object_permission` for consistency) to resolve via `capability_map`.
+- [x] D4.5 Verify: run the FULL `backend/workspaces/` test suite (`uv run pytest backend/workspaces/`) to prove no regression against M1/M2 behavior; migrations check clean.
 
 ---
 
