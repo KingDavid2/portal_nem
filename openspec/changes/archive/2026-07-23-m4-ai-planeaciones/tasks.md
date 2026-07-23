@@ -81,7 +81,7 @@ Chain strategy: stacked-to-main
 - [x] 5.2 RED: `test_services.py` — client-supplied `workspace_id` ignored, row assigned to `membership.workspace` (Scenario: Client-supplied workspace_id is ignored on generation).
 - [x] 5.3 RED: `test_services.py` — `group.workspace_id != membership.workspace_id` raises `ValueError`/400 (Requirement: `workspace == group.workspace` invariant, `tenancy-isolation`).
 - [x] 5.4 GREEN: Create `backend/lesson_plans/services.py::generate_lesson_plan(*, membership, group, campo, grade, theme)` — keyword-only, `edit_content`-gated, creates `pending` row, enqueues `generate_lesson_plan_task.delay(...)`.
-- [x] 5.5 RED/GREEN: PDA-fidelity guard flags an invented PDA and withholds `status=ready` without surfacing the flag (Scenario: Generated proyecto invents a PDA not in the source set).
+- [x] 5.5 RED/GREEN: PDA-fidelity guard flags an invented PDA and withholds `status=ready` without surfacing the flag (Scenario: Generated projeto invents a PDA not in the source set).
 - [x] 5.6 Create `backend/lesson_plans/serializers.py` — request/response serializers including `status`, `proyecto`, `failure_reason`.
 - [x] 5.7 Create `backend/lesson_plans/viewsets.py::LessonPlanViewSet` — `ModelViewSet` + `WorkspacePermission` + `capability_map` (`create`→edit_content 202+id, `list`→view_workspace `?group=`, `retrieve`→view_workspace, `destroy`→edit_content).
 - [x] 5.8 Create `backend/lesson_plans/urls.py` and wire into project urls.

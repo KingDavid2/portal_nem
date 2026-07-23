@@ -20,7 +20,7 @@
 | # | Milestone | Backend | Frontend (Next.js) |
 |---|---|---|---|
 | M3 | School structure CRUD (school → school_year → group → student) | ✅ Done — schools + students apps, RLS, services, first DRF HTTP surface; 131/131 tests | ✅ Done — Next.js foundation (see M3 — Frontend below): auth seam + generated TS client + school/year/group/student CRUD screens; 142 backend / 22 frontend tests |
-| M4 | **AI planeaciones** (persisted + attached to group / school_year) | ⬜ Next — `lesson_plans` app: port M1 generation core behind the `LLMProvider` port, `LessonPlan` ScopedModel, generate + CRUD DRF endpoints | ⬜ Planeaciones screen: generate form + list/edit + docx export |
+| M4 | **AI planeaciones** (persisted + attached to group / school_year) | ✅ Done — `lesson_plans` app: ported M1 core behind `LLMProvider` port, `LessonPlan` ScopedModel + RLS, Celery generation task, DRF generate/CRUD/export; 189 backend tests | ✅ Done — Planeaciones screen: generate form + async poll + proyecto viewer + docx export; 35 frontend tests |
 | M5 | Attendance + grades entry grids (daily-use core) | ⬜ | ⬜ Attendance + grades entry grids (TanStack Table) |
 | M6 | report_card (boleta) PDF export (SEP deliverable) | ⬜ | ⬜ Boleta preview/download surface |
 | M7 | Billing + subscription | ⬜ | ⬜ Plan/checkout + billing settings screens |
@@ -251,7 +251,19 @@ backed by the generated TS client, with the session cookie + CSRF + workspace sc
 
 ---
 
-## Milestone 4 — AI planeaciones (persisted + attached) ⬜
+## Milestone 4 — AI planeaciones (persisted + attached) ✅ Complete
+
+Built via the SDD cycle (9 deliveries D1a–D8, one commit each); designs archived under
+`openspec/changes/archive/2026-07-23-m4-ai-planeaciones/`. 189 backend / 35 frontend tests green.
+**Locked decisions:** Celery async (broker-backed, per design-brief §3, over the job-row alternative);
+RAG **off** for the first cut (fixture PDAs; pgvector activation deferred); `LessonPlan.group` FK PROTECT;
+regenerate-only viewer; provider env-config-driven (`LLM_PROVIDER`), default self-hosted vLLM. The
+critical tenancy guarantee — the Celery task runs outside `TenancyMiddleware` and establishes its own
+`app.workspace_id` via a shared `workspace_scope()` primitive — is proven by a cold-context leak test.
+**Pending:** the live end-to-end walkthrough (generate → poll → view → export against a running Redis +
+Celery worker + model) is code-complete and test-verified but not yet run locally; `instructor` JSON-mode
+reliability on vLLM for the full nested schema is unproven (guarded by `status=failed`). New runtime infra:
+Redis broker + Celery worker.
 
 Turn the M1 standalone spike into a real, tenant-scoped, persisted product feature: a teacher generates a
 NEM/ABPC planeación from within the app, it saves against a group / school_year in their workspace, and
