@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "gen:schema": "cd ../backend && uv run manage.py spectacular --file schema.yaml --validate",
+    "gen:api": "openapi-typescript ../backend/schema.yaml -o src/lib/api/schema.d.ts",
+    "gen:all": "npm run gen:schema && npm run gen:api"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
@@ -16,6 +19,7 @@
     "clsx": "^2.1.1",
     "lucide-react": "^1.25.0",
     "next": "16.2.11",
+    "openapi-fetch": "^0.17.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "shadcn": "^4.14.0",
@@ -29,6 +33,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.11",
+    "openapi-typescript": "^7.13.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

@@ -1,0 +1,77 @@
+name: Schema drift check
+
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - "frontend/src/lib/api/**"
+      - ".github/workflows/schema-drift.yml"
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "frontend/src/lib/api/**"
+      - ".github/workflows/schema-drift.yml"
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_DB: portal_nem
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/portal_nem
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        working-directory: backend
+        run: uv python install
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: uv sync --frozen --all-groups
+
+      - name: Regenerate backend/schema.yaml
+        working-directory: backend
+        run: uv run manage.py spectacular --file schema.yaml --validate
+
+      - name: Fail on schema.yaml drift
+        working-directory: backend
+        run: git diff --exit-code schema.yaml
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Regenerate frontend/src/lib/api/schema.d.ts
+        working-directory: frontend
+        run: npm run gen:api
+
+      - name: Fail on schema.d.ts drift
+        working-directory: frontend
+        run: git diff --exit-code src/lib/api/schema.d.ts
