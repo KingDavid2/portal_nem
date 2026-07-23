@@ -112,6 +112,61 @@ export interface paths {
         patch: operations["groups_partial_update"];
         trace?: never;
     };
+    "/api/lesson-plans/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["lesson_plans_list"];
+        put?: never;
+        post: operations["lesson_plans_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lesson-plans/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["lesson_plans_retrieve"];
+        put?: never;
+        post?: never;
+        delete: operations["lesson_plans_destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lesson-plans/{id}/export/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /api/lesson-plans/<id>/export?format=docx|md (ai-planeaciones
+         *     spec — "Ready LessonPlan Can Be Exported as Docx or Markdown").
+         *
+         *     Only a `ready` plan may be exported; `pending`/`failed` are rejected
+         *     (no partial/empty document is ever returned).
+         */
+        get: operations["lesson_plans_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/school-years/": {
         parameters: {
             query?: never;
@@ -236,6 +291,28 @@ export interface components {
             /** Format: uuid */
             readonly workspace: string;
         };
+        LessonPlan: {
+            readonly id: number;
+            /** Format: uuid */
+            readonly workspace: string;
+            group: number;
+            campo: string;
+            grade: string;
+            theme: string;
+            readonly title: string;
+            readonly proyecto: unknown;
+            readonly status: components["schemas"]["StatusEnum"];
+            readonly failure_reason: string;
+            readonly provider: string;
+            readonly model_name: string;
+            readonly prompt_tokens: number | null;
+            readonly completion_tokens: number | null;
+            readonly invented_pdas: boolean;
+            /** Format: date-time */
+            readonly generated_at: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
         /**
          * @description * `preescolar` - Preescolar
          *     * `primaria` - Primaria
@@ -314,6 +391,13 @@ export interface components {
             /** Format: uuid */
             readonly workspace: string;
         };
+        /**
+         * @description * `pending` - Pending
+         *     * `ready` - Ready
+         *     * `failed` - Failed
+         * @enum {string}
+         */
+        StatusEnum: "pending" | "ready" | "failed";
         Student: {
             readonly id: number;
             group: number;
@@ -557,6 +641,119 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Group"];
+                };
+            };
+        };
+    };
+    lesson_plans_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LessonPlan"][];
+                };
+            };
+        };
+    };
+    lesson_plans_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LessonPlan"];
+                "application/x-www-form-urlencoded": components["schemas"]["LessonPlan"];
+                "multipart/form-data": components["schemas"]["LessonPlan"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LessonPlan"];
+                };
+            };
+        };
+    };
+    lesson_plans_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this lesson plan. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LessonPlan"];
+                };
+            };
+        };
+    };
+    lesson_plans_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this lesson plan. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    lesson_plans_export_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Export format; defaults to docx. */
+                format?: "docx" | "md";
+            };
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this lesson plan. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": string;
+                    "text/markdown": string;
                 };
             };
         };

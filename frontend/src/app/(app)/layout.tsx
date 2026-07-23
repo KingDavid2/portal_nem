@@ -19,6 +19,7 @@ const NAV_ITEMS = [
   { href: "/school-years", label: "Ciclos escolares" },
   { href: "/groups", label: "Grupos" },
   { href: "/students", label: "Alumnos" },
+  { href: "/planeaciones", label: "Planeaciones" },
 ] as const;
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {

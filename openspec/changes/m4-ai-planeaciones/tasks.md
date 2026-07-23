@@ -100,11 +100,11 @@ Chain strategy: stacked-to-main
 
 ## Phase 7: Frontend List + Generate + Poll (D7)
 
-- [ ] 7.1 Regenerate `schema.d.ts` from the updated OpenAPI schema (includes `lesson-plans` paths).
-- [ ] 7.2 Create planeaciones list screen per group, using the M3 generated typed client + TanStack Query.
-- [ ] 7.3 Create generate form (campo/grado/theme), gated to `available_campos()` fixture-backed campos.
-- [ ] 7.4 Wire async poll on the created `LessonPlan` id via `refetchInterval` until `status` is `ready` or `failed`.
-- [ ] 7.5 Test: list renders only the active workspace's plans for the selected group; generate form submits and shows pending state; poll stops on ready/failed.
+- [x] 7.1 Regenerate `schema.d.ts` from the updated OpenAPI schema (includes `lesson-plans` paths).
+- [x] 7.2 Create planeaciones list screen per group, using the M3 generated typed client + TanStack Query.
+- [x] 7.3 Create generate form (campo/grado/theme), gated to `available_campos()` fixture-backed campos.
+- [x] 7.4 Wire async poll on the created `LessonPlan` id via `refetchInterval` until `status` is `ready` or `failed`.
+- [x] 7.5 Test: list renders only the active workspace's plans for the selected group; generate form submits and shows pending state; poll stops on ready/failed.
 
 ## Phase 8: Frontend Proyecto Viewer + Export Download (D8)
 

@@ -217,6 +217,124 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/lesson-plans/:
+    get:
+      operationId: lesson_plans_list
+      tags:
+      - lesson-plans
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LessonPlan'
+          description: ''
+    post:
+      operationId: lesson_plans_create
+      tags:
+      - lesson-plans
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LessonPlan'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LessonPlan'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LessonPlan'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LessonPlan'
+          description: ''
+  /api/lesson-plans/{id}/:
+    get:
+      operationId: lesson_plans_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lesson plan.
+        required: true
+      tags:
+      - lesson-plans
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LessonPlan'
+          description: ''
+    delete:
+      operationId: lesson_plans_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lesson plan.
+        required: true
+      tags:
+      - lesson-plans
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/lesson-plans/{id}/export/:
+    get:
+      operationId: lesson_plans_export_retrieve
+      description: |-
+        GET /api/lesson-plans/<id>/export?format=docx|md (ai-planeaciones
+        spec — "Ready LessonPlan Can Be Exported as Docx or Markdown").
+
+        Only a `ready` plan may be exported; `pending`/`failed` are rejected
+        (no partial/empty document is ever returned).
+      parameters:
+      - in: query
+        name: format
+        schema:
+          type: string
+          enum:
+          - docx
+          - md
+        description: Export format; defaults to docx.
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lesson plan.
+        required: true
+      tags:
+      - lesson-plans
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/vnd.openxmlformats-officedocument.wordprocessingml.document:
+              schema:
+                type: string
+                format: binary
+            text/markdown:
+              schema:
+                type: string
+                format: binary
+          description: ''
   /api/school-years/:
     get:
       operationId: school_years_list
@@ -683,6 +801,83 @@ components:
       - id
       - school_year
       - workspace
+    LessonPlan:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        workspace:
+          type: string
+          format: uuid
+          readOnly: true
+        group:
+          type: integer
+        campo:
+          type: string
+          maxLength: 200
+        grade:
+          type: string
+          maxLength: 50
+        theme:
+          type: string
+        title:
+          type: string
+          readOnly: true
+        proyecto:
+          readOnly: true
+          nullable: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEnum'
+          readOnly: true
+        failure_reason:
+          type: string
+          readOnly: true
+        provider:
+          type: string
+          readOnly: true
+        model_name:
+          type: string
+          readOnly: true
+        prompt_tokens:
+          type: integer
+          readOnly: true
+          nullable: true
+        completion_tokens:
+          type: integer
+          readOnly: true
+          nullable: true
+        invented_pdas:
+          type: boolean
+          readOnly: true
+        generated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - campo
+      - completion_tokens
+      - created_at
+      - failure_reason
+      - generated_at
+      - grade
+      - group
+      - id
+      - invented_pdas
+      - model_name
+      - prompt_tokens
+      - provider
+      - proyecto
+      - status
+      - theme
+      - title
+      - workspace
     LevelEnum:
       enum:
       - preescolar
@@ -854,6 +1049,16 @@ components:
       - label
       - school
       - workspace
+    StatusEnum:
+      enum:
+      - pending
+      - ready
+      - failed
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `ready` - Ready
+        * `failed` - Failed
     Student:
       type: object
       properties:
