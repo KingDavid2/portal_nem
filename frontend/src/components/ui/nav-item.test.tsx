@@ -4,9 +4,12 @@ import { describe, expect, it } from "vitest";
 import { NavItem } from "./nav-item";
 
 describe("NavItem", () => {
-  it("renders its accessible label and active navigation state", () => {
+  it("keeps the active Pencil state primary on hover", () => {
     const html = renderToStaticMarkup(<NavItem href="/schools" label="Escuelas" icon={House} active className="extra" prefetch={false} />);
-    expect(html).toContain("Escuelas");
-    expect(html).toContain('aria-current="page"'); expect(html).toContain("extra"); expect(html).toContain("bg-primary"); expect(html).toContain("text-primary-foreground"); expect(html).toContain("shadow-card");
+    expect(html).toContain('aria-current="page"'); expect(html).toContain("bg-primary"); expect(html).toContain("hover:bg-primary"); expect(html).toContain("hover:text-primary-foreground");
+  });
+  it("keeps inactive items accent-hover only", () => {
+    const html = renderToStaticMarkup(<NavItem href="/schools" label="Escuelas" icon={House} />);
+    expect(html).not.toContain("aria-current"); expect(html).not.toContain("shadow-card"); expect(html).not.toContain("hover:bg-primary"); expect(html).toContain("hover:bg-sidebar-accent");
   });
 });
