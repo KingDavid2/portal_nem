@@ -4,6 +4,8 @@ import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { StatusChip } from "@/components/ui/status-chip";
 import { useCreateLessonPlanMutation, useLessonPlanQuery } from "@/lib/api/lesson-plans";
 import { downloadLessonPlanExport } from "@/lib/api/lesson-plan-export";
 import { ProyectoViewer } from "../proyecto-viewer";
@@ -68,9 +70,10 @@ export default function PlaneacionViewerPage({
           No se pudo cargar la planeación.
         </p>
       ) : plan.status === "pending" ? (
-        <p className="text-muted-foreground">Generando planeación…</p>
+        <Card className="flex items-center gap-3"><StatusChip tone="brand">Generando</StatusChip><p className="text-muted-foreground">Generando planeación…</p></Card>
       ) : plan.status === "failed" ? (
-        <div className="flex flex-col gap-3">
+        <Card className="flex flex-col gap-3">
+          <StatusChip tone="danger">Falló</StatusChip>
           <p className="text-sm text-destructive" role="alert">
             La generación falló: {plan.failure_reason || "sin detalle."}
           </p>
@@ -79,17 +82,17 @@ export default function PlaneacionViewerPage({
               {regenerateMutation.isPending ? "Regenerando…" : "Reintentar"}
             </Button>
           </div>
-        </div>
+        </Card>
       ) : (
         <>
           {plan.invented_pdas ? (
-            <p
-              className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+            <Card
+              className="border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
               role="alert"
             >
               Esta planeación incluye al menos un PDA que no está en el conjunto fuente
               (posible invención del modelo). Revísala antes de usarla.
-            </p>
+            </Card>
           ) : null}
 
           <div className="flex flex-wrap gap-2">
