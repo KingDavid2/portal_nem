@@ -12,6 +12,15 @@ the correct contenido, 0 invented PDAs). Two items remain before the roadmap exi
       has almost nothing to choose from. Drop in the real SEP Fase 6 program (all campos,
       every contenido + PDA). Open sub-question: source/format of that curriculum data
       (SEP PDF? structured export? manual transcription?).
+      The production planning catalog also needs:
+      - every official contenido and PDA, with source document, edition, and page;
+      - stable IDs that survive wording or accent corrections;
+      - the complete campo-to-subject relationships for secundaria;
+      - the official cross-cutting themes and supported methodology metadata;
+      - provenance, transcription review, licensing, and completeness checks.
+      Until this is complete, catalog fields without verified curriculum text must
+      remain available only as empty official-content subsets—never filled from seed
+      or model-generated examples.
 
 - [ ] **Run the judge scorecard.** `eval/lift.py` scores each planeación with Claude as an
       LLM-judge, but needs `ANTHROPIC_API_KEY` (absent from env). Set the key, then run
