@@ -35,11 +35,22 @@ class QuotaExceeded(Exception):
 
     def __init__(self, *, used: int, limit: int, period: date) -> None:
         super().__init__(
-            f"Monthly generation limit reached: {used}/{limit} for {period:%Y-%m}."
+            f"Monthly generation limit reached: {used}/{limit} "
+            f"for {format_period(period)}."
         )
         self.used = used
         self.limit = limit
         self.period = period
+
+
+def format_period(period: date) -> str:
+    """Wire representation of a period (`YYYY-MM`).
+
+    The 429 body and `GET /api/lesson-plans/quota/` both label the same
+    window, so they format it through this one function — a second inline
+    `%Y-%m` would be free to drift.
+    """
+    return f"{period:%Y-%m}"
 
 
 def monthly_limit() -> int:

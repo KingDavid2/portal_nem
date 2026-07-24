@@ -40,11 +40,17 @@ from lesson_plans.core.catalog import (
 from lesson_plans.core.schema import Proyecto
 from lesson_plans.models import LessonPlan
 from lesson_plans.serializers import (
+    GenerationQuotaSerializer,
     LessonPlanCatalogSerializer,
     LessonPlanCreateSerializer,
     LessonPlanSerializer,
 )
-from lesson_plans.quota import QuotaExceeded
+from lesson_plans.quota import (
+    QuotaExceeded,
+    current_period,
+    current_usage,
+    format_period,
+)
 from lesson_plans.services import delete_lesson_plan, generate_lesson_plan
 from lesson_plans.validation import require_secondary_group, resolve_field
 from schools.models import Group
@@ -55,6 +61,10 @@ CAPABILITY_MAP = {
     "retrieve": "view_workspace",
     "create": "edit_content",
     "catalog": "view_workspace",
+    # Reading your own allowance is not an editing action, so it stays on
+    # `view_workspace` even though the counter it reports is only ever moved
+    # by `create` (`edit_content`).
+    "quota": "view_workspace",
     "destroy": "edit_content",
     "export": "view_workspace",
 }
@@ -89,7 +99,7 @@ class GenerationQuotaExceeded(APIException):
             "code": self.default_code,
             "used": exceeded.used,
             "limit": exceeded.limit,
-            "period": f"{exceeded.period:%Y-%m}",
+            "period": format_period(exceeded.period),
         }
 
 
@@ -227,6 +237,29 @@ class LessonPlanViewSet(viewsets.ModelViewSet):
             "teacher": {"email": request.user.email},
         }
         return Response(LessonPlanCatalogSerializer(payload).data)
+
+    @extend_schema(responses=GenerationQuotaSerializer)
+    @action(detail=False, methods=["get"])
+    def quota(self, request):
+        """GET /api/lesson-plans/quota/ — the monthly allowance of the active
+        workspace ("Generaciones de este mes").
+
+        Deliberately not folded into `catalog`: the card is rendered before
+        the teacher has picked a group or a field, and `catalog` requires
+        both. Reading is side-effect free — `current_usage` reports an absent
+        ledger row as `0` instead of seeding one, so merely opening the form
+        never writes.
+        """
+        used, limit = current_usage(request.membership.workspace)
+        payload = {
+            "period": format_period(current_period()),
+            "used": used,
+            "limit": limit,
+            # Floored: a limit lowered below what a workspace already spent
+            # would otherwise report a negative countdown.
+            "remaining": max(limit - used, 0),
+        }
+        return Response(GenerationQuotaSerializer(payload).data)
 
     @extend_schema(
         parameters=[

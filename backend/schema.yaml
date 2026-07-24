@@ -379,6 +379,29 @@ paths:
               schema:
                 $ref: '#/components/schemas/LessonPlanCatalog'
           description: ''
+  /api/lesson-plans/quota/:
+    get:
+      operationId: lesson_plans_quota_retrieve
+      description: |-
+        GET /api/lesson-plans/quota/ — the monthly allowance of the active
+        workspace ("Generaciones de este mes").
+
+        Deliberately not folded into `catalog`: the card is rendered before
+        the teacher has picked a group or a field, and `catalog` requires
+        both. Reading is side-effect free — `current_usage` reports an absent
+        ledger row as `0` instead of seeding one, so merely opening the form
+        never writes.
+      tags:
+      - lesson-plans
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerationQuota'
+          description: ''
   /api/school-years/:
     get:
       operationId: school_years_list
@@ -960,6 +983,34 @@ components:
       required:
       - content_id
       - pda_ids
+    GenerationQuota:
+      type: object
+      description: |-
+        Full payload of `GET /api/lesson-plans/quota/` (the "Generaciones de
+        este mes" card).
+
+        `remaining` is served rather than left to the client: it is floored at
+        zero, and a lowered `LESSON_PLAN_MONTHLY_GENERATION_LIMIT` can leave a
+        workspace above its own allowance, where `limit - used` would render as
+        a negative countdown.
+      properties:
+        period:
+          type: string
+          readOnly: true
+        used:
+          type: integer
+          readOnly: true
+        limit:
+          type: integer
+          readOnly: true
+        remaining:
+          type: integer
+          readOnly: true
+      required:
+      - limit
+      - period
+      - remaining
+      - used
     Group:
       type: object
       properties:

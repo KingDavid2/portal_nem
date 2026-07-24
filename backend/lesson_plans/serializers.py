@@ -286,6 +286,22 @@ class CatalogTeacherSerializer(serializers.Serializer):
     email = serializers.EmailField(read_only=True)
 
 
+class GenerationQuotaSerializer(serializers.Serializer):
+    """Full payload of `GET /api/lesson-plans/quota/` (the "Generaciones de
+    este mes" card).
+
+    `remaining` is served rather than left to the client: it is floored at
+    zero, and a lowered `LESSON_PLAN_MONTHLY_GENERATION_LIMIT` can leave a
+    workspace above its own allowance, where `limit - used` would render as
+    a negative countdown.
+    """
+
+    period = serializers.CharField(read_only=True)
+    used = serializers.IntegerField(read_only=True)
+    limit = serializers.IntegerField(read_only=True)
+    remaining = serializers.IntegerField(read_only=True)
+
+
 class LessonPlanCatalogSerializer(serializers.Serializer):
     """Full payload of `GET /api/lesson-plans/catalog/`."""
 
