@@ -235,6 +235,51 @@ def test_retrieve_reflects_status_transitions(membership_factory, api_client_for
     assert response.data["proyecto"]["title"] == "Héroes y Gestas"
 
 
+def test_project_context_fields_are_exposed_read_only(
+    membership_factory, api_client_for, group_factory
+):
+    """The new project-context columns are serialized on read, but the write
+    contract is still the original four fields — sending them in a POST body
+    must not persist anything."""
+    membership = membership_factory("member")
+    client = api_client_for(membership)
+    group = group_factory(membership)
+
+    with patch("lesson_plans.tasks.build_provider", return_value=_fake_provider()):
+        create_response = client.post(
+            "/api/lesson-plans/",
+            {
+                "group": group.pk,
+                "campo": "Lenguajes",
+                "grade": "SEGUNDO",
+                "theme": "La independencia",
+                "field_id": "languages",
+                "subject_id": "spanish",
+                "methodology_id": "community-based-project-learning",
+                "duration_weeks": 4,
+                "scenario": "community",
+                "context_diagnosis": "Diagnóstico enviado por el cliente.",
+            },
+            format="json",
+        )
+
+    assert create_response.status_code == 202
+
+    response = client.get(f"/api/lesson-plans/{create_response.data['id']}/")
+
+    assert response.status_code == 200
+    assert response.data["field_id"] == ""
+    assert response.data["subject_id"] == ""
+    assert response.data["methodology_id"] == ""
+    assert response.data["scenario"] == ""
+    assert response.data["context_diagnosis"] == ""
+    assert response.data["duration_weeks"] is None
+    assert response.data["start_date"] is None
+    assert response.data["end_date"] is None
+    assert response.data["cross_cutting_theme_ids"] == []
+    assert response.data["content_selections"] == []
+
+
 def test_destroy_success(membership_factory, api_client_for, group_factory):
     membership = membership_factory("member")
     client = api_client_for(membership)

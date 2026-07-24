@@ -20,12 +20,37 @@ class LessonPlan(ScopedModel):
         READY = "ready", "Ready"
         FAILED = "failed", "Failed"
 
+    class Scenario(models.TextChoices):
+        """Scope the proyecto acts on. Stored values are stable ids; the
+        frontend renders them as "Aula" / "Escuela" / "Comunidad"."""
+
+        CLASSROOM = "classroom", "Classroom"
+        SCHOOL = "school", "School"
+        COMMUNITY = "community", "Community"
+
     group = models.ForeignKey(
         "schools.Group", on_delete=models.PROTECT, related_name="lesson_plans"
     )
     campo = models.CharField(max_length=200)
     grade = models.CharField(max_length=50)
     theme = models.TextField()
+    # Project context captured by the planning form. Every column is nullable
+    # or defaulted so existing rows stay valid; the id columns hold catalog
+    # ids (`lesson_plans.core.catalog`) that a later unit validates at the
+    # write boundary — this model only stores them.
+    field_id = models.CharField(max_length=50, blank=True)
+    subject_id = models.CharField(max_length=50, blank=True)
+    methodology_id = models.CharField(max_length=50, blank=True)
+    duration_weeks = models.PositiveSmallIntegerField(null=True, blank=True)
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
+    scenario = models.CharField(max_length=20, choices=Scenario.choices, blank=True)
+    context_diagnosis = models.TextField(blank=True)
+    # `[str]` — cross-cutting theme (`eje articulador`) catalog ids.
+    cross_cutting_theme_ids = models.JSONField(default=list, blank=True)
+    # `[{"content_id": str, "pda_ids": [str, ...]}]` — official contents and
+    # the PDAs selected under each one, by catalog id.
+    content_selections = models.JSONField(default=list, blank=True)
     title = models.CharField(max_length=200, blank=True)
     proyecto = models.JSONField(null=True, blank=True)
     status = models.CharField(

@@ -985,6 +985,40 @@ components:
           maxLength: 50
         theme:
           type: string
+        field_id:
+          type: string
+          readOnly: true
+        subject_id:
+          type: string
+          readOnly: true
+        methodology_id:
+          type: string
+          readOnly: true
+        duration_weeks:
+          type: integer
+          readOnly: true
+          nullable: true
+        start_date:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        end_date:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        scenario:
+          allOf:
+          - $ref: '#/components/schemas/ScenarioEnum'
+          readOnly: true
+        context_diagnosis:
+          type: string
+          readOnly: true
+        cross_cutting_theme_ids:
+          readOnly: true
+        content_selections:
+          readOnly: true
         title:
           type: string
           readOnly: true
@@ -1027,18 +1061,28 @@ components:
       required:
       - campo
       - completion_tokens
+      - content_selections
+      - context_diagnosis
       - created_at
+      - cross_cutting_theme_ids
+      - duration_weeks
+      - end_date
       - failure_reason
+      - field_id
       - generated_at
       - grade
       - group
       - id
       - invented_pdas
+      - methodology_id
       - model_name
       - prompt_tokens
       - provider
       - proyecto
+      - scenario
+      - start_date
       - status
+      - subject_id
       - theme
       - title
       - workspace
@@ -1221,6 +1265,16 @@ components:
         * `owner` - Owner
         * `admin` - Admin
         * `member` - Member
+    ScenarioEnum:
+      enum:
+      - classroom
+      - school
+      - community
+      type: string
+      description: |-
+        * `classroom` - Classroom
+        * `school` - School
+        * `community` - Community
     School:
       type: object
       properties:
