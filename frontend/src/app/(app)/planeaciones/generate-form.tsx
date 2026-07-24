@@ -3,7 +3,8 @@
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Card } from "@/components/ui/card";
+import { FormField } from "@/components/ui/form-field";
 
 /** Fixture-backed campos formativos (backend `lesson_plans/core/pdas.py`'s
  * `available_campos()` — RAG is OFF for this milestone, so generation is
@@ -43,33 +44,12 @@ export function GenerateForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-lg border border-border p-4">
+    <Card className="p-0"><form onSubmit={handleSubmit} className="flex flex-col gap-4 p-5">
       <h2 className="text-sm font-semibold">Generar planeación</h2>
 
-      <Label className="flex flex-col items-start gap-1">
-        <span>Campo formativo</span>
-        <select
-          value={campo}
-          onChange={(event) => setCampo(event.target.value)}
-          className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm"
-        >
-          {AVAILABLE_CAMPOS.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      </Label>
-
-      <Label className="flex flex-col items-start gap-1">
-        <span>Grado</span>
-        <Input required value={grade} onChange={(event) => setGrade(event.target.value)} />
-      </Label>
-
-      <Label className="flex flex-col items-start gap-1">
-        <span>Tema</span>
-        <Input required value={theme} onChange={(event) => setTheme(event.target.value)} />
-      </Label>
+      <FormField id="plan-campo" label="Campo formativo"><select id="plan-campo" value={campo} onChange={(event) => setCampo(event.target.value)} className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm">{AVAILABLE_CAMPOS.map((option) => <option key={option} value={option}>{option}</option>)}</select></FormField>
+      <FormField id="plan-grade" label="Grado" required><Input id="plan-grade" required value={grade} onChange={(event) => setGrade(event.target.value)} /></FormField>
+      <FormField id="plan-theme" label="Tema" required><Input id="plan-theme" required value={theme} onChange={(event) => setTheme(event.target.value)} /></FormField>
 
       {errorMessage ? (
         <p className="text-sm text-destructive" role="alert">
@@ -82,6 +62,6 @@ export function GenerateForm({
           {isPending ? "Generando…" : "Generar planeación"}
         </Button>
       </div>
-    </form>
+    </form></Card>
   );
 }

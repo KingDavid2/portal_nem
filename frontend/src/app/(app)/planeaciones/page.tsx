@@ -16,6 +16,8 @@ import {
   type LessonPlan,
 } from "@/lib/api/lesson-plans";
 import { GenerateForm } from "./generate-form";
+import { StatusChip } from "@/components/ui/status-chip";
+import { Card } from "@/components/ui/card";
 
 /** Planeaciones list + generate screen, scoped to one selected School →
  * SchoolYear → Group (ai-planeaciones spec — "CRUD Endpoints Are Workspace-
@@ -187,7 +189,7 @@ export default function PlaneacionesPage() {
               No se pudieron cargar las planeaciones.
             </p>
           ) : (
-            <DataTable columns={columns} data={visiblePlans} />
+            <Card className="p-0"><DataTable columns={columns} data={visiblePlans} /></Card>
           )}
         </>
       )}
@@ -197,10 +199,10 @@ export default function PlaneacionesPage() {
 
 function StatusBadge({ status }: { status: LessonPlan["status"] }) {
   if (status === "ready") {
-    return <span className="text-sm font-medium text-primary">Lista</span>;
+    return <StatusChip tone="success">Lista</StatusChip>;
   }
   if (status === "failed") {
-    return <span className="text-sm font-medium text-destructive">Falló</span>;
+    return <StatusChip tone="danger">Falló</StatusChip>;
   }
-  return <span className="text-sm font-medium text-muted-foreground">Generando…</span>;
+  return <StatusChip tone="brand">Generando…</StatusChip>;
 }

@@ -1,0 +1,2 @@
+import { renderToStaticMarkup } from "react-dom/server"; import { describe, expect, it, vi } from "vitest"; import { GenerateForm } from "./generate-form";
+describe("GenerateForm",()=>{it("uses associated shared fields while preserving error",()=>{const html=renderToStaticMarkup(<GenerateForm groupId={2} errorMessage="Error" isPending={false} onSubmit={vi.fn()}/>);expect(html).toContain('for="plan-grade"');expect(html).toContain("Error");expect(html).toContain("Generar planeación");});});
