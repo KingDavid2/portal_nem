@@ -47,7 +47,7 @@ describe("LoginPage", () => {
     mocks.login.mockRejectedValue(new Error("bad credentials"));
     const { host, root } = await mount();
     await submit(host, "ana@example.com", "wrong");
-    expect(host.textContent).toContain("Invalid email or password.");
+    expect(host.textContent).toContain("Correo o contraseña incorrectos.");
     expect(mocks.push).not.toHaveBeenCalled(); expect(mocks.refresh).not.toHaveBeenCalled();
     await act(async () => root.unmount());
   });

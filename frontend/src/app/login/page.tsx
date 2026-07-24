@@ -20,7 +20,7 @@ export default function LoginPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(null); setIsPending(true);
     try { await login(email, password); router.push("/"); router.refresh(); }
-    catch { setError("Invalid email or password."); }
+    catch { setError("Correo o contraseña incorrectos."); }
     finally { setIsPending(false); }
   }
 
