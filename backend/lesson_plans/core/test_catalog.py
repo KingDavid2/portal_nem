@@ -19,7 +19,7 @@ def test_catalog_defines_phase_six_and_only_community_project_learning():
     assert [(item.id, item.name) for item in METHODOLOGIES] == [
         (
             "community-based-project-learning",
-            "Community-Based Project Learning",
+            "Aprendizaje Basado en Proyectos Comunitarios",
         )
     ]
 

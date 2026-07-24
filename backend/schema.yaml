@@ -217,6 +217,16 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/health/:
+    get:
+      operationId: health_retrieve
+      tags:
+      - health
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
   /api/lesson-plans/:
     get:
       operationId: lesson_plans_list
@@ -334,6 +344,33 @@ paths:
               schema:
                 type: string
                 format: binary
+          description: ''
+  /api/lesson-plans/catalog/:
+    get:
+      operationId: lesson_plans_catalog_retrieve
+      parameters:
+      - in: query
+        name: field
+        schema:
+          type: string
+        description: Id of the formative field whose catalog is requested.
+        required: true
+      - in: query
+        name: group
+        schema:
+          type: integer
+        description: Id of the secondary-school group being planned for.
+        required: true
+      tags:
+      - lesson-plans
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LessonPlanCatalog'
           description: ''
   /api/school-years/:
     get:
@@ -776,6 +813,133 @@ paths:
           description: ''
 components:
   schemas:
+    CatalogContent:
+      type: object
+      description: An official content with its verified learning processes.
+      properties:
+        id:
+          type: string
+          readOnly: true
+        text:
+          type: string
+          readOnly: true
+        pdas:
+          type: array
+          items:
+            $ref: '#/components/schemas/CatalogPda'
+          readOnly: true
+      required:
+      - id
+      - pdas
+      - text
+    CatalogField:
+      type: object
+      description: A curriculum formative field (`campo formativo`).
+      properties:
+        id:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+      required:
+      - id
+      - name
+    CatalogGroup:
+      type: object
+      description: The automatic group context shown by the planning form.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        label:
+          type: string
+          readOnly: true
+        grade:
+          type: integer
+          readOnly: true
+        school_name:
+          type: string
+          readOnly: true
+        school_cct:
+          type: string
+          readOnly: true
+        school_year_label:
+          type: string
+          readOnly: true
+      required:
+      - grade
+      - id
+      - label
+      - school_cct
+      - school_name
+      - school_year_label
+    CatalogMethodology:
+      type: object
+      description: The official Phase 6 planning methodology.
+      properties:
+        id:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+      required:
+      - id
+      - name
+    CatalogPda:
+      type: object
+      description: A verified learning process (`PDA`) of an official content.
+      properties:
+        id:
+          type: string
+          readOnly: true
+        text:
+          type: string
+          readOnly: true
+      required:
+      - id
+      - text
+    CatalogSubject:
+      type: object
+      description: A subject belonging to a formative field.
+      properties:
+        id:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        field_id:
+          type: string
+          readOnly: true
+      required:
+      - field_id
+      - id
+      - name
+    CatalogTeacher:
+      type: object
+      description: The requesting teacher's identity.
+      properties:
+        email:
+          type: string
+          format: email
+          readOnly: true
+      required:
+      - email
+    CatalogTheme:
+      type: object
+      description: A cross-cutting theme (`eje articulador`).
+      properties:
+        id:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+      required:
+      - id
+      - name
     Group:
       type: object
       properties:
@@ -878,6 +1042,57 @@ components:
       - theme
       - title
       - workspace
+    LessonPlanCatalog:
+      type: object
+      description: Full payload of `GET /api/lesson-plans/catalog/`.
+      properties:
+        phase:
+          type: integer
+          readOnly: true
+        grade:
+          type: integer
+          readOnly: true
+        field:
+          allOf:
+          - $ref: '#/components/schemas/CatalogField'
+          readOnly: true
+        methodology:
+          allOf:
+          - $ref: '#/components/schemas/CatalogMethodology'
+          readOnly: true
+        subjects:
+          type: array
+          items:
+            $ref: '#/components/schemas/CatalogSubject'
+          readOnly: true
+        cross_cutting_themes:
+          type: array
+          items:
+            $ref: '#/components/schemas/CatalogTheme'
+          readOnly: true
+        contents:
+          type: array
+          items:
+            $ref: '#/components/schemas/CatalogContent'
+          readOnly: true
+        group:
+          allOf:
+          - $ref: '#/components/schemas/CatalogGroup'
+          readOnly: true
+        teacher:
+          allOf:
+          - $ref: '#/components/schemas/CatalogTeacher'
+          readOnly: true
+      required:
+      - contents
+      - cross_cutting_themes
+      - field
+      - grade
+      - group
+      - methodology
+      - phase
+      - subjects
+      - teacher
     LevelEnum:
       enum:
       - preescolar

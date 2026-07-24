@@ -55,7 +55,7 @@ class Content:
 
 COMMUNITY_BASED_PROJECT_LEARNING = Methodology(
     "community-based-project-learning",
-    "Community-Based Project Learning",
+    "Aprendizaje Basado en Proyectos Comunitarios",
 )
 METHODOLOGIES = (COMMUNITY_BASED_PROJECT_LEARNING,)
 

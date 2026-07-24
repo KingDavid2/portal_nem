@@ -40,7 +40,10 @@ from lesson_plans.core.catalog import (
 )
 from lesson_plans.core.schema import Proyecto
 from lesson_plans.models import LessonPlan
-from lesson_plans.serializers import LessonPlanSerializer
+from lesson_plans.serializers import (
+    LessonPlanCatalogSerializer,
+    LessonPlanSerializer,
+)
 from lesson_plans.services import delete_lesson_plan, generate_lesson_plan
 from schools.models import Group, School
 from workspaces.permissions import WorkspacePermission
@@ -107,6 +110,23 @@ class LessonPlanViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         delete_lesson_plan(membership=self.request.membership, lesson_plan=instance)
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="group",
+                type=OpenApiTypes.INT,
+                required=True,
+                description="Id of the secondary-school group being planned for.",
+            ),
+            OpenApiParameter(
+                name="field",
+                type=OpenApiTypes.STR,
+                required=True,
+                description="Id of the formative field whose catalog is requested.",
+            ),
+        ],
+        responses=LessonPlanCatalogSerializer,
+    )
     @action(detail=False, methods=["get"])
     def catalog(self, request):
         group_value = request.query_params.get("group")
@@ -150,19 +170,26 @@ class LessonPlanViewSet(viewsets.ModelViewSet):
                     ],
                 }
             )
-        return Response(
-            {
-                "phase": PHASE,
+        school = group.school_year.school
+        payload = {
+            "phase": PHASE,
+            "grade": group.grado,
+            "field": {"id": field.id, "name": field.name},
+            "methodology": asdict(METHODOLOGIES[0]),
+            "subjects": [asdict(subject) for subject in subjects_for(field.id)],
+            "cross_cutting_themes": [asdict(theme) for theme in CROSS_CUTTING_THEMES],
+            "contents": contents,
+            "group": {
+                "id": group.pk,
+                "label": f"{group.grado}° {group.grupo}",
                 "grade": group.grado,
-                "field": {"id": field.id, "name": field.name},
-                "methodology": asdict(METHODOLOGIES[0]),
-                "subjects": [asdict(subject) for subject in subjects_for(field.id)],
-                "cross_cutting_themes": [
-                    asdict(theme) for theme in CROSS_CUTTING_THEMES
-                ],
-                "contents": contents,
-            }
-        )
+                "school_name": school.name,
+                "school_cct": school.cct,
+                "school_year_label": group.school_year.label,
+            },
+            "teacher": {"email": request.user.email},
+        }
+        return Response(LessonPlanCatalogSerializer(payload).data)
 
     @extend_schema(
         parameters=[

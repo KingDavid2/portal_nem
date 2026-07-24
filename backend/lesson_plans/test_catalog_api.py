@@ -40,11 +40,12 @@ def client_for():
 
 @pytest.fixture
 def group_factory():
-    def make(membership, *, level=School.Level.SECUNDARIA, grade=2):
+    def make(membership, *, level=School.Level.SECUNDARIA, grade=2, cct="15DES0001A"):
         school = School.objects.create(
             workspace=membership.workspace,
             name="Escuela Uno",
             level=level,
+            cct=cct,
         )
         year = SchoolYear.objects.create(
             workspace=membership.workspace,
@@ -79,7 +80,7 @@ def test_catalog_returns_group_context_and_verified_field_content(
     assert response.data["grade"] == 2
     assert response.data["methodology"] == {
         "id": "community-based-project-learning",
-        "name": "Community-Based Project Learning",
+        "name": "Aprendizaje Basado en Proyectos Comunitarios",
     }
     assert [subject["id"] for subject in response.data["subjects"]] == [
         "spanish",
@@ -116,6 +117,64 @@ def test_catalog_returns_empty_verified_content_for_supported_field(
         "physics",
         "chemistry",
     ]
+
+
+def test_catalog_returns_the_group_and_school_context(
+    membership_factory,
+    client_for,
+    group_factory,
+):
+    membership = membership_factory()
+    group = group_factory(membership, grade=3)
+
+    response = client_for(membership).get(
+        "/api/lesson-plans/catalog/",
+        {"group": group.id, "field": "languages"},
+    )
+
+    assert response.status_code == 200
+    assert response.data["group"] == {
+        "id": group.id,
+        "label": "3° A",
+        "grade": 3,
+        "school_name": "Escuela Uno",
+        "school_cct": "15DES0001A",
+        "school_year_label": "2025-2026",
+    }
+
+
+def test_catalog_returns_an_empty_string_for_a_school_without_cct(
+    membership_factory,
+    client_for,
+    group_factory,
+):
+    membership = membership_factory()
+    group = group_factory(membership, cct="")
+
+    response = client_for(membership).get(
+        "/api/lesson-plans/catalog/",
+        {"group": group.id, "field": "languages"},
+    )
+
+    assert response.status_code == 200
+    assert response.data["group"]["school_cct"] == ""
+
+
+def test_catalog_returns_the_requesting_teacher_email(
+    membership_factory,
+    client_for,
+    group_factory,
+):
+    membership = membership_factory()
+    group = group_factory(membership)
+
+    response = client_for(membership).get(
+        "/api/lesson-plans/catalog/",
+        {"group": group.id, "field": "languages"},
+    )
+
+    assert response.status_code == 200
+    assert response.data["teacher"] == {"email": membership.user.email}
 
 
 def test_catalog_requires_authentication():
