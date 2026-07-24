@@ -70,3 +70,31 @@ class LessonPlan(ScopedModel):
 
     def __str__(self) -> str:
         return f"{self.group_id}:{self.theme}:{self.status}"
+
+
+class GenerationUsage(ScopedModel):
+    """Append-only per-workspace ledger of accepted generations in one month.
+
+    Deliberately NOT derived from `LessonPlan.objects.filter(...).count()`: a
+    derived counter would refund quota whenever a plan is deleted, making the
+    monthly limit farmable by create-then-delete. One row per
+    (workspace, period); `count` only ever moves forward within a period.
+
+    `period` is the first day of the month the generations were consumed in
+    (see `lesson_plans.quota` for the window semantics).
+    """
+
+    period = models.DateField()
+    count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        db_table = "lesson_plans_generationusage"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["workspace", "period"],
+                name="unique_workspace_generation_period",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.workspace_id}:{self.period:%Y-%m}:{self.count}"

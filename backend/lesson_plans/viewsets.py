@@ -22,7 +22,7 @@ from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import APIException, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.renderers import BaseRenderer
 from rest_framework.response import Response
@@ -44,6 +44,7 @@ from lesson_plans.serializers import (
     LessonPlanCreateSerializer,
     LessonPlanSerializer,
 )
+from lesson_plans.quota import QuotaExceeded
 from lesson_plans.services import delete_lesson_plan, generate_lesson_plan
 from lesson_plans.validation import require_secondary_group, resolve_field
 from schools.models import Group
@@ -61,6 +62,35 @@ CAPABILITY_MAP = {
 DOCX_CONTENT_TYPE = (
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 )
+
+
+class GenerationQuotaExceeded(APIException):
+    """HTTP shape of `quota.QuotaExceeded` (429 + the counters the UI shows).
+
+    A plain `APIException` subclass rather than DRF's `Throttled`: `Throttled`
+    models a rate limit that clears after `wait` seconds and makes the handler
+    emit a `Retry-After` header. This is a monthly allowance, not a rate — the
+    only honest `Retry-After` would be "the rest of the month", and clients
+    treating it as a backoff hint would poll pointlessly. The service layer
+    raises the framework-free `QuotaExceeded`; only this boundary knows 429.
+    """
+
+    status_code = status.HTTP_429_TOO_MANY_REQUESTS
+    default_code = "generation_quota_exceeded"
+
+    def __init__(self, exceeded: QuotaExceeded) -> None:
+        super().__init__(detail="Monthly generation limit reached.")
+        # Assigned after `super().__init__` on purpose: `APIException` runs
+        # every detail value through `ErrorDetail(str(value))`, which would
+        # ship `used`/`limit` as JSON strings. The counters feed a numeric
+        # progress indicator, so they must stay integers on the wire.
+        self.detail = {
+            "detail": "Monthly generation limit reached.",
+            "code": self.default_code,
+            "used": exceeded.used,
+            "limit": exceeded.limit,
+            "period": f"{exceeded.period:%Y-%m}",
+        }
 
 
 class _DocxRenderer(BaseRenderer):
@@ -104,14 +134,18 @@ class LessonPlanViewSet(viewsets.ModelViewSet):
         return LessonPlanSerializer
 
     @extend_schema(
-        request=LessonPlanCreateSerializer, responses={202: LessonPlanSerializer}
+        request=LessonPlanCreateSerializer,
+        responses={202: LessonPlanSerializer, 429: OpenApiTypes.OBJECT},
     )
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        plan = generate_lesson_plan(
-            membership=request.membership, **serializer.validated_data
-        )
+        try:
+            plan = generate_lesson_plan(
+                membership=request.membership, **serializer.validated_data
+            )
+        except QuotaExceeded as exceeded:
+            raise GenerationQuotaExceeded(exceeded) from exceeded
         output = LessonPlanSerializer(plan)
         headers = self.get_success_headers(output.data)
         return Response(output.data, status=status.HTTP_202_ACCEPTED, headers=headers)

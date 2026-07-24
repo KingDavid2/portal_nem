@@ -231,6 +231,13 @@ LLM_API_KEY = env("LLM_API_KEY", default="dummy")
 ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default=None)
 ANTHROPIC_MODEL = env("ANTHROPIC_MODEL", default="claude-opus-4-8")
 
+# Lesson-plan generation quota (design "Generaciones de este mes — 7 de 30").
+# Accepted generations per workspace per calendar month, in TIME_ZONE. Read at
+# call time by `lesson_plans.quota`, so overriding it needs no code change.
+LESSON_PLAN_MONTHLY_GENERATION_LIMIT = env.int(
+    "LESSON_PLAN_MONTHLY_GENERATION_LIMIT", default=30
+)
+
 # Celery (M4 design — "Generation Runs Asynchronously via a Celery Task").
 # Redis doubles as broker + result backend; no RabbitMQ dependency.
 CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://localhost:6379/0")

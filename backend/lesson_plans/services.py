@@ -5,7 +5,8 @@ Workspace-Scoped). Same shape as `schools/services.py`/`students/services.py`.
 `generate_lesson_plan` creates a `pending` row synchronously, taking the
 workspace from `membership.workspace` (never client input), enforces the
 `workspace == group.workspace` invariant explicitly (never relies on RLS for
-this authorization decision — design Interfaces/Contracts), then enqueues
+this authorization decision — design Interfaces/Contracts), charges the
+workspace's monthly generation quota, then enqueues
 `generate_lesson_plan_task` to perform the LLM call asynchronously.
 """
 
@@ -18,6 +19,7 @@ from django.db import transaction
 
 from lesson_plans.core.catalog import field_by_id
 from lesson_plans.models import LessonPlan
+from lesson_plans.quota import consume_generation
 from lesson_plans.tasks import generate_lesson_plan_task
 from workspaces.permissions import has_permission
 
@@ -53,6 +55,10 @@ def generate_lesson_plan(
     if group.workspace_id != membership.workspace_id:
         raise ValueError("Group does not belong to the caller's workspace.")
     with transaction.atomic():
+        # Charged before the row exists, and inside the same transaction, so a
+        # rejected request persists nothing and any later rollback refunds the
+        # count automatically (`lesson_plans.quota`).
+        consume_generation(membership.workspace)
         plan = LessonPlan.objects.create(
             workspace=membership.workspace,
             group=group,

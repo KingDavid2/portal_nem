@@ -1,5 +1,6 @@
-"""RLS backstop tests for lesson_plans_lessonplan (tenancy-isolation spec —
-RLS coverage extends to the LessonPlan table). Mirrors the
+"""RLS backstop tests for lesson_plans_lessonplan and
+lesson_plans_generationusage (tenancy-isolation spec — RLS coverage extends to
+every scoped lesson-plan table). Mirrors the
 `_portal_app_connection()` pattern from `workspaces/tests/test_rls.py` and
 `schools/tests/test_rls.py`.
 """
@@ -113,3 +114,71 @@ def test_scoped_manager_returns_only_the_active_workspace_lesson_plans():
         active_workspace.reset(token)
 
     assert themes == ["Mine"]
+
+
+def test_rls_denies_generation_usage_rows_with_no_workspace_context_set():
+    from datetime import date
+
+    from lesson_plans.models import GenerationUsage
+    from workspaces.models import Workspace
+
+    workspace = Workspace.objects.create(type=Workspace.Type.GROUP)
+    GenerationUsage.objects.create(
+        workspace=workspace, period=date(2026, 7, 1), count=7
+    )
+
+    with _portal_app_connection() as conn, conn.cursor() as cur:
+        cur.execute("SELECT count(*) FROM lesson_plans_generationusage")
+        (count,) = cur.fetchone()
+
+    assert count == 0
+
+
+def test_rls_blocks_foreign_workspace_generation_usage_row():
+    from datetime import date
+
+    from lesson_plans.models import GenerationUsage
+    from workspaces.models import Workspace
+
+    workspace_a = Workspace.objects.create(type=Workspace.Type.GROUP)
+    workspace_b = Workspace.objects.create(type=Workspace.Type.GROUP)
+    GenerationUsage.objects.create(
+        workspace=workspace_a, period=date(2026, 7, 1), count=3
+    )
+    GenerationUsage.objects.create(
+        workspace=workspace_b, period=date(2026, 7, 1), count=9
+    )
+
+    with _portal_app_connection() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT set_config('app.workspace_id', %s, false)", [str(workspace_a.id)]
+        )
+        cur.execute("SELECT count FROM lesson_plans_generationusage")
+        rows = [row[0] for row in cur.fetchall()]
+
+    assert rows == [3]
+
+
+def test_scoped_manager_returns_only_the_active_workspace_generation_usage():
+    from datetime import date
+
+    from lesson_plans.models import GenerationUsage
+    from workspaces.context import active_workspace
+    from workspaces.models import Workspace
+
+    workspace_a = Workspace.objects.create(type=Workspace.Type.GROUP)
+    workspace_b = Workspace.objects.create(type=Workspace.Type.GROUP)
+    GenerationUsage.objects.create(
+        workspace=workspace_a, period=date(2026, 7, 1), count=3
+    )
+    GenerationUsage.objects.create(
+        workspace=workspace_b, period=date(2026, 7, 1), count=9
+    )
+
+    token = active_workspace.set(workspace_a.id)
+    try:
+        counts = list(GenerationUsage.objects.values_list("count", flat=True))
+    finally:
+        active_workspace.reset(token)
+
+    assert counts == [3]
