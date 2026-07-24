@@ -18,7 +18,6 @@ import {
 import { StudentForm } from "./student-form";
 import { SchoolContextFilters } from "@/components/school-context-filters";
 import { Avatar } from "@/components/ui/avatar";
-import { StatusChip } from "@/components/ui/status-chip";
 
 /** Student list/create/edit/delete screen, scoped to one selected School →
  * SchoolYear → Group (frontend-foundation spec — "CRUD Screens Cover School
@@ -96,7 +95,7 @@ export default function StudentsPage() {
 
   const columns = useMemo<ColumnDef<Student, unknown>[]>(
     () => [
-      { header: "Alumno", cell: ({ row }) => <div className="flex items-center gap-2"><Avatar size="sm" name={`${row.original.first_name} ${row.original.last_name_paternal}`} /><span>{row.original.first_name}</span><StatusChip tone="success">Activo</StatusChip></div> },
+      { header: "Alumno", cell: ({ row }) => <div className="flex items-center gap-2"><Avatar size="sm" name={`${row.original.first_name} ${row.original.last_name_paternal}`} /><span>{row.original.first_name}</span></div> },
       { header: "Apellido paterno", accessorKey: "last_name_paternal" },
       { header: "Apellido materno", accessorFn: (student) => student.last_name_maternal || "—" },
       { header: "CURP", accessorFn: (student) => student.curp || "—" },
