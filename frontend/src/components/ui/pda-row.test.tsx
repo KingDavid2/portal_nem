@@ -1,0 +1,2 @@
+import { renderToStaticMarkup } from "react-dom/server"; import { describe, expect, it } from "vitest"; import { PdaRow } from "./pda-row";
+describe("PdaRow",()=>{it("forwards safe attributes in read-only mode",()=>{const html=renderToStaticMarkup(<PdaRow readOnly data-testid="pda" aria-label="PDA real">Texto</PdaRow>);expect(html).toContain('data-testid="pda"');expect(html).toContain('aria-label="PDA real"');expect(html).not.toContain('type="checkbox"');});});
