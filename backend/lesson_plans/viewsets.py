@@ -14,7 +14,10 @@ filter)").
 
 from __future__ import annotations
 
+from dataclasses import asdict
+
 from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status, viewsets
@@ -26,16 +29,27 @@ from rest_framework.response import Response
 
 from lesson_plans.core.render.docx import render_docx
 from lesson_plans.core.render.markdown import render_md
+from lesson_plans.core.catalog import (
+    CROSS_CUTTING_THEMES,
+    METHODOLOGIES,
+    PHASE,
+    field_by_id,
+    official_content_for,
+    pda_by_id,
+    subjects_for,
+)
 from lesson_plans.core.schema import Proyecto
 from lesson_plans.models import LessonPlan
 from lesson_plans.serializers import LessonPlanSerializer
 from lesson_plans.services import delete_lesson_plan, generate_lesson_plan
+from schools.models import Group, School
 from workspaces.permissions import WorkspacePermission
 
 CAPABILITY_MAP = {
     "list": "view_workspace",
     "retrieve": "view_workspace",
     "create": "edit_content",
+    "catalog": "view_workspace",
     "destroy": "edit_content",
     "export": "view_workspace",
 }
@@ -92,6 +106,63 @@ class LessonPlanViewSet(viewsets.ModelViewSet):
 
     def perform_destroy(self, instance):
         delete_lesson_plan(membership=self.request.membership, lesson_plan=instance)
+
+    @action(detail=False, methods=["get"])
+    def catalog(self, request):
+        group_value = request.query_params.get("group")
+        field_id = request.query_params.get("field")
+        errors = {}
+        try:
+            group_id = int(group_value)
+        except (TypeError, ValueError):
+            errors["group"] = "A valid group id is required."
+        if not field_id:
+            errors["field"] = "A field id is required."
+        if errors:
+            raise ValidationError(errors)
+
+        try:
+            field = field_by_id(field_id)
+        except KeyError:
+            raise ValidationError({"field": "Unsupported field id."})
+
+        group = get_object_or_404(
+            Group.objects.select_related("school_year__school"),
+            pk=group_id,
+        )
+        if group.school_year.school.level != School.Level.SECUNDARIA:
+            raise ValidationError(
+                {"group": "The group must belong to a secondary school."}
+            )
+
+        contents = []
+        for content in official_content_for(field.id):
+            contents.append(
+                {
+                    "id": content.id,
+                    "text": content.text,
+                    "pdas": [
+                        {
+                            "id": pda_id,
+                            "text": pda_by_id(field.id, pda_id).text,
+                        }
+                        for pda_id in content.pda_ids
+                    ],
+                }
+            )
+        return Response(
+            {
+                "phase": PHASE,
+                "grade": group.grado,
+                "field": {"id": field.id, "name": field.name},
+                "methodology": asdict(METHODOLOGIES[0]),
+                "subjects": [asdict(subject) for subject in subjects_for(field.id)],
+                "cross_cutting_themes": [
+                    asdict(theme) for theme in CROSS_CUTTING_THEMES
+                ],
+                "contents": contents,
+            }
+        )
 
     @extend_schema(
         parameters=[
