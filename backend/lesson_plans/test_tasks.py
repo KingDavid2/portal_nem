@@ -32,13 +32,15 @@ connection's uncommitted transaction.)
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
+from datetime import date
 from unittest.mock import patch
 
 import pytest
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import connections
 
-from lesson_plans.core.ports.llm import GenerationResult, Usage
+from lesson_plans.core.catalog import pda_by_id
+from lesson_plans.core.ports.llm import BaseProvider, GenerationResult, Usage
 from lesson_plans.core.schema import (
     ArticulatingAxis,
     ContentPda,
@@ -48,11 +50,17 @@ from lesson_plans.core.schema import (
     RubricCriterion,
 )
 from lesson_plans.models import LessonPlan
-from lesson_plans.tasks import generate_lesson_plan_task
+from lesson_plans.tasks import NO_CONTENT_SELECTION_ERROR, generate_lesson_plan_task
 from workspaces.context import active_workspace
 
+LANGUAGES_CONTENT = "languages-text-resources"
+SELECTED_PDA = "languages-accentuation"
+# Official in the same field, but deliberately left out of every selection
+# below — the fidelity guard must treat it as invented.
+UNSELECTED_PDA = "languages-coherent-texts"
 
-def _canned_proyecto() -> Proyecto:
+
+def _canned_proyecto(pdas: list[str] | None = None) -> Proyecto:
     return Proyecto(
         datos=Datos(
             school_name="Escuela Uno",
@@ -68,10 +76,9 @@ def _canned_proyecto() -> Proyecto:
             ContentPda(
                 content="Recursos lingüísticos y textuales para la comprensión y "
                 "producción de textos.",
-                pdas=[
-                    "Emplea las reglas de acentuación de palabras agudas, graves, "
-                    "esdrújulas y sobresdrújulas para escribir con corrección.",
-                ],
+                pdas=pdas
+                if pdas is not None
+                else [pda_by_id("languages", SELECTED_PDA).text],
             )
         ],
         stages=[],
@@ -86,11 +93,28 @@ class _FakeProvider:
     def __init__(self, result=None, error=None):
         self._result = result
         self._error = error
+        self.request = None
+        self.pdas = None
 
     def generate(self, request, pdas):
+        self.request, self.pdas = request, pdas
         if self._error is not None:
             raise self._error
         return self._result
+
+
+class _GuardedFakeProvider(BaseProvider):
+    """Runs the real `find_invented_pdas` guard over a canned proyecto, so the
+    fidelity signal is exercised end to end instead of being asserted on a
+    hand-written `GenerationResult`."""
+
+    name = "guarded-fake"
+
+    def __init__(self, proyecto: Proyecto) -> None:
+        super().__init__(
+            complete=lambda system, user: (proyecto, Usage(input_tokens=1, output_tokens=2)),
+            model="guarded-fake-model",
+        )
 
 
 def _make_group(workspace):
@@ -105,11 +129,36 @@ def _make_group(workspace):
     return Group.objects.create(workspace=workspace, school_year=school_year, grado=1, grupo="A")
 
 
-def _create_pending_plan(workspace, group, *, campo="Lenguajes", grade="SEGUNDO", theme="La independencia"):
+def _create_pending_plan(
+    workspace,
+    group,
+    *,
+    campo="Lenguajes",
+    grade="SEGUNDO",
+    theme="La independencia",
+    **overrides,
+):
+    """A plan carrying the same validated catalog ids the create endpoint
+    persists, so the task under test sees a production-shaped row."""
+    fields = dict(
+        field_id="languages",
+        subject_id="spanish",
+        methodology_id="community-based-project-learning",
+        duration_weeks=4,
+        start_date=date(2026, 1, 12),
+        end_date=date(2026, 2, 9),
+        scenario=LessonPlan.Scenario.COMMUNITY,
+        context_diagnosis="El grupo redacta con poca cohesión.",
+        cross_cutting_theme_ids=["critical-thinking", "inclusion"],
+        content_selections=[
+            {"content_id": LANGUAGES_CONTENT, "pda_ids": [SELECTED_PDA]}
+        ],
+    )
+    fields.update(overrides)
     token = active_workspace.set(workspace.id)
     try:
         return LessonPlan.objects.create(
-            workspace=workspace, group=group, campo=campo, grade=grade, theme=theme
+            workspace=workspace, group=group, campo=campo, grade=grade, theme=theme, **fields
         )
     finally:
         active_workspace.reset(token)
@@ -214,20 +263,113 @@ def test_task_provider_schema_failure_sets_status_failed_with_reason():
 
 
 @pytest.mark.django_db(transaction=True)
-def test_task_unknown_campo_sets_status_failed():
-    """`pdas_for` raises `KeyError` for a campo with no fixture — terminal,
-    not retried, surfaces as `status=failed`."""
+def test_task_unresolvable_content_id_sets_status_failed():
+    """`content_pdas_for` raises `KeyError` for a stored id that no longer
+    resolves — terminal, not retried, surfaces as `status=failed` instead of
+    silently generating against something the teacher never picked."""
     from workspaces.models import Workspace
 
     workspace = Workspace.objects.create(type=Workspace.Type.GROUP)
     group = _make_group(workspace)
-    plan = _create_pending_plan(workspace, group, campo="No existe este campo")
+    plan = _create_pending_plan(
+        workspace,
+        group,
+        content_selections=[{"content_id": "retired-content", "pda_ids": [SELECTED_PDA]}],
+    )
 
     _run_task_in_cold_thread(workspace_id=workspace.id, lesson_plan_id=plan.id)
 
     updated = _read_plan_in(workspace, plan.id)
     assert updated.status == LessonPlan.Status.FAILED
-    assert "No existe este campo" in updated.failure_reason
+    assert "retired-content" in updated.failure_reason
+
+
+@pytest.mark.django_db(transaction=True)
+def test_task_passes_the_selected_contents_and_planning_context_to_the_provider():
+    """The prompt is grounded on exactly what the teacher chose, with catalog
+    ids resolved to the Spanish wording the model should read."""
+    from workspaces.models import Workspace
+
+    workspace = Workspace.objects.create(type=Workspace.Type.GROUP)
+    group = _make_group(workspace)
+    plan = _create_pending_plan(workspace, group)
+
+    fake = _FakeProvider(
+        result=GenerationResult(
+            proyecto=_canned_proyecto(),
+            usage=Usage(input_tokens=1, output_tokens=1),
+            invented_pdas=[],
+        )
+    )
+
+    with patch("lesson_plans.tasks.build_provider", return_value=fake):
+        _run_task_in_cold_thread(workspace_id=workspace.id, lesson_plan_id=plan.id)
+
+    assert [selected.content for selected in fake.pdas] == [
+        "Recursos lingüísticos y textuales para la comprensión y producción de textos."
+    ]
+    assert fake.pdas[0].pdas == [pda_by_id("languages", SELECTED_PDA).text]
+    assert fake.request.subject == "Español"
+    assert fake.request.scenario == "Comunidad"
+    assert fake.request.duration_weeks == 4
+    assert fake.request.start_date == "2026-01-12"
+    assert fake.request.end_date == "2026-02-09"
+    assert fake.request.context_diagnosis == "El grupo redacta con poca cohesión."
+    assert fake.request.cross_cutting_themes == ("Pensamiento crítico", "Inclusión")
+
+
+@pytest.mark.django_db(transaction=True)
+def test_task_flags_an_official_pda_of_a_non_selected_content_as_invented():
+    """Grounding on the selection makes the fidelity guard strictly stricter:
+    `languages-coherent-texts` is official Phase 6 text in the plan's own
+    field, so the old whole-field fixture accepted it. It was not selected
+    here, so it now counts as invented."""
+    from workspaces.models import Workspace
+
+    workspace = Workspace.objects.create(type=Workspace.Type.GROUP)
+    group = _make_group(workspace)
+    plan = _create_pending_plan(workspace, group)
+
+    proyecto = _canned_proyecto(pdas=[pda_by_id("languages", UNSELECTED_PDA).text])
+
+    with patch(
+        "lesson_plans.tasks.build_provider", return_value=_GuardedFakeProvider(proyecto)
+    ):
+        _run_task_in_cold_thread(workspace_id=workspace.id, lesson_plan_id=plan.id)
+
+    updated = _read_plan_in(workspace, plan.id)
+    assert updated.status == LessonPlan.Status.READY
+    assert updated.invented_pdas is True
+
+
+@pytest.mark.django_db(transaction=True)
+def test_task_without_content_selection_fails_terminally_without_retrying():
+    """A legacy row predating the official-content picker has nothing to
+    ground on. There is no fixture to fall back to, so it fails once with a
+    clear reason and is never retried."""
+    from workspaces.models import Workspace
+
+    workspace = Workspace.objects.create(type=Workspace.Type.GROUP)
+    group = _make_group(workspace)
+    plan = _create_pending_plan(workspace, group, content_selections=[])
+
+    fake = _FakeProvider(
+        result=GenerationResult(
+            proyecto=_canned_proyecto(),
+            usage=Usage(input_tokens=1, output_tokens=1),
+            invented_pdas=[],
+        )
+    )
+
+    with patch("lesson_plans.tasks.build_provider", return_value=fake):
+        with patch.object(generate_lesson_plan_task, "retry") as retry:
+            _run_task_in_cold_thread(workspace_id=workspace.id, lesson_plan_id=plan.id)
+
+    retry.assert_not_called()
+    assert fake.request is None  # never reached the provider
+    updated = _read_plan_in(workspace, plan.id)
+    assert updated.status == LessonPlan.Status.FAILED
+    assert updated.failure_reason == NO_CONTENT_SELECTION_ERROR
 
 
 @pytest.mark.django_db

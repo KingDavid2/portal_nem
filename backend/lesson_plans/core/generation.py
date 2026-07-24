@@ -1,9 +1,10 @@
 """Prompt assembly for the baseline (no RAG).
 
 The system prompt encodes the NEM/ABPC rules and the fixed 3-fase / 11-momento
-skeleton; the user message carries the concrete request plus the hardcoded
-contenidos/PDAs the model must reuse verbatim (never invent). The schema itself is
-enforced downstream by instructor, so the prompt describes intent, not JSON shape.
+skeleton; the user message carries the teacher's own planning context plus the
+official contenidos/PDAs she selected, which the model must reuse verbatim
+(never invent). The schema itself is enforced downstream by instructor, so the
+prompt describes intent, not JSON shape.
 """
 
 from __future__ import annotations
@@ -44,20 +45,53 @@ Reglas:
   agregues PDAs distintos a los dados: cópialos tal cual en el campo correspondiente.
 - Cada momento contiene una o más sesiones; cada sesión tiene una duración en minutos y una
   secuencia de pasos numerados con su dinámica (actividad) descrita para el docente.
-- Vincula el proyecto con ejes articuladores de la NEM y justifica cada uno.
+- Usa EXCLUSIVAMENTE los ejes articuladores que se te proporcionan y redacta una justificación
+  para cada uno de ellos.
+- Respeta la duración y el escenario indicados: dimensiona el número de sesiones conforme a las
+  semanas señaladas y sitúa las actividades en el escenario solicitado.
 - Incluye una rúbrica con criterios evaluados en 4 niveles de logro.
 - El propósito, título y actividades deben girar en torno al tema solicitado y conectar con la
   comunidad del estudiante.
 """
 
 
+# Stored `LessonPlan.Scenario` id -> the Spanish wording the teacher reads.
+# The model must never see the raw id, so an unknown id is a `KeyError` (which
+# the generation task treats as terminal) rather than a silent passthrough.
+SCENARIO_LABELS = {
+    "classroom": "Aula",
+    "school": "Escuela",
+    "community": "Comunidad",
+}
+
+
+def scenario_label(scenario_id: str) -> str:
+    """Spanish display wording for a stored scenario id."""
+    try:
+        return SCENARIO_LABELS[scenario_id]
+    except KeyError:
+        raise KeyError(f"Unsupported scenario: {scenario_id!r}")
+
+
 @dataclass(frozen=True)
 class GenerationRequest:
-    """A teacher-realistic request for a proyecto."""
+    """A teacher-realistic request for a proyecto.
+
+    Every field carries text the model is meant to read: catalog ids are
+    resolved to their Spanish display names *before* they get here, so the
+    prompt never leaks an internal id such as `critical-thinking`.
+    """
 
     campo: str
     grade: str
     theme: str
+    subject: str
+    duration_weeks: int
+    start_date: str
+    end_date: str
+    scenario: str
+    context_diagnosis: str
+    cross_cutting_themes: tuple[str, ...]
 
 
 def _render_pdas(groups: list[ContentPda]) -> str:
@@ -74,8 +108,15 @@ def build_messages(request: GenerationRequest, pdas: list[ContentPda]) -> list[d
     user = (
         f"Genera un proyecto ABPC para Fase 6 con estos datos:\n"
         f"- Campo formativo: {request.campo}\n"
+        f"- Asignatura: {request.subject}\n"
         f"- Grado: {request.grade}\n"
-        f"- Tema o problemática: {request.theme}\n\n"
+        f"- Tema o problemática: {request.theme}\n"
+        f"- Escenario: {request.scenario}\n"
+        f"- Duración: {request.duration_weeks} semanas "
+        f"(del {request.start_date} al {request.end_date})\n"
+        f"- Diagnóstico del contexto: {request.context_diagnosis}\n"
+        f"- Ejes articuladores (úsalos exclusivamente y justifica cada uno): "
+        f"{', '.join(request.cross_cutting_themes)}\n\n"
         f"Contenidos y PDAs seleccionados (úsalos verbatim, no inventes otros):\n"
         f"{_render_pdas(pdas)}"
     )

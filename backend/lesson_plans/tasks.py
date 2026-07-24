@@ -23,25 +23,67 @@ from pydantic import ValidationError
 
 from workspaces.scope import workspace_scope
 
+from .core.catalog import subject_by_id, theme_by_id
+from .core.catalog_pdas import content_pdas_for
 from .core.factory import build_provider
-from .core.generation import GenerationRequest
-from .core.pdas import pdas_for
+from .core.generation import GenerationRequest, scenario_label
 from .models import LessonPlan
 
 logger = logging.getLogger(__name__)
+
+# A plan created before the planning form captured official contents carries
+# no selection at all. There is no safe fallback — generating against a whole
+# field's fixture would silently ignore what the teacher chose — so it fails.
+NO_CONTENT_SELECTION_ERROR = "Lesson plan has no official content selection."
 
 # Truncate stored failure reasons so a verbose provider/traceback message
 # never blows out the TextField or leaks unbounded detail to the client.
 FAILURE_REASON_MAX_LENGTH = 2000
 
-# Errors that indicate the generated output itself is unusable (bad schema,
-# unknown campo) are terminal — retrying would produce the same failure.
+# Errors that indicate the request or the generated output itself is unusable
+# (bad schema, unresolvable catalog id, missing content selection) are terminal
+# — retrying would produce the same failure.
 _TERMINAL_ERRORS = (ValidationError, KeyError, ValueError)
 
 
 class TransientProviderError(Exception):
     """Raised by a provider adapter for a retryable network/provider failure
     (timeout, 5xx, rate limit) — never for a schema/parse failure."""
+
+
+def _selected_pdas(plan: LessonPlan):
+    """The official contents/PDAs the teacher actually chose for this plan."""
+    if not plan.content_selections:
+        raise ValueError(NO_CONTENT_SELECTION_ERROR)
+    return content_pdas_for(plan.field_id, plan.content_selections)
+
+
+def _iso(value) -> str:
+    return value.isoformat() if value else ""
+
+
+def _build_request(plan: LessonPlan) -> GenerationRequest:
+    """Turn the persisted planning context into prompt-ready Spanish text.
+
+    Catalog ids are resolved to their display names here so the prompt never
+    shows the model an internal id; an id that no longer resolves raises
+    `KeyError`, which is terminal.
+    """
+    subject = subject_by_id(plan.field_id, plan.subject_id).name if plan.subject_id else ""
+    return GenerationRequest(
+        campo=plan.campo,
+        grade=plan.grade,
+        theme=plan.theme,
+        subject=subject,
+        duration_weeks=plan.duration_weeks or 0,
+        start_date=_iso(plan.start_date),
+        end_date=_iso(plan.end_date),
+        scenario=scenario_label(plan.scenario),
+        context_diagnosis=plan.context_diagnosis,
+        cross_cutting_themes=tuple(
+            theme_by_id(theme_id).name for theme_id in plan.cross_cutting_theme_ids
+        ),
+    )
 
 
 def _fail(workspace_id, lesson_plan_id, reason: str) -> None:
@@ -66,7 +108,7 @@ def generate_lesson_plan_task(self, *, workspace_id, lesson_plan_id):
     `result=provider.generate(...)` runs *outside* any transaction (the
     ~10-30s network call must never hold a DB txn open); on success the row
     is updated inside `workspace_scope(workspace_id)` with `status=ready`;
-    on schema-parse/validation/unknown-campo failure, `status=failed` with a
+    on schema-parse/validation/unresolvable-selection failure, `status=failed` with a
     truncated `failure_reason` (no retry — the output would not change).
     Transient provider/network errors retry up to twice with exponential
     backoff.
@@ -76,12 +118,11 @@ def generate_lesson_plan_task(self, *, workspace_id, lesson_plan_id):
     # not something inherited from an enqueuing request.
     with workspace_scope(workspace_id):
         plan = LessonPlan.objects.get(pk=lesson_plan_id)
-        campo, grade, theme = plan.campo, plan.grade, plan.theme
 
     try:
         provider = build_provider()
-        pdas = pdas_for(campo)
-        request = GenerationRequest(campo=campo, grade=grade, theme=theme)
+        pdas = _selected_pdas(plan)
+        request = _build_request(plan)
         result = provider.generate(request, pdas)
     except _TERMINAL_ERRORS as exc:
         logger.warning(
