@@ -4,7 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useActiveWorkspaceId } from "@/lib/workspace/use-active-workspace";
-import { cn } from "@/lib/utils";
+import { BookOpen, GraduationCap, School, Users } from "lucide-react";
+import { LogoutButton } from "@/components/logout-button";
+import { WorkspaceSwitcher } from "@/components/workspace-switcher";
+import { NavItem } from "@/components/ui/nav-item";
 
 /**
  * Shared shell for the school-structure CRUD screens (frontend-foundation
@@ -15,11 +18,11 @@ import { cn } from "@/lib/utils";
  */
 
 const NAV_ITEMS = [
-  { href: "/schools", label: "Escuelas" },
-  { href: "/school-years", label: "Ciclos escolares" },
-  { href: "/groups", label: "Grupos" },
-  { href: "/students", label: "Alumnos" },
-  { href: "/planeaciones", label: "Planeaciones" },
+  { href: "/schools", label: "Escuelas", icon: School },
+  { href: "/school-years", label: "Ciclos escolares", icon: BookOpen },
+  { href: "/groups", label: "Grupos", icon: Users },
+  { href: "/students", label: "Alumnos", icon: GraduationCap },
+  { href: "/planeaciones", label: "Planeaciones", icon: BookOpen },
 ] as const;
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -56,22 +59,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 p-8">
-      <nav className="flex flex-wrap gap-4 border-b border-border pb-4">
-        {NAV_ITEMS.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={cn(
-              "text-sm font-medium text-muted-foreground hover:text-foreground",
-              pathname?.startsWith(item.href) && "text-foreground underline underline-offset-4",
-            )}
-          >
-            {item.label}
-          </Link>
-        ))}
-      </nav>
-      {children}
+    <div className="flex min-h-full flex-1 bg-background">
+      <aside className="w-[260px] shrink-0 border-r border-sidebar-border bg-sidebar p-4">
+        <div className="flex h-full flex-col gap-6">
+          <WorkspaceSwitcher enabled />
+          <nav aria-label="Navegación principal" className="flex flex-col gap-1">
+            {NAV_ITEMS.map((item) => <NavItem key={item.href} {...item} active={pathname?.startsWith(item.href) ?? false} />)}
+          </nav>
+          <div className="mt-auto"><LogoutButton /></div>
+        </div>
+      </aside>
+      <main className="min-w-0 flex-1 p-8">{children}</main>
     </div>
   );
 }
