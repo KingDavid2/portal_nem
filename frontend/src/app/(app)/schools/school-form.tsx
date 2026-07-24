@@ -3,7 +3,8 @@
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Card } from "@/components/ui/card";
+import { FormField } from "@/components/ui/form-field";
 import type { School, SchoolInput } from "@/lib/api/schools";
 
 const LEVEL_OPTIONS: { value: SchoolInput["level"]; label: string }[] = [
@@ -40,39 +41,14 @@ export function SchoolForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-lg border border-border p-4">
+    <Card className="p-0"><form onSubmit={handleSubmit} className="flex flex-col gap-4 p-5">
       <h2 className="text-sm font-semibold">
         {initial ? "Editar escuela" : "Nueva escuela"}
       </h2>
 
-      <Label className="flex flex-col items-start gap-1">
-        <span>Nombre</span>
-        <Input
-          required
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-        />
-      </Label>
-
-      <Label className="flex flex-col items-start gap-1">
-        <span>CCT (opcional)</span>
-        <Input value={cct} onChange={(event) => setCct(event.target.value)} />
-      </Label>
-
-      <Label className="flex flex-col items-start gap-1">
-        <span>Nivel</span>
-        <select
-          value={level}
-          onChange={(event) => setLevel(event.target.value as SchoolInput["level"])}
-          className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm"
-        >
-          {LEVEL_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </Label>
+      <FormField id="school-name" label="Nombre" required><Input id="school-name" required value={name} onChange={(event) => setName(event.target.value)} /></FormField>
+      <FormField id="school-cct" label="CCT (opcional)"><Input id="school-cct" value={cct} onChange={(event) => setCct(event.target.value)} /></FormField>
+      <FormField id="school-level" label="Nivel"><select id="school-level" value={level} onChange={(event) => setLevel(event.target.value as SchoolInput["level"])} className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm">{LEVEL_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></FormField>
 
       {errorMessage ? (
         <p className="text-sm text-destructive" role="alert">
@@ -90,6 +66,6 @@ export function SchoolForm({
           </Button>
         ) : null}
       </div>
-    </form>
+    </form></Card>
   );
 }

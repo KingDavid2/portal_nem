@@ -13,6 +13,7 @@ import {
   type SchoolInput,
 } from "@/lib/api/schools";
 import { SchoolForm } from "./school-form";
+import { Card } from "@/components/ui/card";
 
 const LEVEL_LABELS: Record<School["level"], string> = {
   preescolar: "Preescolar",
@@ -119,7 +120,7 @@ export default function SchoolsPage() {
           No se pudieron cargar las escuelas.
         </p>
       ) : (
-        <DataTable columns={columns} data={schoolsQuery.data ?? []} />
+        <Card className="p-0"><DataTable columns={columns} data={schoolsQuery.data ?? []} /></Card>
       )}
     </div>
   );
