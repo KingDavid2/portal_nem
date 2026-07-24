@@ -1,0 +1,2 @@
+import { Button } from "./button"; import { cn } from "@/lib/utils";
+export function EstadoButton({selected=false,className,...props}:React.ComponentProps<typeof Button>&{selected?:boolean}){return <Button aria-pressed={selected} variant="ghost" size="icon" className={cn("size-[34px] rounded-md text-sm text-foreground/70",selected?"bg-primary/15 text-primary":"bg-foreground/5 hover:bg-foreground/10",className)} {...props}/>;}

@@ -1,0 +1,2 @@
+import { cn } from "@/lib/utils"; type Props=React.ComponentProps<"div">&{number:number|string};
+export function PasoRow({number,className,children,...props}:Props){return <div className={cn("grid grid-cols-[48px_1fr] border-b border-foreground/12 px-4 py-3 text-[13px] leading-relaxed",className)} {...props}><span aria-label={`Paso ${number}`} className="font-semibold text-foreground/60">{number}</span><div>{children}</div></div>;}

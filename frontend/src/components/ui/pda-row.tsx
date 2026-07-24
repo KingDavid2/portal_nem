@@ -1,0 +1,3 @@
+import { Star } from "lucide-react"; import { cn } from "@/lib/utils";
+type Props=React.ComponentProps<"label">&{featured?:boolean;selected?:boolean;onSelectedChange?:(value:boolean)=>void};
+export function PdaRow({featured,selected=false,onSelectedChange,className,children,...props}:Props){return <label className={cn("flex items-center gap-2.5 py-2 text-[13px] leading-relaxed text-foreground/80",className)} {...props}><input aria-label="Seleccionar PDA" type="checkbox" checked={selected} onChange={(event)=>onSelectedChange?.(event.target.checked)} className="size-[18px] rounded border-foreground/35 accent-primary"/><Star aria-hidden className={cn("size-4 shrink-0",featured?"fill-success text-success":"text-success")}/><span>{children}</span></label>;}
