@@ -1,0 +1,2 @@
+import { renderToStaticMarkup } from "react-dom/server"; import { describe, expect, it, vi } from "vitest"; import { GroupForm } from "./group-form";
+describe("GroupForm",()=>{it("associates its fields and preserves error",()=>{const html=renderToStaticMarkup(<GroupForm schoolYearId={1} errorMessage="Error" isPending={false} onSubmit={vi.fn()}/>);expect(html).toContain('for="group-grade"');expect(html).toContain("Error");});});

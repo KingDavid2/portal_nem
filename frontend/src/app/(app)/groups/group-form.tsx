@@ -3,7 +3,8 @@
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Card } from "@/components/ui/card";
+import { FormField } from "@/components/ui/form-field";
 import type { Group } from "@/lib/api/groups";
 
 const GRADO_OPTIONS = [1, 2, 3] as const;
@@ -35,35 +36,13 @@ export function GroupForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-lg border border-border p-4">
+    <Card className="p-0"><form onSubmit={handleSubmit} className="flex flex-col gap-4 p-5">
       <h2 className="text-sm font-semibold">
         {initial ? "Editar grupo" : "Nuevo grupo"}
       </h2>
 
-      <Label className="flex flex-col items-start gap-1">
-        <span>Grado</span>
-        <select
-          value={grado}
-          onChange={(event) => setGrado(Number(event.target.value))}
-          className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm"
-        >
-          {GRADO_OPTIONS.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      </Label>
-
-      <Label className="flex flex-col items-start gap-1">
-        <span>Grupo (p. ej. A)</span>
-        <Input
-          required
-          maxLength={1}
-          value={grupo}
-          onChange={(event) => setGrupo(event.target.value.toUpperCase())}
-        />
-      </Label>
+      <FormField id="group-grade" label="Grado"><select id="group-grade" value={grado} onChange={(event) => setGrado(Number(event.target.value))} className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm">{GRADO_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}</select></FormField>
+      <FormField id="group-name" label="Grupo (p. ej. A)" required><Input id="group-name" required maxLength={1} value={grupo} onChange={(event) => setGrupo(event.target.value.toUpperCase())} /></FormField>
 
       {errorMessage ? (
         <p className="text-sm text-destructive" role="alert">
@@ -81,6 +60,6 @@ export function GroupForm({
           </Button>
         ) : null}
       </div>
-    </form>
+    </form></Card>
   );
 }

@@ -1,0 +1,2 @@
+import { renderToStaticMarkup } from "react-dom/server"; import { describe, expect, it, vi } from "vitest"; import { SchoolYearForm } from "./school-year-form";
+describe("SchoolYearForm",()=>{it("associates its field and preserves error",()=>{const html=renderToStaticMarkup(<SchoolYearForm schoolId={1} errorMessage="Error" isPending={false} onSubmit={vi.fn()}/>);expect(html).toContain('for="school-year-label"');expect(html).toContain("Error");});});

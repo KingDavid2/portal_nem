@@ -14,6 +14,7 @@ import {
   type SchoolYear,
 } from "@/lib/api/school-years";
 import { SchoolYearForm } from "./school-year-form";
+import { Card } from "@/components/ui/card";
 
 /** SchoolYear list/create/edit/delete screen, scoped to one selected School
  * (frontend-foundation spec — "CRUD Screens Cover School Structure
@@ -148,7 +149,7 @@ export default function SchoolYearsPage() {
               No se pudieron cargar los ciclos escolares.
             </p>
           ) : (
-            <DataTable columns={columns} data={visibleSchoolYears} />
+            <Card className="p-0"><DataTable columns={columns} data={visibleSchoolYears} /></Card>
           )}
         </>
       )}

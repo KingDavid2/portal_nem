@@ -15,6 +15,7 @@ import {
 import { useSchoolsQuery } from "@/lib/api/schools";
 import { schoolYearsForSchool, useSchoolYearsQuery } from "@/lib/api/school-years";
 import { GroupForm } from "./group-form";
+import { Card } from "@/components/ui/card";
 
 /** Group list/create/edit/delete screen, scoped to one selected School →
  * SchoolYear (frontend-foundation spec — "CRUD Screens Cover School
@@ -181,7 +182,7 @@ export default function GroupsPage() {
               No se pudieron cargar los grupos.
             </p>
           ) : (
-            <DataTable columns={columns} data={visibleGroups} />
+            <Card className="p-0"><DataTable columns={columns} data={visibleGroups} /></Card>
           )}
         </>
       )}
