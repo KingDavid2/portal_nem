@@ -41,12 +41,12 @@ export function ProyectoViewer({ proyecto }: { proyecto: Proyecto }) {
         </ul>
       </section>
 
-      <div className="grid gap-3">{proyecto.contents_and_pdas.map((group) => <ContenidoCard key={group.content} title={group.content} pdaRows={group.pdas.map((content) => ({ id: content, content }))} />)}</div>
+      <section><h3 className="text-sm font-semibold">Contenidos y PDAs</h3>{proyecto.contents_and_pdas.length === 0 ? <p className="mt-2 text-sm text-muted-foreground">Sin contenidos ni PDAs</p> : <div className="mt-2 grid gap-3">{proyecto.contents_and_pdas.map((group, index) => <ContenidoCard key={`${group.content}-${index}`} readOnly title={group.content} pdaRows={group.pdas.map((content, pdaIndex) => ({ id: `${index}-${pdaIndex}`, content }))} />)}</div>}</section>
 
       {proyecto.stages.map((stage) => (
         <section key={stage.name} className="rounded-lg border border-border p-4">
           <h3 className="text-sm font-semibold">Fase: {stage.name}</h3>
-          {stage.momentos.map((momento) => <MomentoCard key={momento.number} title={`Momento ${momento.number}: ${momento.name}`} pasoRows={momento.sessions.flatMap((session) => session.steps.map((step) => ({ number: step.number, content: step.dynamic })))} session={momento.sessions.map((session) => <p key={session.duration_minutes} className="text-sm text-muted-foreground">Duración: {session.duration_minutes} minutos</p>)} />)}
+          {stage.momentos.flatMap((momento, momentoIndex) => momento.sessions.map((session, sessionIndex) => <MomentoCard key={`${momento.number}-${momentoIndex}-${sessionIndex}`} title={`Momento ${momento.number}: ${momento.name}`} subtitle={`Sesión ${sessionIndex + 1} · ${session.duration_minutes} minutos`} pasoRows={session.steps.map((step, stepIndex) => ({ number: step.number, content: step.dynamic, id: `${step.number}-${stepIndex}` }))} />))}
         </section>
       ))}
 
