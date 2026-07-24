@@ -1,18 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import type { ColumnDef } from "@tanstack/react-table";
 import {
   BookOpen,
+  CalendarDays,
   CheckCircle2,
   Clock3,
+  Compass,
   FilePlus2,
   Plus,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DataTable } from "@/components/data-table";
 import { useSchoolsQuery } from "@/lib/api/schools";
 import { schoolYearsForSchool, useSchoolYearsQuery } from "@/lib/api/school-years";
 import { groupsForSchoolYear, useGroupsQuery } from "@/lib/api/groups";
@@ -105,36 +106,6 @@ export default function PlaneacionesPage() {
       onError: (error) => setRowError(error.message),
     });
   }
-
-  const columns = useMemo<ColumnDef<LessonPlan, unknown>[]>(
-    () => [
-      { header: "Tema", accessorKey: "theme" },
-      { header: "Campo formativo", accessorKey: "campo" },
-      {
-        header: "Estado",
-        cell: ({ row }) => <StatusBadge status={row.original.status} />,
-      },
-      {
-        id: "actions",
-        header: "Acciones",
-        cell: ({ row }) => (
-          <div className="flex gap-2">
-            <Link
-              href={`/planeaciones/${row.original.id}`}
-              className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-            >
-              Ver
-            </Link>
-            <Button size="sm" variant="destructive" onClick={() => handleDelete(row.original)}>
-              Eliminar
-            </Button>
-          </div>
-        ),
-      },
-    ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
-  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -273,7 +244,11 @@ export default function PlaneacionesPage() {
           </div>
         </Card>
       ) : (
-        <Card className="p-0"><DataTable columns={columns} data={visiblePlans} /></Card>
+        <section aria-label="Proyectos" className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {visiblePlans.map((plan) => (
+            <PlanCard key={plan.id} plan={plan} onDelete={handleDelete} />
+          ))}
+        </section>
       )}
     </div>
   );
@@ -307,8 +282,99 @@ function SelectField({
   );
 }
 
+function PlanCard({ plan, onDelete }: { plan: LessonPlan; onDelete: (plan: LessonPlan) => void }) {
+  const project = getProjectSummary(plan.proyecto);
+  const totalMoments = project.totalMoments || 11;
+  const completedMoments = plan.status === "ready" ? totalMoments : 0;
+  const createdAt = new Intl.DateTimeFormat("es-MX", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(plan.created_at));
+
+  return (
+    <Card className="group flex h-[248px] flex-col gap-3 p-5 transition-transform hover:-translate-y-0.5">
+      <div className="flex items-center justify-between gap-2">
+        <StatusChip tone="brand">{plan.campo}</StatusChip>
+        <div className="flex items-center gap-1">
+          <StatusBadge status={plan.status} />
+          <Button
+            size="icon-xs"
+            variant="ghost"
+            className="w-0 overflow-hidden p-0 opacity-0 transition-all group-hover:w-6 group-hover:opacity-100 focus-visible:w-6 focus-visible:opacity-100"
+            aria-label={`Eliminar ${plan.theme}`}
+            onClick={() => onDelete(plan)}
+          >
+            <Trash2 className="text-muted-foreground group-hover/button:text-destructive" />
+          </Button>
+        </div>
+      </div>
+
+      <Link href={`/planeaciones/${plan.id}`} className="line-clamp-2 text-base font-semibold leading-[1.35] hover:text-primary">
+        <h2>
+          {plan.title || plan.theme}
+        </h2>
+      </Link>
+
+      <div className="flex flex-col gap-1.5 text-[13px] text-muted-foreground">
+        <span className="flex items-center gap-2">
+          <Compass className="size-[15px]" />
+          {project.methodology}
+        </span>
+        <span className="flex items-center gap-2">
+          <CalendarDays className="size-[15px]" />
+          {createdAt}
+        </span>
+      </div>
+
+      <div className="mt-auto flex flex-col gap-1.5 pt-2.5">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>Momentos</span>
+          <strong className="font-semibold text-foreground/80">
+            {completedMoments}/{totalMoments}
+          </strong>
+        </div>
+        <div className="h-1.5 overflow-hidden rounded-full bg-foreground/10">
+          <div
+            className={`h-full rounded-full ${
+              plan.status === "ready"
+                ? "w-full bg-success"
+                : plan.status === "pending"
+                  ? "w-0 bg-primary"
+                  : "w-0 bg-destructive"
+            }`}
+          />
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 function StatusBadge({ status }: { status: LessonPlan["status"] }) {
   if (status === "ready") return <StatusChip tone="success">Aprobada</StatusChip>;
   if (status === "failed") return <StatusChip tone="danger">Con error</StatusChip>;
   return <StatusChip tone="brand">Borrador IA</StatusChip>;
+}
+
+function getProjectSummary(project: unknown): { methodology: string; totalMoments: number } {
+  if (!project || typeof project !== "object") {
+    return { methodology: "ABP Comunitario", totalMoments: 0 };
+  }
+
+  const value = project as {
+    datos?: { methodology?: unknown };
+    stages?: Array<{ momentos?: unknown[] }>;
+  };
+  const methodology =
+    typeof value.datos?.methodology === "string"
+      ? value.datos.methodology
+      : "ABP Comunitario";
+  const totalMoments = Array.isArray(value.stages)
+    ? value.stages.reduce(
+        (total, stage) => total + (Array.isArray(stage.momentos) ? stage.momentos.length : 0),
+        0,
+      )
+    : 0;
+
+  return { methodology, totalMoments };
 }
