@@ -33,7 +33,6 @@ from lesson_plans.core.catalog import (
     CROSS_CUTTING_THEMES,
     METHODOLOGIES,
     PHASE,
-    field_by_id,
     official_content_for,
     pda_by_id,
     subjects_for,
@@ -42,10 +41,12 @@ from lesson_plans.core.schema import Proyecto
 from lesson_plans.models import LessonPlan
 from lesson_plans.serializers import (
     LessonPlanCatalogSerializer,
+    LessonPlanCreateSerializer,
     LessonPlanSerializer,
 )
 from lesson_plans.services import delete_lesson_plan, generate_lesson_plan
-from schools.models import Group, School
+from lesson_plans.validation import require_secondary_group, resolve_field
+from schools.models import Group
 from workspaces.permissions import WorkspacePermission
 
 CAPABILITY_MAP = {
@@ -97,13 +98,21 @@ class LessonPlanViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(group_id=group_id)
         return queryset
 
+    def get_serializer_class(self):
+        if self.action == "create":
+            return LessonPlanCreateSerializer
+        return LessonPlanSerializer
+
+    @extend_schema(
+        request=LessonPlanCreateSerializer, responses={202: LessonPlanSerializer}
+    )
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         plan = generate_lesson_plan(
             membership=request.membership, **serializer.validated_data
         )
-        output = self.get_serializer(plan)
+        output = LessonPlanSerializer(plan)
         headers = self.get_success_headers(output.data)
         return Response(output.data, status=status.HTTP_202_ACCEPTED, headers=headers)
 
@@ -141,19 +150,13 @@ class LessonPlanViewSet(viewsets.ModelViewSet):
         if errors:
             raise ValidationError(errors)
 
-        try:
-            field = field_by_id(field_id)
-        except KeyError:
-            raise ValidationError({"field": "Unsupported field id."})
+        field = resolve_field(field_id, error_key="field")
 
         group = get_object_or_404(
             Group.objects.select_related("school_year__school"),
             pk=group_id,
         )
-        if group.school_year.school.level != School.Level.SECUNDARIA:
-            raise ValidationError(
-                {"group": "The group must belong to a secondary school."}
-            )
+        require_secondary_group(group, error_key="group")
 
         contents = []
         for content in official_content_for(field.id):

@@ -12,6 +12,7 @@ resolves inline — every test that reaches the enqueue step mocks
 
 from __future__ import annotations
 
+from datetime import date
 from unittest.mock import patch
 
 import pytest
@@ -68,6 +69,30 @@ def _canned_proyecto(*, extra_pda: str | None = None) -> Proyecto:
             criteria=[RubricCriterion(criterion="Participación", levels=["a", "b", "c", "d"])]
         ),
     )
+
+
+def _context(**overrides):
+    """The validated planning context `generate_lesson_plan` now receives."""
+    context = {
+        "field_id": "languages",
+        "subject_id": "spanish",
+        "methodology_id": "community-based-project-learning",
+        "theme": "La independencia",
+        "context_diagnosis": "El grupo requiere fortalecer la producción escrita.",
+        "scenario": "community",
+        "duration_weeks": 4,
+        "start_date": date(2026, 1, 12),
+        "end_date": date(2026, 2, 6),
+        "cross_cutting_theme_ids": ["critical-thinking", "inclusion"],
+        "content_selections": [
+            {
+                "content_id": "languages-text-resources",
+                "pda_ids": ["languages-accentuation", "languages-coherent-texts"],
+            }
+        ],
+    }
+    context.update(overrides)
+    return context
 
 
 class _FakeProvider:
@@ -161,9 +186,7 @@ def test_create_denied_without_edit_content(viewer_membership, group_factory):
         generate_lesson_plan(
             membership=viewer_membership,
             group=group,
-            campo="Lenguajes",
-            grade="SEGUNDO",
-            theme="La independencia",
+            **_context(),
         )
 
     assert not LessonPlan.objects.filter(group=group).exists()
@@ -193,12 +216,48 @@ def test_generate_assigns_membership_workspace_not_client_input(
         plan = generate_lesson_plan(
             membership=member_membership,
             group=group,
-            campo="Lenguajes",
-            grade="SEGUNDO",
-            theme="La independencia",
+            **_context(),
         )
 
     assert plan.workspace_id == member_membership.workspace_id
+
+
+def test_generate_derives_campo_and_grade_and_persists_the_context(
+    member_membership, group_factory
+):
+    """`campo`/`grade` are never passed in — they are derived from the
+    resolved field and the group, and every context column is stored."""
+    from lesson_plans.services import generate_lesson_plan
+
+    group = group_factory(member_membership)
+
+    with patch(
+        "lesson_plans.tasks.build_provider",
+        return_value=_fake_provider_returning(_canned_proyecto()),
+    ):
+        plan = generate_lesson_plan(
+            membership=member_membership,
+            group=group,
+            **_context(),
+        )
+
+    stored = _read_plan(member_membership.workspace_id, plan.pk)
+    assert stored.campo == "Lenguajes"
+    assert stored.grade == str(group.grado)
+    assert stored.field_id == "languages"
+    assert stored.subject_id == "spanish"
+    assert stored.methodology_id == "community-based-project-learning"
+    assert stored.duration_weeks == 4
+    assert stored.start_date == date(2026, 1, 12)
+    assert stored.end_date == date(2026, 2, 6)
+    assert stored.scenario == "community"
+    assert stored.cross_cutting_theme_ids == ["critical-thinking", "inclusion"]
+    assert stored.content_selections == [
+        {
+            "content_id": "languages-text-resources",
+            "pda_ids": ["languages-accentuation", "languages-coherent-texts"],
+        }
+    ]
 
 
 def test_generate_denied_cross_workspace_group(member_membership, membership_factory, group_factory):
@@ -211,9 +270,7 @@ def test_generate_denied_cross_workspace_group(member_membership, membership_fac
         generate_lesson_plan(
             membership=member_membership,
             group=foreign_group,
-            campo="Lenguajes",
-            grade="SEGUNDO",
-            theme="La independencia",
+            **_context(),
         )
 
 
@@ -239,9 +296,7 @@ def test_generate_creates_pending_row_and_enqueues_task(member_membership, group
         plan = generate_lesson_plan(
             membership=member_membership,
             group=group,
-            campo="Lenguajes",
-            grade="SEGUNDO",
-            theme="La independencia",
+            **_context(),
         )
 
     updated = _read_plan(member_membership.workspace_id, plan.pk)
@@ -273,9 +328,7 @@ def test_generate_surfaces_invented_pda_flag_without_blocking_ready(
         plan = generate_lesson_plan(
             membership=member_membership,
             group=group,
-            campo="Lenguajes",
-            grade="SEGUNDO",
-            theme="La independencia",
+            **_context(),
         )
 
     updated = _read_plan(member_membership.workspace_id, plan.pk)
@@ -294,9 +347,7 @@ def test_delete_denied_without_edit_content(member_membership, viewer_membership
         plan = generate_lesson_plan(
             membership=member_membership,
             group=group,
-            campo="Lenguajes",
-            grade="SEGUNDO",
-            theme="La independencia",
+            **_context(),
         )
 
     with pytest.raises(PermissionDenied):
@@ -315,9 +366,7 @@ def test_delete_success(member_membership, group_factory):
         plan = generate_lesson_plan(
             membership=member_membership,
             group=group,
-            campo="Lenguajes",
-            grade="SEGUNDO",
-            theme="La independencia",
+            **_context(),
         )
 
     delete_lesson_plan(membership=member_membership, lesson_plan=plan)

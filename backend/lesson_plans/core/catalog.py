@@ -194,6 +194,18 @@ def content_for_field(field_id: str) -> tuple[Content, ...]:
     return tuple(content for content in CONTENTS if content.field_id == field.id)
 
 
+def subject_by_id(field_id: str, identifier: str) -> Subject:
+    """Resolve a subject id *within* a field, so a subject belonging to another
+    field is a lookup failure rather than a silent cross-field match."""
+    return _lookup(identifier, subjects_for_field(field_id), "subject")
+
+
+def content_by_id(field_id: str, identifier: str) -> Content:
+    """Resolve an official-content id within a field. Fields without verified
+    curriculum text expose no content, so every id fails for them."""
+    return _lookup(identifier, content_for_field(field_id), "content")
+
+
 def subjects_for(field_id: str) -> tuple[Subject, ...]:
     return subjects_for_field(field_id)
 

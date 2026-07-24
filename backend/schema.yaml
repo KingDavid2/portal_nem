@@ -251,18 +251,18 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LessonPlan'
+              $ref: '#/components/schemas/LessonPlanCreate'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/LessonPlan'
+              $ref: '#/components/schemas/LessonPlanCreate'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/LessonPlan'
+              $ref: '#/components/schemas/LessonPlanCreate'
         required: true
       security:
       - cookieAuth: []
       responses:
-        '201':
+        '202':
           content:
             application/json:
               schema:
@@ -940,6 +940,19 @@ components:
       required:
       - id
       - name
+    ContentSelection:
+      type: object
+      description: One official content plus the PDAs chosen under it.
+      properties:
+        content_id:
+          type: string
+        pda_ids:
+          type: array
+          items:
+            type: string
+      required:
+      - content_id
+      - pda_ids
     Group:
       type: object
       properties:
@@ -1137,6 +1150,65 @@ components:
       - phase
       - subjects
       - teacher
+    LessonPlanCreate:
+      type: object
+      description: |-
+        Write contract of `POST /api/lesson-plans/`.
+
+        Every curriculum value arrives as an official catalog id — free text is
+        only accepted for the teacher's own prose (`theme`, `context_diagnosis`).
+        `campo` and `grade` are deliberately absent: the server derives them from
+        the resolved field and the group, so a client that sends them is ignored.
+
+        All catalog rules live in `validate()` rather than in per-field
+        `validate_<name>` hooks because every one of them is answerable only once
+        `field_id` is known, and DRF does not order field-level hooks.
+      properties:
+        group:
+          type: integer
+        field_id:
+          type: string
+        subject_id:
+          type: string
+          default: ''
+        methodology_id:
+          type: string
+        theme:
+          type: string
+        context_diagnosis:
+          type: string
+        scenario:
+          $ref: '#/components/schemas/ScenarioEnum'
+        duration_weeks:
+          type: integer
+          maximum: 12
+          minimum: 1
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+        cross_cutting_theme_ids:
+          type: array
+          items:
+            type: string
+        content_selections:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContentSelection'
+      required:
+      - content_selections
+      - context_diagnosis
+      - cross_cutting_theme_ids
+      - duration_weeks
+      - end_date
+      - field_id
+      - group
+      - methodology_id
+      - scenario
+      - start_date
+      - theme
     LevelEnum:
       enum:
       - preescolar

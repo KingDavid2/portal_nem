@@ -11,9 +11,12 @@ this authorization decision — design Interfaces/Contracts), then enqueues
 
 from __future__ import annotations
 
+from datetime import date
+
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 
+from lesson_plans.core.catalog import field_by_id
 from lesson_plans.models import LessonPlan
 from lesson_plans.tasks import generate_lesson_plan_task
 from workspaces.permissions import has_permission
@@ -25,8 +28,27 @@ def _require_edit_content(membership) -> None:
 
 
 def generate_lesson_plan(
-    *, membership, group, campo: str, grade: str, theme: str
+    *,
+    membership,
+    group,
+    field_id: str,
+    methodology_id: str,
+    theme: str,
+    context_diagnosis: str,
+    scenario: str,
+    duration_weeks: int,
+    start_date: date,
+    end_date: date,
+    cross_cutting_theme_ids: list[str],
+    content_selections: list[dict],
+    subject_id: str = "",
 ) -> LessonPlan:
+    """Persist a validated planning request and enqueue its generation.
+
+    The caller passes the catalog ids the teacher picked; `campo` and `grade`
+    are never client input — they are derived here from the resolved field and
+    the group so the stored row cannot disagree with its own context.
+    """
     _require_edit_content(membership)
     if group.workspace_id != membership.workspace_id:
         raise ValueError("Group does not belong to the caller's workspace.")
@@ -34,9 +56,19 @@ def generate_lesson_plan(
         plan = LessonPlan.objects.create(
             workspace=membership.workspace,
             group=group,
-            campo=campo,
-            grade=grade,
+            campo=field_by_id(field_id).name,
+            grade=str(group.grado),
             theme=theme,
+            field_id=field_id,
+            subject_id=subject_id,
+            methodology_id=methodology_id,
+            duration_weeks=duration_weeks,
+            start_date=start_date,
+            end_date=end_date,
+            scenario=scenario,
+            context_diagnosis=context_diagnosis,
+            cross_cutting_theme_ids=cross_cutting_theme_ids,
+            content_selections=content_selections,
         )
     generate_lesson_plan_task.delay(workspace_id=membership.workspace_id, lesson_plan_id=plan.pk)
     return plan

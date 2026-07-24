@@ -85,6 +85,31 @@ def _fake_provider():
     )
 
 
+def _payload(group, **overrides):
+    """The catalog-backed POST body every create test submits."""
+    payload = {
+        "group": group.pk,
+        "field_id": "languages",
+        "subject_id": "spanish",
+        "methodology_id": "community-based-project-learning",
+        "theme": "La independencia",
+        "context_diagnosis": "El grupo requiere fortalecer la producción escrita.",
+        "scenario": "community",
+        "duration_weeks": 4,
+        "start_date": "2026-01-12",
+        "end_date": "2026-02-06",
+        "cross_cutting_theme_ids": ["critical-thinking", "inclusion"],
+        "content_selections": [
+            {
+                "content_id": "languages-text-resources",
+                "pda_ids": ["languages-accentuation", "languages-coherent-texts"],
+            }
+        ],
+    }
+    payload.update(overrides)
+    return payload
+
+
 @pytest.fixture
 def membership_factory():
     from workspaces.models import Membership, Workspace
@@ -138,7 +163,8 @@ def test_create_returns_202_with_lesson_plan_id(membership_factory, api_client_f
     with patch("lesson_plans.tasks.build_provider", return_value=_fake_provider()):
         response = client.post(
             "/api/lesson-plans/",
-            {"group": group.pk, "campo": "Lenguajes", "grade": "SEGUNDO", "theme": "La independencia"},
+            _payload(group),
+            format="json",
         )
 
     assert response.status_code == 202
@@ -155,7 +181,8 @@ def test_create_denied_without_edit_content(membership_factory, api_client_for, 
 
     response = client.post(
         "/api/lesson-plans/",
-        {"group": group.pk, "campo": "Lenguajes", "grade": "SEGUNDO", "theme": "La independencia"},
+        _payload(group),
+        format="json",
     )
 
     assert response.status_code == 403
@@ -176,11 +203,13 @@ def test_list_scoped_to_requested_group_and_workspace(
     with patch("lesson_plans.tasks.build_provider", return_value=_fake_provider()):
         create_a = client_a.post(
             "/api/lesson-plans/",
-            {"group": group_a.pk, "campo": "Lenguajes", "grade": "SEGUNDO", "theme": "Mine"},
+            _payload(group_a, theme="Mine"),
+            format="json",
         )
         client_b.post(
             "/api/lesson-plans/",
-            {"group": group_b.pk, "campo": "Lenguajes", "grade": "SEGUNDO", "theme": "NotMine"},
+            _payload(group_b, theme="NotMine"),
+            format="json",
         )
 
     response = client_a.get(f"/api/lesson-plans/?group={group_a.pk}")
@@ -202,7 +231,8 @@ def test_retrieve_foreign_workspace_lesson_plan_returns_404(
     with patch("lesson_plans.tasks.build_provider", return_value=_fake_provider()):
         create_b = client_b.post(
             "/api/lesson-plans/",
-            {"group": group_b.pk, "campo": "Lenguajes", "grade": "SEGUNDO", "theme": "Ajena"},
+            _payload(group_b, theme="Ajena"),
+            format="json",
         )
 
     response = client_a.get(f"/api/lesson-plans/{create_b.data['id']}/")
@@ -224,7 +254,8 @@ def test_retrieve_reflects_status_transitions(membership_factory, api_client_for
     with patch("lesson_plans.tasks.build_provider", return_value=_fake_provider()):
         create_response = client.post(
             "/api/lesson-plans/",
-            {"group": group.pk, "campo": "Lenguajes", "grade": "SEGUNDO", "theme": "La independencia"},
+            _payload(group),
+            format="json",
         )
 
     plan_id = create_response.data["id"]
@@ -235,32 +266,18 @@ def test_retrieve_reflects_status_transitions(membership_factory, api_client_for
     assert response.data["proyecto"]["title"] == "Héroes y Gestas"
 
 
-def test_project_context_fields_are_exposed_read_only(
+def test_create_persists_every_project_context_column(
     membership_factory, api_client_for, group_factory
 ):
-    """The new project-context columns are serialized on read, but the write
-    contract is still the original four fields — sending them in a POST body
-    must not persist anything."""
+    """The catalog-backed body is stored verbatim on the row and echoed back
+    by the read serializer."""
     membership = membership_factory("member")
     client = api_client_for(membership)
     group = group_factory(membership)
 
     with patch("lesson_plans.tasks.build_provider", return_value=_fake_provider()):
         create_response = client.post(
-            "/api/lesson-plans/",
-            {
-                "group": group.pk,
-                "campo": "Lenguajes",
-                "grade": "SEGUNDO",
-                "theme": "La independencia",
-                "field_id": "languages",
-                "subject_id": "spanish",
-                "methodology_id": "community-based-project-learning",
-                "duration_weeks": 4,
-                "scenario": "community",
-                "context_diagnosis": "Diagnóstico enviado por el cliente.",
-            },
-            format="json",
+            "/api/lesson-plans/", _payload(group), format="json"
         )
 
     assert create_response.status_code == 202
@@ -268,16 +285,61 @@ def test_project_context_fields_are_exposed_read_only(
     response = client.get(f"/api/lesson-plans/{create_response.data['id']}/")
 
     assert response.status_code == 200
-    assert response.data["field_id"] == ""
-    assert response.data["subject_id"] == ""
-    assert response.data["methodology_id"] == ""
-    assert response.data["scenario"] == ""
-    assert response.data["context_diagnosis"] == ""
-    assert response.data["duration_weeks"] is None
-    assert response.data["start_date"] is None
-    assert response.data["end_date"] is None
-    assert response.data["cross_cutting_theme_ids"] == []
-    assert response.data["content_selections"] == []
+    assert response.data["field_id"] == "languages"
+    assert response.data["subject_id"] == "spanish"
+    assert response.data["methodology_id"] == "community-based-project-learning"
+    assert response.data["scenario"] == "community"
+    assert response.data["context_diagnosis"] == (
+        "El grupo requiere fortalecer la producción escrita."
+    )
+    assert response.data["duration_weeks"] == 4
+    assert response.data["start_date"] == "2026-01-12"
+    assert response.data["end_date"] == "2026-02-06"
+    assert response.data["cross_cutting_theme_ids"] == ["critical-thinking", "inclusion"]
+    assert response.data["content_selections"] == [
+        {
+            "content_id": "languages-text-resources",
+            "pda_ids": ["languages-accentuation", "languages-coherent-texts"],
+        }
+    ]
+
+
+def test_create_derives_campo_and_grade_ignoring_client_supplied_values(
+    membership_factory, api_client_for, group_factory
+):
+    """`campo`/`grade` are server-derived from the resolved field and the
+    group — a client that sends its own values is ignored, not obeyed."""
+    membership = membership_factory("member")
+    client = api_client_for(membership)
+    group = group_factory(membership)
+
+    with patch("lesson_plans.tasks.build_provider", return_value=_fake_provider()):
+        create_response = client.post(
+            "/api/lesson-plans/",
+            _payload(group, campo="Matemáticas", grade="NOVENO"),
+            format="json",
+        )
+
+    assert create_response.status_code == 202
+    assert create_response.data["campo"] == "Lenguajes"
+    assert create_response.data["grade"] == str(group.grado)
+
+
+def test_create_rejects_a_body_that_is_not_catalog_backed(
+    membership_factory, api_client_for, group_factory
+):
+    membership = membership_factory("member")
+    client = api_client_for(membership)
+    group = group_factory(membership)
+
+    response = client.post(
+        "/api/lesson-plans/",
+        _payload(group, field_id="astrology"),
+        format="json",
+    )
+
+    assert response.status_code == 400
+    assert response.data == {"field_id": ["Unsupported field id."]}
 
 
 def test_destroy_success(membership_factory, api_client_for, group_factory):
@@ -288,7 +350,8 @@ def test_destroy_success(membership_factory, api_client_for, group_factory):
     with patch("lesson_plans.tasks.build_provider", return_value=_fake_provider()):
         create_response = client.post(
             "/api/lesson-plans/",
-            {"group": group.pk, "campo": "Lenguajes", "grade": "SEGUNDO", "theme": "La independencia"},
+            _payload(group),
+            format="json",
         )
 
     response = client.delete(f"/api/lesson-plans/{create_response.data['id']}/")
