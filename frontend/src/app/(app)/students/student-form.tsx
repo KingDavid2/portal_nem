@@ -3,7 +3,8 @@
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Card } from "@/components/ui/card";
+import { FormField } from "@/components/ui/form-field";
 import type { Student } from "@/lib/api/students";
 
 /** Create/edit form for Student, scoped to the currently selected Group
@@ -47,45 +48,15 @@ export function StudentForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-lg border border-border p-4">
+    <Card className="p-0"><form onSubmit={handleSubmit} className="flex flex-col gap-4 p-5">
       <h2 className="text-sm font-semibold">
         {initial ? "Editar alumno" : "Nuevo alumno"}
       </h2>
 
-      <Label className="flex flex-col items-start gap-1">
-        <span>Nombre(s)</span>
-        <Input
-          required
-          value={firstName}
-          onChange={(event) => setFirstName(event.target.value)}
-        />
-      </Label>
-
-      <Label className="flex flex-col items-start gap-1">
-        <span>Apellido paterno</span>
-        <Input
-          required
-          value={lastNamePaternal}
-          onChange={(event) => setLastNamePaternal(event.target.value)}
-        />
-      </Label>
-
-      <Label className="flex flex-col items-start gap-1">
-        <span>Apellido materno (opcional)</span>
-        <Input
-          value={lastNameMaternal}
-          onChange={(event) => setLastNameMaternal(event.target.value)}
-        />
-      </Label>
-
-      <Label className="flex flex-col items-start gap-1">
-        <span>CURP (opcional)</span>
-        <Input
-          maxLength={18}
-          value={curp}
-          onChange={(event) => setCurp(event.target.value.toUpperCase())}
-        />
-      </Label>
+      <FormField id="student-first-name" label="Nombre(s)" required><Input id="student-first-name" required value={firstName} onChange={(event) => setFirstName(event.target.value)} /></FormField>
+      <FormField id="student-last-name" label="Apellido paterno" required><Input id="student-last-name" required value={lastNamePaternal} onChange={(event) => setLastNamePaternal(event.target.value)} /></FormField>
+      <FormField id="student-maternal-name" label="Apellido materno (opcional)"><Input id="student-maternal-name" value={lastNameMaternal} onChange={(event) => setLastNameMaternal(event.target.value)} /></FormField>
+      <FormField id="student-curp" label="CURP (opcional)"><Input id="student-curp" maxLength={18} value={curp} onChange={(event) => setCurp(event.target.value.toUpperCase())} /></FormField>
 
       {errorMessage ? (
         <p className="text-sm text-destructive" role="alert">
@@ -103,6 +74,6 @@ export function StudentForm({
           </Button>
         ) : null}
       </div>
-    </form>
+    </form></Card>
   );
 }

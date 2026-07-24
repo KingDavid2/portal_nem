@@ -16,6 +16,9 @@ import {
   type Student,
 } from "@/lib/api/students";
 import { StudentForm } from "./student-form";
+import { SchoolContextFilters } from "@/components/school-context-filters";
+import { Avatar } from "@/components/ui/avatar";
+import { StatusChip } from "@/components/ui/status-chip";
 
 /** Student list/create/edit/delete screen, scoped to one selected School →
  * SchoolYear → Group (frontend-foundation spec — "CRUD Screens Cover School
@@ -93,7 +96,7 @@ export default function StudentsPage() {
 
   const columns = useMemo<ColumnDef<Student, unknown>[]>(
     () => [
-      { header: "Nombre(s)", accessorKey: "first_name" },
+      { header: "Alumno", cell: ({ row }) => <div className="flex items-center gap-2"><Avatar size="sm" name={`${row.original.first_name} ${row.original.last_name_paternal}`} /><span>{row.original.first_name}</span><StatusChip tone="success">Activo</StatusChip></div> },
       { header: "Apellido paterno", accessorKey: "last_name_paternal" },
       { header: "Apellido materno", accessorFn: (student) => student.last_name_maternal || "—" },
       { header: "CURP", accessorFn: (student) => student.curp || "—" },
@@ -120,73 +123,15 @@ export default function StudentsPage() {
     <div className="flex flex-col gap-6">
       <h1 className="text-xl font-semibold">Alumnos</h1>
 
-      <div className="flex flex-wrap gap-4">
-        <label className="flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">Escuela</span>
-          <select
-            className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm"
-            value={selectedSchoolId ?? ""}
-            onChange={(event) => {
-              setSelectedSchoolId(event.target.value ? Number(event.target.value) : null);
-              setSelectedSchoolYearId(null);
-              setSelectedGroupId(null);
-              setEditingStudent(null);
-              setFormError(null);
-            }}
-          >
-            <option value="">Selecciona una escuela…</option>
-            {schools.map((school) => (
-              <option key={school.id} value={school.id}>
-                {school.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">Ciclo escolar</span>
-          <select
-            className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm"
-            value={selectedSchoolYearId ?? ""}
-            disabled={selectedSchoolId === null}
-            onChange={(event) => {
-              setSelectedSchoolYearId(event.target.value ? Number(event.target.value) : null);
-              setSelectedGroupId(null);
-              setEditingStudent(null);
-              setFormError(null);
-            }}
-          >
-            <option value="">Selecciona un ciclo escolar…</option>
-            {visibleSchoolYears.map((schoolYear) => (
-              <option key={schoolYear.id} value={schoolYear.id}>
-                {schoolYear.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">Grupo</span>
-          <select
-            className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm"
-            value={selectedGroupId ?? ""}
-            disabled={selectedSchoolYearId === null}
-            onChange={(event) => {
-              setSelectedGroupId(event.target.value ? Number(event.target.value) : null);
-              setEditingStudent(null);
-              setFormError(null);
-            }}
-          >
-            <option value="">Selecciona un grupo…</option>
-            {visibleGroups.map((group) => (
-              <option key={group.id} value={group.id}>
-                {group.grado}
-                {group.grupo}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+      <SchoolContextFilters
+        schools={schools.map((school) => ({ id: school.id, label: school.name }))}
+        schoolYears={visibleSchoolYears.map((year) => ({ id: year.id, label: year.label }))}
+        groups={visibleGroups.map((group) => ({ id: group.id, label: `${group.grado}${group.grupo}` }))}
+        schoolId={selectedSchoolId} schoolYearId={selectedSchoolYearId} groupId={selectedGroupId}
+        onSchoolChange={(id) => { setSelectedSchoolId(id); setEditingStudent(null); setFormError(null); }}
+        onSchoolYearChange={(id) => { setSelectedSchoolYearId(id); setEditingStudent(null); setFormError(null); }}
+        onGroupChange={(id) => { setSelectedGroupId(id); setEditingStudent(null); setFormError(null); }}
+      />
 
       {selectedGroupId === null ? (
         <p className="text-muted-foreground">
