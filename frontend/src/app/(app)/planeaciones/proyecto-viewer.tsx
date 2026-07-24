@@ -46,7 +46,7 @@ export function ProyectoViewer({ proyecto }: { proyecto: Proyecto }) {
       {proyecto.stages.map((stage) => (
         <section key={stage.name} className="rounded-lg border border-border p-4">
           <h3 className="text-sm font-semibold">Fase: {stage.name}</h3>
-          {stage.momentos.flatMap((momento, momentoIndex) => momento.sessions.map((session, sessionIndex) => <MomentoCard key={`${momento.number}-${momentoIndex}-${sessionIndex}`} title={`Momento ${momento.number}: ${momento.name}`} subtitle={`Sesión ${sessionIndex + 1} · ${session.duration_minutes} minutos`} pasoRows={session.steps.map((step, stepIndex) => ({ number: step.number, content: step.dynamic, id: `${step.number}-${stepIndex}` }))} />))}
+          {stage.momentos.map((momento, momentoIndex) => momento.sessions.length === 0 ? <MomentoCard key={`${momento.number}-${momentoIndex}`} title={`Momento ${momento.number}: ${momento.name}`} /> : momento.sessions.map((session, sessionIndex) => <MomentoCard key={`${momento.number}-${momentoIndex}-${sessionIndex}`} title={`Momento ${momento.number}: ${momento.name}`} subtitle={`Sesión ${sessionIndex + 1} · ${session.duration_minutes} minutos`} pasoRows={session.steps.map((step, stepIndex) => ({ id: `${momentoIndex}-${sessionIndex}-${step.number}-${stepIndex}`, number: step.number, content: step.dynamic }))} />))}
         </section>
       ))}
 
