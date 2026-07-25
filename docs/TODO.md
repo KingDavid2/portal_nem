@@ -38,29 +38,15 @@ Neither blocks the RAG code — both block the final measured exit-gate number.
 ## M5 — Nueva planeación follow-ups
 
 Left open by the twelve-unit alignment (`a4dd883`..`118ad72`). Full context:
-`docs/archive/2026-07-25-nueva-planeacion-progress.md`.
+`docs/archive/2026-07-25-nueva-planeacion-progress.md`. The dotenv, header, select and
+regenerate-hint items closed in `fd247bc`..`cf2c022`.
 
 - [ ] **Smoke `/planeaciones/nueva` against a live stack.** Never driven end to end —
       Redis + runserver + Celery + `npm run dev`, then `/planeaciones` → Nueva planeación
       → a secundaria group + "Lenguajes" or "Ética, Naturaleza y Sociedades" → Generar
       proyecto → pending → ready. Quota smoke: set
-      `LESSON_PLAN_MONTHLY_GENERATION_LIMIT=1` in `backend/.env`, create twice, expect 429.
-
-- [ ] **`Proyecto.Datos` lacks `subject` and the date range** (`core/schema.py`), so
-      rendered DOCX/Markdown headers omit them even though the model now receives them.
-      Ripples into `core/render/docx.py`, `markdown.py`, `test_render.py`.
-
-- [ ] **Migrate the six remaining hand-rolled selects** to the `Select` primitive, zero
-      visual delta: `school-context-filters.tsx` (3), `workspace-switcher.tsx`,
-      `schools/school-form.tsx`, `groups/group-form.tsx`, `school-years/page.tsx`,
-      `groups/page.tsx`.
-
-- [ ] **Legacy plans render with regenerate disabled and no explanation.** Blank
-      `field_id` / null dates predate the create contract, so `lessonPlanCreateInput`
-      returns `null`. A one-line hint next to the button would be honest.
-
-- [ ] **Root `.env.example` is not the file Django loads.** `config/settings.py` reads
-      `backend/.env`; anyone copying the root file to the root gets nothing.
+      `LESSON_PLAN_MONTHLY_GENERATION_LIMIT=1` in the repo-root `.env` (Django reads it
+      now — `backend/config/env.py`), create twice, expect 429.
 
 - [ ] **No refund-on-failure path for quota.** A generation the provider later fails
       still counts. Product decision, flagged not built — refunding needs an

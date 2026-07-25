@@ -40,7 +40,27 @@ it("does not offer regeneration for plans without persisted context", async () =
   const {host,root}=await mount();
   const retry=host.querySelector("button")!;
   expect(retry.disabled).toBe(true);
+  // A disabled button with no explanation is a dead end — say why.
+  expect(host.textContent).toContain("se creó antes del formulario actual");
   await act(async()=>retry.dispatchEvent(new MouseEvent("click",{bubbles:true})));
   expect(mocks.mutate).not.toHaveBeenCalled();
+  await act(async()=>root.unmount());
+});
+
+it("explains the disabled regenerate button on a ready legacy plan", async () => {
+  mocks.query={isLoading:false,isError:false,data:{id:7,status:"ready",invented_pdas:false,group:1,campo:"L",grade:"1",theme:"T",proyecto:{},...context,field_id:"",duration_weeks:null,start_date:null,end_date:null}};
+  const {host,root}=await mount();
+  const regenerate=[...host.querySelectorAll("button")].find((button)=>button.textContent?.includes("Regenerar"))!;
+  expect(regenerate.disabled).toBe(true);
+  expect(host.textContent).toContain("se creó antes del formulario actual");
+  await act(async()=>root.unmount());
+});
+
+it("says nothing about regeneration when the plan carries its context", async () => {
+  mocks.query={isLoading:false,isError:false,data:{id:7,status:"ready",invented_pdas:false,group:1,campo:"L",grade:"1",theme:"T",proyecto:{},...context}};
+  const {host,root}=await mount();
+  const regenerate=[...host.querySelectorAll("button")].find((button)=>button.textContent?.includes("Regenerar"))!;
+  expect(regenerate.disabled).toBe(false);
+  expect(host.textContent).not.toContain("se creó antes del formulario actual");
   await act(async()=>root.unmount());
 });

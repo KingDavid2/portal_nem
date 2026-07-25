@@ -365,10 +365,19 @@ contract, and that is not scope creep.
 
 **Design-system extraction so far:** `Select` (`97c1123`) and `ChoiceChip` (`f5a17c1`). Of the ten reusable
 components M5 names, the ones the nueva planeación page needed exist; the rest arrive with their screens.
-Six files still hand-roll the select styling and would migrate with zero visual delta — see `TODO.md`.
+No hand-rolled `<select>` is left in the app: the last six call sites moved onto the primitive in
+`cf2c022`, the compact inline ones keeping their geometry as a `className` override.
+
+**Follow-ups closed after the twelve units** (`fd247bc`..`cf2c022` plus the regenerate hint): Django now
+reads the repo-root `.env` (it read only the non-existent `backend/.env`, so the LLM endpoint, model and
+quota were silently the `settings.py` defaults); the proyecto header carries the asignatura and the date
+range, stamped server-side after the parse; and a plan with no persisted context now says why its
+regenerate button is disabled.
 
 **Not done:** the end-to-end smoke against a live stack (Redis + runserver + Celery + `npm run dev`).
 Everything below the API boundary is verified only by vitest. Walkthrough script in the archived doc.
+Also still open: refund-on-failure for the quota (a product decision — exactly-once is not Celery's
+to give) and `find_invented_pdas`' cross-content guard, unreachable until a field gains a second content.
 
 **Deferred to M8, deliberately:** the "Límite alcanzado" modal (frame `ImG3U`). It is a billing surface
 priced per **ciclo**, while `GenerationUsage.period` is per **month** — building it would put a price and a

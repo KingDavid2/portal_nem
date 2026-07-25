@@ -49,6 +49,16 @@ export default function PlaneacionViewerPage({
   // cannot produce a valid create body, so regeneration is not offered.
   const regenerateInput = plan ? lessonPlanCreateInput(plan) : null;
 
+  // Why the button next to it is disabled — without this the plan is a dead
+  // end with no stated reason.
+  const legacyPlanHint =
+    plan && !regenerateInput ? (
+      <p className="text-sm text-muted-foreground">
+        Esta planeación se creó antes del formulario actual, por eso no puede regenerarse.
+        Crea una nueva planeación para volver a generarla.
+      </p>
+    ) : null;
+
   function handleRegenerate() {
     if (!regenerateInput) return;
     regenerateMutation.mutate(regenerateInput, {
@@ -87,6 +97,7 @@ export default function PlaneacionViewerPage({
               {regenerateMutation.isPending ? "Regenerando…" : "Reintentar"}
             </Button>
           </div>
+          {legacyPlanHint}
         </Card>
       ) : (
         <>
@@ -112,6 +123,8 @@ export default function PlaneacionViewerPage({
               {regenerateMutation.isPending ? "Regenerando…" : "Regenerar"}
             </Button>
           </div>
+
+          {legacyPlanHint}
 
           {exportError ? (
             <p className="text-sm text-destructive" role="alert">
