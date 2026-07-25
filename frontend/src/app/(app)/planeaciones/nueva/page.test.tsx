@@ -8,6 +8,9 @@ const mocks = vi.hoisted(() => ({
   groupsQuery: { isLoading: false, isError: false, data: undefined as unknown },
   fieldsQuery: { isLoading: false, isError: false, data: undefined as unknown },
   catalogQuery: { isLoading: false, isError: false, data: undefined as unknown, _callArgs: undefined as unknown[] | undefined },
+  quotaQuery: { isLoading: false, isError: false, data: undefined as unknown },
+  mutate: vi.fn<(input: unknown, opts?: { onSuccess?: (plan: unknown) => void }) => void>(),
+  createMutation: { isPending: false, error: undefined as unknown },
 }));
 
 vi.mock("next/navigation", () => ({
@@ -18,13 +21,19 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/api/groups", () => ({ useGroupsQuery: () => mocks.groupsQuery }));
 vi.mock("@/lib/api/lesson-plan-catalog", () => ({
   useLessonPlanFieldsQuery: () => mocks.fieldsQuery,
+  useGenerationQuotaQuery: () => mocks.quotaQuery,
   useLessonPlanCatalogQuery: (...args: unknown[]) => {
     mocks.catalogQuery._callArgs = args;
     return mocks.catalogQuery;
   },
 }));
 
+vi.mock("@/lib/api/lesson-plans", () => ({
+  useCreateLessonPlanMutation: () => ({ ...mocks.createMutation, mutate: mocks.mutate }),
+}));
+
 import Page from "./page";
+import { ApiError } from "@/lib/api/errors";
 
 const mockGroups = [
   { id: 10, school_year: 1, grado: 3, grupo: "A", workspace: "w1" },
@@ -56,6 +65,75 @@ const mockCatalog = {
   teacher: { email: "prof@correo.mx" },
 };
 
+/** Sets a controlled field's value the way React sees it. Assigning `.value`
+ * directly is swallowed: React caches the last value on the node and treats an
+ * event whose value it already knows as a no-op, so `onChange` never fires. */
+function typeInto(el: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement, value: string) {
+  const proto =
+    el instanceof HTMLTextAreaElement
+      ? window.HTMLTextAreaElement.prototype
+      : el instanceof HTMLSelectElement
+        ? window.HTMLSelectElement.prototype
+        : window.HTMLInputElement.prototype;
+  Object.getOwnPropertyDescriptor(proto, "value")!.set!.call(el, value);
+  el.dispatchEvent(new Event(el instanceof HTMLSelectElement ? "change" : "input", { bubbles: true }));
+}
+
+const click = (el: Element) => el.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+const buttonWith = (host: HTMLElement, text: string) =>
+  [...host.querySelectorAll("button")].find((b) => b.textContent?.includes(text))!;
+
+/** Fills every field `validateNewPlanForm` requires, through the real UI, so
+ * "the CTA became clickable" means the actual form is submittable rather than
+ * that a stub said so. */
+async function completeTheForm(host: HTMLElement) {
+  await act(async () => {
+    typeInto(host.querySelector<HTMLSelectElement>("select[name='fieldId']")!, "languages");
+  });
+  await act(async () => {
+    typeInto(host.querySelector<HTMLInputElement>("input[name='theme']")!, "El agua de la comunidad");
+  });
+  await act(async () => {
+    typeInto(
+      host.querySelector<HTMLTextAreaElement>("textarea[name='contextDiagnosis']")!,
+      "Grupo con lectura irregular.",
+    );
+  });
+  await act(async () => {
+    typeInto(host.querySelector<HTMLInputElement>("input[name='startDate']")!, "2026-08-03");
+  });
+
+  // One eje.
+  await act(async () => {
+    click([...host.querySelectorAll("button[aria-pressed]")].find((c) => c.textContent === "Inclusión")!);
+  });
+
+  // One contenido with one PDA, through the picker.
+  await act(async () => { click(buttonWith(host, "Elegir contenidos y PDAs")); });
+  await act(async () => {
+    click(
+      [...host.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')].find(
+        (box) => box.getAttribute("aria-label") === "Seleccionar PDA",
+      )!,
+    );
+  });
+  await act(async () => { click(buttonWith(host, "Usar estos contenidos")); });
+}
+
+/** `mockCatalog` with the themes and contents the form needs to validate. */
+const mockFullCatalog = {
+  ...mockCatalog,
+  cross_cutting_themes: [{ id: "inclusion", name: "Inclusión" }],
+  contents: [
+    {
+      id: "c1",
+      text: "Comprensión de textos literarios",
+      pdas: [{ id: "p1", text: "Identifica el tema central" }],
+    },
+  ],
+};
+
 function setupPage(searchParamsGet: (key: string) => string | null) {
   mocks.searchParamsGet.mockImplementation(searchParamsGet);
   const host = document.createElement("div");
@@ -69,7 +147,10 @@ describe("Nueva planeación", () => {
     mocks.groupsQuery = { isLoading: false, isError: false, data: undefined };
     mocks.fieldsQuery = { isLoading: false, isError: false, data: undefined };
     mocks.catalogQuery = { isLoading: false, isError: false, data: undefined, _callArgs: undefined };
+    mocks.quotaQuery = { isLoading: false, isError: false, data: undefined };
+    mocks.createMutation = { isPending: false, error: undefined };
     mocks.push.mockReset();
+    mocks.mutate.mockReset();
   });
 
   it("renders the design strings", async () => {
@@ -128,6 +209,74 @@ describe("Nueva planeación", () => {
     await act(async () => { root.render(<Page />); });
     expect(host.textContent).not.toContain("13DES0042L");
     expect(host.textContent).toContain("CCT—");
+    await act(async () => { root.unmount(); });
+  });
+
+  it("the CTA stays disabled until the form is complete, then submits and redirects", async () => {
+    const { host, root } = setupPage((k) => (k === "group" ? "10" : null));
+    mocks.groupsQuery.data = mockGroups;
+    mocks.fieldsQuery.data = mockFields;
+    mocks.catalogQuery = { isLoading: false, isError: false, data: mockFullCatalog, _callArgs: undefined };
+    await act(async () => { root.render(<Page />); });
+
+    const cta = () => buttonWith(host, "Generar proyecto");
+    expect(cta().disabled).toBe(true);
+    expect(host.textContent).toContain("Falta por completar");
+
+    await completeTheForm(host);
+    expect(cta().disabled).toBe(false);
+    expect(host.textContent).not.toContain("Falta por completar");
+
+    await act(async () => { click(cta()); });
+    expect(mocks.mutate).toHaveBeenCalledTimes(1);
+    const [payload, opts] = mocks.mutate.mock.calls[0];
+    expect(payload).toMatchObject({
+      group: 10,
+      field_id: "languages",
+      methodology_id: "abp",
+      theme: "El agua de la comunidad",
+      cross_cutting_theme_ids: ["inclusion"],
+      content_selections: [{ content_id: "c1", pda_ids: ["p1"] }],
+    });
+
+    await act(async () => { opts!.onSuccess!({ id: 77 }); });
+    expect(mocks.push).toHaveBeenCalledWith("/planeaciones/77");
+    await act(async () => { root.unmount(); });
+  });
+
+  it("a 429 surfaces the quota message rather than the generic error text", async () => {
+    const { host, root } = setupPage((k) => (k === "group" ? "10" : null));
+    mocks.groupsQuery.data = mockGroups;
+    mocks.fieldsQuery.data = mockFields;
+    mocks.catalogQuery = { isLoading: false, isError: false, data: mockFullCatalog, _callArgs: undefined };
+    mocks.createMutation = {
+      isPending: false,
+      error: new ApiError({
+        detail: "Monthly generation limit reached.",
+        code: "generation_quota_exceeded",
+        used: 2,
+        limit: 2,
+        period: "2026-07",
+      }),
+    };
+    await act(async () => { root.render(<Page />); });
+
+    expect(host.textContent).toContain(
+      "Ya usaste tus 2 generaciones de este mes. El contador se reinicia el próximo mes.",
+    );
+    expect(host.textContent).not.toContain("Monthly generation limit reached.");
+    await act(async () => { root.unmount(); });
+  });
+
+  it("any other create failure falls back to the API error message", async () => {
+    const { host, root } = setupPage((k) => (k === "group" ? "10" : null));
+    mocks.groupsQuery.data = mockGroups;
+    mocks.fieldsQuery.data = mockFields;
+    mocks.catalogQuery = { isLoading: false, isError: false, data: mockFullCatalog, _callArgs: undefined };
+    mocks.createMutation = { isPending: false, error: new ApiError({ theme: ["Este campo es obligatorio."] }) };
+    await act(async () => { root.render(<Page />); });
+
+    expect(host.textContent).toContain("theme: Este campo es obligatorio.");
     await act(async () => { root.unmount(); });
   });
 
