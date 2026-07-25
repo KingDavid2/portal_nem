@@ -199,6 +199,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/lesson-plans/fields/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /api/lesson-plans/fields/ — every formative field of the
+         *     curriculum, in catalog order.
+         *
+         *     Deliberately not folded into `catalog`: `catalog` needs a field id to
+         *     answer, and the picker that supplies it has to be rendered first. Every
+         *     field is listed, including the two with no verified content yet — the
+         *     form keeps them selectable behind an empty state rather than pretending
+         *     they do not exist.
+         *
+         *     Named `formative_fields` with an explicit `url_path` so the method does
+         *     not shadow anything named `fields` on the view.
+         */
+        get: operations["lesson_plans_fields_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/lesson-plans/quota/": {
         parameters: {
             query?: never;
@@ -990,6 +1019,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LessonPlanCatalog"];
+                };
+            };
+        };
+    };
+    lesson_plans_fields_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogField"][];
                 };
             };
         };

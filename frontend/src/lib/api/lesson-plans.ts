@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import client from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
 import type { components } from "@/lib/api/schema";
+import { generationQuotaQueryKey } from "@/lib/api/lesson-plan-catalog";
 
 /**
  * LessonPlan create/list/retrieve/delete hooks (ai-planeaciones spec —
@@ -115,6 +116,7 @@ export function useCreateLessonPlanMutation() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: lessonPlansQueryKey });
+      queryClient.invalidateQueries({ queryKey: generationQuotaQueryKey });
     },
   });
 }

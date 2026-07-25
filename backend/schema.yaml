@@ -379,6 +379,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/LessonPlanCatalog'
           description: ''
+  /api/lesson-plans/fields/:
+    get:
+      operationId: lesson_plans_fields_list
+      description: |-
+        GET /api/lesson-plans/fields/ — every formative field of the
+        curriculum, in catalog order.
+
+        Deliberately not folded into `catalog`: `catalog` needs a field id to
+        answer, and the picker that supplies it has to be rendered first. Every
+        field is listed, including the two with no verified content yet — the
+        form keeps them selectable behind an empty state rather than pretending
+        they do not exist.
+
+        Named `formative_fields` with an explicit `url_path` so the method does
+        not shadow anything named `fields` on the view.
+      tags:
+      - lesson-plans
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CatalogField'
+          description: ''
   /api/lesson-plans/quota/:
     get:
       operationId: lesson_plans_quota_retrieve
