@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .schema import ContentPda
+from .schema import ContentPda, Proyecto
 
 # The 11 ABPC momentos across the 3 fases, in canonical order.
 ABPC_SKELETON = """\
@@ -92,6 +92,23 @@ class GenerationRequest:
     scenario: str
     context_diagnosis: str
     cross_cutting_themes: tuple[str, ...]
+
+
+def stamp_request_context(proyecto: Proyecto, request: GenerationRequest) -> Proyecto:
+    """Return `proyecto` with the header's asignatura and period set from `request`.
+
+    The model is told these values but is not the source of truth for them: the
+    teacher chose them and the row persists them, so they are written over the
+    generated header instead of being trusted to come back intact.
+    """
+    datos = proyecto.datos.model_copy(
+        update={
+            "subject": request.subject,
+            "start_date": request.start_date,
+            "end_date": request.end_date,
+        }
+    )
+    return proyecto.model_copy(update={"datos": datos})
 
 
 def _render_pdas(groups: list[ContentPda]) -> str:

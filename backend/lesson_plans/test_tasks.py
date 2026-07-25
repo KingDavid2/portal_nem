@@ -319,6 +319,34 @@ def test_task_passes_the_selected_contents_and_planning_context_to_the_provider(
 
 
 @pytest.mark.django_db(transaction=True)
+def test_stored_proyecto_header_carries_the_subject_and_the_period():
+    """The rendered header must state the asignatura and the date range the
+    teacher asked for — they are the server's, so they are stamped after the
+    parse rather than trusted to the model."""
+    from workspaces.models import Workspace
+
+    workspace = Workspace.objects.create(type=Workspace.Type.GROUP)
+    group = _make_group(workspace)
+    plan = _create_pending_plan(workspace, group)
+
+    fake = _FakeProvider(
+        result=GenerationResult(
+            proyecto=_canned_proyecto(),
+            usage=Usage(input_tokens=1, output_tokens=1),
+            invented_pdas=[],
+        )
+    )
+
+    with patch("lesson_plans.tasks.build_provider", return_value=fake):
+        _run_task_in_cold_thread(workspace_id=workspace.id, lesson_plan_id=plan.id)
+
+    datos = _read_plan_in(workspace, plan.id).proyecto["datos"]
+    assert datos["subject"] == "Español"
+    assert datos["start_date"] == "2026-01-12"
+    assert datos["end_date"] == "2026-02-09"
+
+
+@pytest.mark.django_db(transaction=True)
 def test_task_flags_an_official_pda_of_a_non_selected_content_as_invented():
     """Grounding on the selection makes the fidelity guard strictly stricter:
     `languages-coherent-texts` is official Phase 6 text in the plan's own

@@ -13,6 +13,13 @@ def render_md(proyecto: Proyecto) -> str:
         f"- **CCT:** {d.cct}",
         f"- **Fase:** {d.phase}  **Grado:** {d.grade}",
         f"- **Campo formativo:** {d.campo_formativo}",
+        # Omitted on plans generated before the header carried them.
+        *([f"- **Asignatura:** {d.subject}"] if d.subject else []),
+        *(
+            [f"- **Periodo:** {d.start_date} a {d.end_date}"]
+            if d.start_date and d.end_date
+            else []
+        ),
         f"- **Metodología:** {d.methodology}",
         f"- **Problemática o tema:** {proyecto.problem_or_theme}",
         f"- **Fecha:** {d.date}",

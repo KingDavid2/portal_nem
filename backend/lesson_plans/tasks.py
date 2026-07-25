@@ -26,7 +26,7 @@ from workspaces.scope import workspace_scope
 from .core.catalog import subject_by_id, theme_by_id
 from .core.catalog_pdas import content_pdas_for
 from .core.factory import build_provider
-from .core.generation import GenerationRequest, scenario_label
+from .core.generation import GenerationRequest, scenario_label, stamp_request_context
 from .models import LessonPlan
 
 logger = logging.getLogger(__name__)
@@ -136,10 +136,14 @@ def generate_lesson_plan_task(self, *, workspace_id, lesson_plan_id):
     except TransientProviderError as exc:
         raise self.retry(exc=exc)
 
+    # The asignatura and the date range in the header are the request's, not
+    # the model's — stamp them over whatever came back.
+    proyecto = stamp_request_context(result.proyecto, request)
+
     with workspace_scope(workspace_id):
         plan = LessonPlan.objects.get(pk=lesson_plan_id)
-        plan.proyecto = result.proyecto.model_dump(mode="json")
-        plan.title = result.proyecto.title
+        plan.proyecto = proyecto.model_dump(mode="json")
+        plan.title = proyecto.title
         plan.provider = getattr(provider, "name", "")
         plan.model_name = getattr(provider, "model", "")
         plan.prompt_tokens = result.usage.input_tokens

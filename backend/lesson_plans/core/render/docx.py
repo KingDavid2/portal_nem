@@ -30,11 +30,18 @@ _DISCLAIMER = (
 def _datos_rows(p: Proyecto) -> list[tuple[str, str]]:
     ejes = "\n".join(f"- {a.name}: {a.justification}" for a in p.articulating_axes)
     d = p.datos
+    # Empty for plans generated before the header carried them — those rows are
+    # dropped rather than rendered blank.
+    optional = [
+        ("ASIGNATURA", d.subject),
+        ("PERIODO", f"{d.start_date} a {d.end_date}" if d.start_date and d.end_date else ""),
+    ]
     return [
         ("NOMBRE DE LA ESCUELA", d.school_name),
         ("CLAVE CENTRO DE TRABAJO", d.cct),
         ("FASE", str(d.phase)),
         ("GRADO", d.grade),
+        *[(key, value) for key, value in optional if value],
         ("TÍTULO DEL PROYECTO", p.title),
         ("PROPÓSITO DEL PROYECTO", p.purpose),
         ("VINCULACIÓN CON LOS EJES ARTICULADORES", ejes),

@@ -85,6 +85,12 @@ class Datos(BaseModel):
     campo_formativo: str
     methodology: str = METHODOLOGY_ABPC
     date: str
+    # Stamped by the server after the parse (`generation.stamp_request_context`),
+    # never written by the model. Empty on plans generated before they existed,
+    # and the renderers omit their rows when empty.
+    subject: str = ""
+    start_date: str = ""
+    end_date: str = ""
 
 
 class Proyecto(BaseModel):

@@ -68,6 +68,13 @@ def test_datos_defaults_are_nem_canonical():
     assert d.methodology == METHODOLOGY_ABPC
 
 
+def test_datos_subject_and_period_default_to_empty():
+    """The model never fills these — the server stamps them after the parse, and
+    a plan generated before they existed must still load."""
+    d = Datos(school_name="X", grade="PRIMERO", campo_formativo="LENGUAJES", date="HOY")
+    assert (d.subject, d.start_date, d.end_date) == ("", "", "")
+
+
 def test_all_pdas_flattens_every_pda_string():
     p = _minimal_proyecto(
         contents_and_pdas=[

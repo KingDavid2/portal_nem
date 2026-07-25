@@ -83,6 +83,50 @@ def test_datos_table_is_first_and_key_value_shaped():
     assert flat["CLAVE CENTRO DE TRABAJO"] == "[ESPACIO PARA SER LLENADO POR EL DOCENTE]"
 
 
+def _datos_map(proyecto):
+    datos = _rows(Document(render_docx(proyecto)).tables[0])
+    return {r[0]: r[1] for r in datos[1:]}
+
+
+def test_datos_table_carries_the_subject_and_the_period():
+    proyecto = _proyecto()
+    proyecto.datos = proyecto.datos.model_copy(
+        update={"subject": "Español", "start_date": "2026-01-12", "end_date": "2026-02-09"}
+    )
+
+    flat = _datos_map(proyecto)
+
+    assert flat["ASIGNATURA"] == "Español"
+    assert flat["PERIODO"] == "2026-01-12 a 2026-02-09"
+
+
+def test_datos_table_omits_the_subject_and_period_when_unknown():
+    """Plans generated before the header carried them must render as before."""
+    flat = _datos_map(_proyecto())
+
+    assert "ASIGNATURA" not in flat
+    assert "PERIODO" not in flat
+
+
+def test_render_md_carries_the_subject_and_the_period():
+    proyecto = _proyecto()
+    proyecto.datos = proyecto.datos.model_copy(
+        update={"subject": "Español", "start_date": "2026-01-12", "end_date": "2026-02-09"}
+    )
+
+    md = render_md(proyecto)
+
+    assert "**Asignatura:** Español" in md
+    assert "**Periodo:** 2026-01-12 a 2026-02-09" in md
+
+
+def test_render_md_omits_the_subject_and_period_when_unknown():
+    md = render_md(_proyecto())
+
+    assert "Asignatura" not in md
+    assert "Periodo" not in md
+
+
 def test_headings_and_duracion_present():
     buffer = render_docx(_proyecto())
     doc = Document(buffer)
