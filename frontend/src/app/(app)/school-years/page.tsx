@@ -15,6 +15,7 @@ import {
 } from "@/lib/api/school-years";
 import { SchoolYearForm } from "./school-year-form";
 import { Card } from "@/components/ui/card";
+import { Select } from "@/components/ui/select";
 
 /** SchoolYear list/create/edit/delete screen, scoped to one selected School
  * (frontend-foundation spec — "CRUD Screens Cover School Structure
@@ -93,8 +94,8 @@ export default function SchoolYearsPage() {
 
       <label className="flex items-center gap-2 text-sm">
         <span className="text-muted-foreground">Escuela</span>
-        <select
-          className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm"
+        <Select
+          className="h-8 w-auto rounded-lg bg-transparent px-2.5"
           value={selectedSchoolId ?? ""}
           onChange={(event) => {
             setSelectedSchoolId(event.target.value ? Number(event.target.value) : null);
@@ -108,7 +109,7 @@ export default function SchoolYearsPage() {
               {school.name}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
 
       {selectedSchoolId === null ? (

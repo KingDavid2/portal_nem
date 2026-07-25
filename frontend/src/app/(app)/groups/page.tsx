@@ -16,6 +16,7 @@ import { useSchoolsQuery } from "@/lib/api/schools";
 import { schoolYearsForSchool, useSchoolYearsQuery } from "@/lib/api/school-years";
 import { GroupForm } from "./group-form";
 import { Card } from "@/components/ui/card";
+import { Select } from "@/components/ui/select";
 
 /** Group list/create/edit/delete screen, scoped to one selected School →
  * SchoolYear (frontend-foundation spec — "CRUD Screens Cover School
@@ -101,8 +102,8 @@ export default function GroupsPage() {
       <div className="flex flex-wrap gap-4">
         <label className="flex items-center gap-2 text-sm">
           <span className="text-muted-foreground">Escuela</span>
-          <select
-            className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm"
+          <Select
+            className="h-8 w-auto rounded-lg bg-transparent px-2.5"
             value={selectedSchoolId ?? ""}
             onChange={(event) => {
               setSelectedSchoolId(event.target.value ? Number(event.target.value) : null);
@@ -117,13 +118,13 @@ export default function GroupsPage() {
                 {school.name}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
 
         <label className="flex items-center gap-2 text-sm">
           <span className="text-muted-foreground">Ciclo escolar</span>
-          <select
-            className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm"
+          <Select
+            className="h-8 w-auto rounded-lg bg-transparent px-2.5"
             value={selectedSchoolYearId ?? ""}
             disabled={selectedSchoolId === null}
             onChange={(event) => {
@@ -138,7 +139,7 @@ export default function GroupsPage() {
                 {schoolYear.label}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
       </div>
 

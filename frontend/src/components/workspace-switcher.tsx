@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useWorkspacesQuery } from "@/lib/api/hooks";
 import { useActiveWorkspaceId } from "@/lib/workspace/use-active-workspace";
+import { Select } from "@/components/ui/select";
 
 /**
  * Active-workspace switcher (frontend-foundation spec — "Active-Workspace
@@ -34,8 +35,8 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
   return (
     <label className="flex items-center gap-2 text-sm">
       <span className="text-muted-foreground">Workspace</span>
-      <select
-        className="rounded-md border border-border bg-background px-2 py-1 text-sm"
+      <Select
+        className="h-auto w-auto border-border bg-background px-2 py-1"
         value={activeWorkspaceId ?? ""}
         onChange={(event) => setActiveWorkspaceId(event.target.value || null)}
       >
@@ -44,7 +45,7 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
             {membership.name} ({membership.role})
           </option>
         ))}
-      </select>
+      </Select>
     </label>
   );
 }

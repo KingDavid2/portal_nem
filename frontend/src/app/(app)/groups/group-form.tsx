@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { FormField } from "@/components/ui/form-field";
+import { Select } from "@/components/ui/select";
 import type { Group } from "@/lib/api/groups";
 
 const GRADO_OPTIONS = [1, 2, 3] as const;
@@ -41,7 +42,7 @@ export function GroupForm({
         {initial ? "Editar grupo" : "Nuevo grupo"}
       </h2>
 
-      <FormField id="group-grade" label="Grado"><select id="group-grade" value={grado} onChange={(event) => setGrado(Number(event.target.value))} className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm">{GRADO_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}</select></FormField>
+      <FormField id="group-grade" label="Grado"><Select id="group-grade" value={grado} onChange={(event) => setGrado(Number(event.target.value))}>{GRADO_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}</Select></FormField>
       <FormField id="group-name" label="Grupo (p. ej. A)" required><Input id="group-name" required maxLength={1} value={grupo} onChange={(event) => setGrupo(event.target.value.toUpperCase())} /></FormField>
 
       {errorMessage ? (

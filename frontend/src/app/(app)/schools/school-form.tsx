@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { FormField } from "@/components/ui/form-field";
+import { Select } from "@/components/ui/select";
 import type { School, SchoolInput } from "@/lib/api/schools";
 
 const LEVEL_OPTIONS: { value: SchoolInput["level"]; label: string }[] = [
@@ -48,7 +49,7 @@ export function SchoolForm({
 
       <FormField id="school-name" label="Nombre" required><Input id="school-name" required value={name} onChange={(event) => setName(event.target.value)} /></FormField>
       <FormField id="school-cct" label="CCT (opcional)"><Input id="school-cct" value={cct} onChange={(event) => setCct(event.target.value)} /></FormField>
-      <FormField id="school-level" label="Nivel"><select id="school-level" value={level} onChange={(event) => setLevel(event.target.value as SchoolInput["level"])} className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm">{LEVEL_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></FormField>
+      <FormField id="school-level" label="Nivel"><Select id="school-level" value={level} onChange={(event) => setLevel(event.target.value as SchoolInput["level"])}>{LEVEL_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</Select></FormField>
 
       {errorMessage ? (
         <p className="text-sm text-destructive" role="alert">
