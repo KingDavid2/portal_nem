@@ -21,7 +21,7 @@
 |---|---|---|---|
 | M3 | School structure CRUD (school → school_year → group → student) | ✅ Done — schools + students apps, RLS, services, first DRF HTTP surface; 131/131 tests | ✅ Done — Next.js foundation (see M3 — Frontend below): auth seam + generated TS client + school/year/group/student CRUD screens; 142 backend / 22 frontend tests |
 | M4 | **AI planeaciones** (persisted + attached to group / school_year) | ✅ Done — `lesson_plans` app: ported M1 core behind `LLMProvider` port, `LessonPlan` ScopedModel + RLS, Celery generation task, DRF generate/CRUD/export; 189 backend tests | ✅ Done — Planeaciones screen: generate form + async poll + proyecto viewer + docx export; 35 frontend tests |
-| M5 | **Frontend design alignment** — align built screens to `designs/teachers.pen` + lock the design system | — (frontend-only; no new API) | ⬜ Re-skin auth + school CRUD + planeaciones to `teachers.pen`; extract the shared components (Nav Item, Stat Card, Status Chip, Form Field, …) as the design-system baseline every later screen builds on |
+| M5 | **Frontend design alignment** — align built screens to `designs/teachers.pen` + lock the design system | 🟡 Partial — the Nueva planeación alignment needed a backend contract it did not have: catalog enrichment, persisted project context, request validation, PDA grounding, monthly quota (`a4dd883`..`868be76`) | 🟡 In progress — **Nueva planeación + Selector de contenidos y PDAs done** (`/planeaciones/nueva`, end to end). Auth, school CRUD and the remaining planeaciones screens still to re-skin; `Select` and `ChoiceChip` primitives extracted |
 | M6 | Attendance + grades entry grids (daily-use core) | ⬜ | ⬜ Attendance + grades entry grids (TanStack Table) |
 | M7 | report_card (boleta) PDF export (SEP deliverable) | ⬜ | ⬜ Boleta preview/download surface |
 | M8 | Billing + subscription | ⬜ | ⬜ Plan/checkout + billing settings screens |
@@ -312,7 +312,7 @@ shape (Group vs SchoolYear vs both); how much of the proyecto is editable vs reg
 
 ---
 
-## Milestone 5 — Frontend design alignment (`designs/teachers.pen`) ⬜
+## Milestone 5 — Frontend design alignment (`designs/teachers.pen`) 🟡 In progress
 
 **Goal:** bring the frontend built through M3–M4 up to the finished design in
 [`designs/teachers.pen`](../designs/teachers.pen), and turn that file's reusable components into the
@@ -333,10 +333,10 @@ contract M6–M9 implement against.
   Button, Avatar, Form Field, PDA Row, Paso Row, Contenido Card, Momento Card. Extract these into the
   `frontend/` component library (shadcn/ui + Tailwind tokens) as the shared primitives every screen composes.
 - **Screens to align now (backend already shipped):**
-  - Auth — Crear cuenta, Iniciar sesión, Verificar correo, Aceptar invitación, Onboarding (M2/M3 auth seam).
-  - School structure — Alumnos, Nuevo Alumno (M3 CRUD).
-  - Planeaciones — Planeaciones list, Nueva planeación, Selector de contenidos y PDAs, Proyecto — Detalle,
-    Proyecto — Generando (M4).
+  - Auth — Crear cuenta, Iniciar sesión, Verificar correo, Aceptar invitación, Onboarding (M2/M3 auth seam). ⬜
+  - School structure — Alumnos, Nuevo Alumno (M3 CRUD). ⬜
+  - Planeaciones — **Nueva planeación ✅**, **Selector de contenidos y PDAs ✅** (same page, frame `IA35k`);
+    Planeaciones list ⬜, Proyecto — Detalle ⬜, Proyecto — Generando ⬜ (M4).
 - **Screens that stay design-only until their milestone** (visual contract, not built in M5): Asistencia,
   Calificaciones (+ Secundaria), Actividades (+ Modal / Por alumno) → **M6**; Boletas, Boleta — Vista previa
   → **M7**; Planes, Checkout, Pago pendiente — OXXO, Suscripción, Límite alcanzado → **M8**.
@@ -345,6 +345,35 @@ contract M6–M9 implement against.
 using shared design-system components; the reusable-component library is in `frontend/` and documented; a
 new screen can be assembled from those primitives with no bespoke restyling. No backend change, no schema
 drift, existing frontend tests still green.
+
+### M5 progress — Nueva planeación 🟡 shipped, unsmoked
+
+Twelve reviewed units, `a4dd883`..`118ad72`. `/planeaciones/nueva` renders the designed screen end to end
+— automatic context banner, ejes, contenidos/PDAs, summary panel — and `Generar proyecto` POSTs and lands
+on `/planeaciones/{id}`, where the existing pending→ready poll takes over. Tree green: 288 pytest,
+147 vitest (29 files), `tsc` clean, lint at its 1 pre-existing warning.
+
+Handoff detail — every unit, decision, and accepted design gap — archived at
+[`archive/2026-07-25-nueva-planeacion-progress.md`](archive/2026-07-25-nueva-planeacion-progress.md).
+
+**The exit gate's "no backend change" assumption did not survive.** The designed screen asks for data and
+guarantees the M4 API could not give: school/teacher blocks in the catalog response, persisted project
+context so a plan can be regenerated as requested, validation of catalog-backed ids, PDA grounding, and a
+monthly generation quota. Six backend units landed for it (`a4dd883`..`868be76`, migration
+`lesson_plans/0003`). Later M5 screens should expect the same: aligning a design can surface a missing
+contract, and that is not scope creep.
+
+**Design-system extraction so far:** `Select` (`97c1123`) and `ChoiceChip` (`f5a17c1`). Of the ten reusable
+components M5 names, the ones the nueva planeación page needed exist; the rest arrive with their screens.
+Six files still hand-roll the select styling and would migrate with zero visual delta — see `TODO.md`.
+
+**Not done:** the end-to-end smoke against a live stack (Redis + runserver + Celery + `npm run dev`).
+Everything below the API boundary is verified only by vitest. Walkthrough script in the archived doc.
+
+**Deferred to M8, deliberately:** the "Límite alcanzado" modal (frame `ImG3U`). It is a billing surface
+priced per **ciclo**, while `GenerationUsage.period` is per **month** — building it would put a price and a
+period on screen that nothing can honour. The 429 is surfaced instead as one inline sentence carrying the
+server's own limit. Whoever reconciles ciclo-vs-month in M8 owns that modal.
 
 ---
 
