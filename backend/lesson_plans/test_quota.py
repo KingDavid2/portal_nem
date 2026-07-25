@@ -238,7 +238,10 @@ def test_a_new_calendar_month_starts_a_fresh_period_row(
     ]
 
 
-def test_two_workspaces_do_not_share_a_period_row(membership_factory):
+def test_two_workspaces_do_not_share_a_period_row(settings, membership_factory):
+    # Pinned, not inherited: the limit now comes from the repo-root `.env`
+    # (`config.env`), and this test is about per-workspace rows, not the ceiling.
+    settings.LESSON_PLAN_MONTHLY_GENERATION_LIMIT = 30
     membership_a = membership_factory("member")
     membership_b = membership_factory("member")
 

@@ -11,15 +11,18 @@ from pathlib import Path
 import environ
 from corsheaders.defaults import default_headers
 
+from config.env import load_env_files
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 env = environ.Env(
     DEBUG=(bool, False),
 )
-# backend/.env is isolated from the repo-root .env (which holds unrelated
-# M0/M1 spike secrets such as LLM API keys) to avoid DATABASE_URL collisions.
-environ.Env.read_env(BASE_DIR / ".env")
+# backend/.env layered over the repo-root .env: the root file holds the LLM /
+# embeddings endpoints and the generation quota, and backend/.env overrides any
+# key it also declares. See `config.env` for the full precedence rules.
+load_env_files(BASE_DIR)
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env(
