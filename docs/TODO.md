@@ -39,7 +39,8 @@ Neither blocks the RAG code — both block the final measured exit-gate number.
 
 Left open by the twelve-unit alignment (`a4dd883`..`118ad72`). Full context:
 `docs/archive/2026-07-25-nueva-planeacion-progress.md`. The dotenv, header, select and
-regenerate-hint items closed in `fd247bc`..`cf2c022`.
+regenerate-hint items closed in `fd247bc`..`470ea33`; the two items below them are new,
+surfaced by that work.
 
 - [ ] **Smoke `/planeaciones/nueva` against a live stack.** Never driven end to end —
       Redis + runserver + Celery + `npm run dev`, then `/planeaciones` → Nueva planeación
@@ -54,6 +55,19 @@ regenerate-hint items closed in `fd247bc`..`cf2c022`.
 
 - [ ] **`find_invented_pdas`' cross-content guard is unreachable** — each catalog field
       has exactly one content. Goes live when a field gains a second.
+
+- [ ] **`ProyectoViewer` does not show the asignatura or the periodo.** `675ce02` added
+      both to `Datos` and to the DOCX/Markdown headers, but the on-screen viewer
+      (`planeaciones/proyecto-viewer.tsx`, types in `proyecto-types.ts`) still prints only
+      escuela/CCT/fase/grado/campo/metodología/fecha. The web header and the exported
+      header now disagree.
+
+- [ ] **Backend tests inherit whatever the environment says.** There is no
+      `backend/conftest.py`; fixtures are per-file. Loading the repo-root `.env`
+      (`fd247bc`) made `LESSON_PLAN_MONTHLY_GENERATION_LIMIT=1` reach the suite and turned
+      a quota test red — it pins the limit now, but nothing stops the next setting from
+      doing the same. An autouse fixture pinning the settings that tests depend on would
+      close it.
 
 ## M8 — carried in from M5
 

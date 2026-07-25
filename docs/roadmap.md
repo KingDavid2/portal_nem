@@ -21,7 +21,7 @@
 |---|---|---|---|
 | M3 | School structure CRUD (school → school_year → group → student) | ✅ Done — schools + students apps, RLS, services, first DRF HTTP surface; 131/131 tests | ✅ Done — Next.js foundation (see M3 — Frontend below): auth seam + generated TS client + school/year/group/student CRUD screens; 142 backend / 22 frontend tests |
 | M4 | **AI planeaciones** (persisted + attached to group / school_year) | ✅ Done — `lesson_plans` app: ported M1 core behind `LLMProvider` port, `LessonPlan` ScopedModel + RLS, Celery generation task, DRF generate/CRUD/export; 189 backend tests | ✅ Done — Planeaciones screen: generate form + async poll + proyecto viewer + docx export; 35 frontend tests |
-| M5 | **Frontend design alignment** — align built screens to `designs/teachers.pen` + lock the design system | 🟡 Partial — the Nueva planeación alignment needed a backend contract it did not have: catalog enrichment, persisted project context, request validation, PDA grounding, monthly quota (`a4dd883`..`868be76`) | 🟡 In progress — **Nueva planeación + Selector de contenidos y PDAs done** (`/planeaciones/nueva`, end to end). Auth, school CRUD and the remaining planeaciones screens still to re-skin; `Select` and `ChoiceChip` primitives extracted |
+| M5 | **Frontend design alignment** — align built screens to `designs/teachers.pen` + lock the design system | 🟡 Partial — the Nueva planeación alignment needed a backend contract it did not have: catalog enrichment, persisted project context, request validation, PDA grounding, monthly quota (`a4dd883`..`868be76`), then dotenv loading + an asignatura/periodo header (`fd247bc`, `675ce02`) | 🟡 In progress — **Nueva planeación + Selector de contenidos y PDAs done** (`/planeaciones/nueva`, end to end, unsmoked). Auth, school CRUD and the remaining planeaciones screens still to re-skin; `Select` and `ChoiceChip` primitives extracted and every hand-rolled select retired |
 | M6 | Attendance + grades entry grids (daily-use core) | ⬜ | ⬜ Attendance + grades entry grids (TanStack Table) |
 | M7 | report_card (boleta) PDF export (SEP deliverable) | ⬜ | ⬜ Boleta preview/download surface |
 | M8 | Billing + subscription | ⬜ | ⬜ Plan/checkout + billing settings screens |
@@ -39,7 +39,8 @@ daily-use grids. All later milestones shift down one number.
 **M5 locks the visual foundation.** M3–M4 shipped screens thin-on-purpose (prove the pipe, not the polish).
 M5 aligns everything already built (auth, school CRUD, planeaciones) to the finished `designs/teachers.pen`
 and extracts its reusable components into the frontend's design system — so M6–M9 build against a settled
-visual language instead of re-inventing it per screen. Frontend-only; no new backend. Inserting it here
+visual language instead of re-inventing it per screen. Planned frontend-only; the Nueva planeación slice
+proved that wrong (see *M5 progress* below) and every later screen should budget for it. Inserting it here
 shifts the old M5–M8 (attendance/grades, boleta, billing, tutor) down one number to M6–M9.
 
 M0/M1 code is throwaway-tolerant: the `LLMProvider` port, the Pydantic output schema, and the prompt/eval
@@ -350,8 +351,8 @@ drift, existing frontend tests still green.
 
 Twelve reviewed units, `a4dd883`..`118ad72`. `/planeaciones/nueva` renders the designed screen end to end
 — automatic context banner, ejes, contenidos/PDAs, summary panel — and `Generar proyecto` POSTs and lands
-on `/planeaciones/{id}`, where the existing pending→ready poll takes over. Tree green: 288 pytest,
-147 vitest (29 files), `tsc` clean, lint at its 1 pre-existing warning.
+on `/planeaciones/{id}`, where the existing pending→ready poll takes over. Tree green after the
+follow-ups below: 304 pytest, 149 vitest (29 files), `tsc` clean, lint at its 1 pre-existing warning.
 
 Handoff detail — every unit, decision, and accepted design gap — archived at
 [`archive/2026-07-25-nueva-planeacion-progress.md`](archive/2026-07-25-nueva-planeacion-progress.md).
@@ -368,11 +369,20 @@ components M5 names, the ones the nueva planeación page needed exist; the rest 
 No hand-rolled `<select>` is left in the app: the last six call sites moved onto the primitive in
 `cf2c022`, the compact inline ones keeping their geometry as a `className` override.
 
-**Follow-ups closed after the twelve units** (`fd247bc`..`cf2c022` plus the regenerate hint): Django now
-reads the repo-root `.env` (it read only the non-existent `backend/.env`, so the LLM endpoint, model and
-quota were silently the `settings.py` defaults); the proyecto header carries the asignatura and the date
-range, stamped server-side after the parse; and a plan with no persisted context now says why its
-regenerate button is disabled.
+**Follow-ups closed after the twelve units** (`fd247bc`..`470ea33`), four commits:
+
+- `fd247bc` — Django reads the repo-root `.env`. `backend/.env`, the only path `settings.py` read, has
+  never existed, so the LLM endpoint, model, embeddings and quota were silently the `settings.py`
+  defaults. `config/env.py` now layers backend over root; precedence is process env > backend > root.
+- `675ce02` — the proyecto header carries the asignatura and the date range. `Datos` gained them with
+  empty defaults and the server stamps them after the parse (`stamp_request_context`) rather than
+  trusting the model; docx/markdown omit the rows when empty, so older plans render unchanged.
+- `cf2c022` — the last six hand-rolled selects moved onto the `Select` primitive.
+- `470ea33` — a plan with no persisted context now says why its regenerate button is disabled.
+
+One trap found on the way: the backend suite had been inheriting the settings quota default, so loading
+the root `.env` (which sets the limit to 1 for the smoke) turned a quota test red. It pins the limit now.
+The backend has no `conftest.py` — nothing else stops ambient env from steering a test.
 
 **Not done:** the end-to-end smoke against a live stack (Redis + runserver + Celery + `npm run dev`).
 Everything below the API boundary is verified only by vitest. Walkthrough script in the archived doc.
