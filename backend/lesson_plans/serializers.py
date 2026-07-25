@@ -26,7 +26,22 @@ from lesson_plans.validation import (
 from schools.models import Group
 
 
+class ContentSelectionSerializer(serializers.Serializer):
+    """One official content plus the PDAs chosen under it."""
+
+    content_id = serializers.CharField()
+    pda_ids = serializers.ListField(child=serializers.CharField(), allow_empty=False)
+
+
 class LessonPlanSerializer(serializers.ModelSerializer):
+    # Declared rather than left to `JSONField` inference: the model stores both
+    # as bare JSON, which the schema would emit untyped, and the client needs
+    # them typed to rebuild a create body from a plan the API returned.
+    cross_cutting_theme_ids = serializers.ListField(
+        child=serializers.CharField(), read_only=True
+    )
+    content_selections = ContentSelectionSerializer(many=True, read_only=True)
+
     class Meta:
         model = LessonPlan
         fields = [
@@ -82,13 +97,6 @@ class LessonPlanSerializer(serializers.ModelSerializer):
             "generated_at",
             "created_at",
         ]
-
-
-class ContentSelectionSerializer(serializers.Serializer):
-    """One official content plus the PDAs chosen under it."""
-
-    content_id = serializers.CharField()
-    pda_ids = serializers.ListField(child=serializers.CharField(), allow_empty=False)
 
 
 class LessonPlanCreateSerializer(serializers.Serializer):

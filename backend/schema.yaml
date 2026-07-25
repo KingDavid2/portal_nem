@@ -1087,8 +1087,14 @@ components:
           type: string
           readOnly: true
         cross_cutting_theme_ids:
+          type: array
+          items:
+            type: string
           readOnly: true
         content_selections:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContentSelection'
           readOnly: true
         title:
           type: string
