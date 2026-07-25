@@ -4,6 +4,8 @@ import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { ProjectContextCard } from "./project-context-card";
 import { AutomaticDataBanner } from "./automatic-data-banner";
+import { CrossCuttingThemesCard } from "./cross-cutting-themes-card";
+import { ContentsCard } from "./contents-card";
 import { useNewPlanForm } from "./use-new-plan-form";
 import { useGroupsQuery } from "@/lib/api/groups";
 import { useLessonPlanFieldsQuery, useLessonPlanCatalogQuery } from "@/lib/api/lesson-plan-catalog";
@@ -55,10 +57,24 @@ function NewPlanFormInner() {
           {catalog !== undefined && (
             <AutomaticDataBanner group={catalog.group} teacher={catalog.teacher} />
           )}
+          {catalog !== undefined && (
+            <CrossCuttingThemesCard
+              themes={catalog.cross_cutting_themes ?? []}
+              selectedIds={state.themeIds}
+              onToggle={(themeId) => dispatch({ type: "toggleThemeId", themeId })}
+            />
+          )}
+          {catalog !== undefined && (
+            <ContentsCard
+              contents={catalog.contents ?? []}
+              selections={state.selections}
+              onChange={(selections) => dispatch({ type: "setSelections", selections })}
+            />
+          )}
         </div>
-        {/* Ejes, contenidos and the "Lo que se va a generar" panel land in the
-            next two units; the empty column holds the two-thirds grid now so
-            the context card does not reflow when they arrive. */}
+        {/* The "Lo que se va a generar" panel and the submit CTA land in the
+            next unit; the empty column holds the two-thirds grid now so the
+            left column does not reflow when they arrive. */}
         <div />
       </div>
     </div>
