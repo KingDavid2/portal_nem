@@ -23,14 +23,7 @@ import type { components } from "@/lib/api/schema";
 
 export type LessonPlan = components["schemas"]["LessonPlan"];
 export type LessonPlanStatus = LessonPlan["status"];
-export type LessonPlanInput = Pick<LessonPlan, "group" | "campo" | "grade" | "theme">;
-
-// See `schools.ts`'s `asWriteBody` comment: the backend doesn't split
-// request/response schemas, so the generated request body type is the full
-// `LessonPlan` including readonly response-only fields.
-function asWriteBody(input: LessonPlanInput): LessonPlan {
-  return input as unknown as LessonPlan;
-}
+export type LessonPlanInput = components["schemas"]["LessonPlanCreate"];
 
 export const lessonPlansQueryKey = ["lesson-plans"] as const;
 export const lessonPlanQueryKey = (id: number) => ["lesson-plans", id] as const;
@@ -44,6 +37,36 @@ export function lessonPlansForGroup(
 ): LessonPlan[] {
   if (groupId === null) return [];
   return plans.filter((plan) => plan.group === groupId);
+}
+
+/** Pure helper: rebuilds the create body of a plan from the project context
+ * the backend persisted, so "regenerar" replays the original request instead
+ * of a lossy approximation of it.
+ *
+ * Returns `null` when the plan predates the catalog contract — those rows
+ * carry blank ids and null dates, and no valid create body can be derived
+ * from them. Callers must offer regeneration only for a non-null result. */
+export function lessonPlanCreateInput(plan: LessonPlan): LessonPlanInput | null {
+  const { duration_weeks, start_date, end_date } = plan;
+  if (!plan.field_id || duration_weeks === null || start_date === null) return null;
+  if (end_date === null) return null;
+  return {
+    group: plan.group,
+    field_id: plan.field_id,
+    subject_id: plan.subject_id,
+    methodology_id: plan.methodology_id,
+    theme: plan.theme,
+    context_diagnosis: plan.context_diagnosis,
+    scenario: plan.scenario,
+    duration_weeks,
+    start_date,
+    end_date,
+    cross_cutting_theme_ids: [...plan.cross_cutting_theme_ids],
+    content_selections: plan.content_selections.map((selection) => ({
+      content_id: selection.content_id,
+      pda_ids: [...selection.pda_ids],
+    })),
+  };
 }
 
 /** TanStack Query `refetchInterval` resolver: keep polling every
@@ -85,7 +108,7 @@ export function useCreateLessonPlanMutation() {
   return useMutation({
     mutationFn: async (input: LessonPlanInput): Promise<LessonPlan> => {
       const { data, error } = await client.POST("/api/lesson-plans/", {
-        body: asWriteBody(input),
+        body: input,
       });
       if (error || !data) throw new ApiError(error);
       return data;

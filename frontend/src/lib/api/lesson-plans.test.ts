@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  lessonPlanCreateInput,
   lessonPlanPollInterval,
   lessonPlansForGroup,
   type LessonPlan,
@@ -23,6 +24,18 @@ function plan(overrides: Partial<LessonPlan>): LessonPlan {
     campo: "Lenguajes",
     grade: "6",
     theme: "La independencia",
+    field_id: "languages",
+    subject_id: "spanish",
+    methodology_id: "community-based-project-learning",
+    duration_weeks: 4,
+    start_date: "2026-01-12",
+    end_date: "2026-02-06",
+    scenario: "community",
+    context_diagnosis: "El grupo requiere fortalecer la producción escrita.",
+    cross_cutting_theme_ids: ["critical-thinking"],
+    content_selections: [
+      { content_id: "languages-text-resources", pda_ids: ["languages-accentuation"] },
+    ],
     title: "",
     proyecto: null,
     status: "pending",
@@ -54,6 +67,38 @@ describe("lessonPlansForGroup", () => {
 
   it("returns an empty list when the group id has no matching rows", () => {
     expect(lessonPlansForGroup([plan({ group: 10 })], 999)).toEqual([]);
+  });
+});
+
+describe("lessonPlanCreateInput", () => {
+  it("rebuilds the create body from the persisted project context", () => {
+    expect(lessonPlanCreateInput(plan({ group: 12 }))).toEqual({
+      group: 12,
+      field_id: "languages",
+      subject_id: "spanish",
+      methodology_id: "community-based-project-learning",
+      theme: "La independencia",
+      context_diagnosis: "El grupo requiere fortalecer la producción escrita.",
+      scenario: "community",
+      duration_weeks: 4,
+      start_date: "2026-01-12",
+      end_date: "2026-02-06",
+      cross_cutting_theme_ids: ["critical-thinking"],
+      content_selections: [
+        { content_id: "languages-text-resources", pda_ids: ["languages-accentuation"] },
+      ],
+    });
+  });
+
+  it.each(["duration_weeks", "start_date", "end_date"] as const)(
+    "returns null when %s was never persisted",
+    (field) => {
+      expect(lessonPlanCreateInput(plan({ [field]: null }))).toBeNull();
+    },
+  );
+
+  it("returns null when the plan predates the catalog contract", () => {
+    expect(lessonPlanCreateInput(plan({ field_id: "" }))).toBeNull();
   });
 });
 

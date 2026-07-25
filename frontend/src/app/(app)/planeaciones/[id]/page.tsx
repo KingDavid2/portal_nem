@@ -6,7 +6,11 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { StatusChip } from "@/components/ui/status-chip";
-import { useCreateLessonPlanMutation, useLessonPlanQuery } from "@/lib/api/lesson-plans";
+import {
+  lessonPlanCreateInput,
+  useCreateLessonPlanMutation,
+  useLessonPlanQuery,
+} from "@/lib/api/lesson-plans";
 import { downloadLessonPlanExport } from "@/lib/api/lesson-plan-export";
 import { ProyectoViewer } from "../proyecto-viewer";
 import type { Proyecto } from "../proyecto-types";
@@ -41,14 +45,15 @@ export default function PlaneacionViewerPage({
       .finally(() => setIsExporting(false));
   }
 
+  // Null for plans created before the catalog contract: their stored context
+  // cannot produce a valid create body, so regeneration is not offered.
+  const regenerateInput = plan ? lessonPlanCreateInput(plan) : null;
+
   function handleRegenerate() {
-    if (!plan) return;
-    regenerateMutation.mutate(
-      { group: plan.group, campo: plan.campo, grade: plan.grade, theme: plan.theme },
-      {
-        onSuccess: (newPlan) => router.push(`/planeaciones/${newPlan.id}`),
-      },
-    );
+    if (!regenerateInput) return;
+    regenerateMutation.mutate(regenerateInput, {
+      onSuccess: (newPlan) => router.push(`/planeaciones/${newPlan.id}`),
+    });
   }
 
   return (
@@ -78,7 +83,7 @@ export default function PlaneacionViewerPage({
             La generación falló: {plan.failure_reason || "sin detalle."}
           </p>
           <div>
-            <Button onClick={handleRegenerate} disabled={regenerateMutation.isPending}>
+            <Button onClick={handleRegenerate} disabled={regenerateMutation.isPending || !regenerateInput}>
               {regenerateMutation.isPending ? "Regenerando…" : "Reintentar"}
             </Button>
           </div>
@@ -102,7 +107,7 @@ export default function PlaneacionViewerPage({
             <Button
               variant="outline"
               onClick={handleRegenerate}
-              disabled={regenerateMutation.isPending}
+              disabled={regenerateMutation.isPending || !regenerateInput}
             >
               {regenerateMutation.isPending ? "Regenerando…" : "Regenerar"}
             </Button>

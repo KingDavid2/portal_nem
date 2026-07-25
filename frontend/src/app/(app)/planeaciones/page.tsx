@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   BookOpen,
   CalendarDays,
@@ -19,12 +20,10 @@ import { schoolYearsForSchool, useSchoolYearsQuery } from "@/lib/api/school-year
 import { groupsForSchoolYear, useGroupsQuery } from "@/lib/api/groups";
 import {
   lessonPlansForGroup,
-  useCreateLessonPlanMutation,
   useDeleteLessonPlanMutation,
   useLessonPlansQuery,
   type LessonPlan,
 } from "@/lib/api/lesson-plans";
-import { GenerateForm, AVAILABLE_CAMPOS } from "./generate-form";
 import { StatusChip } from "@/components/ui/status-chip";
 import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
@@ -32,11 +31,11 @@ import { Select } from "@/components/ui/select";
 type StatusFilter = "all" | LessonPlan["status"];
 
 export default function PlaneacionesPage() {
+  const router = useRouter();
   const schoolsQuery = useSchoolsQuery();
   const schoolYearsQuery = useSchoolYearsQuery();
   const groupsQuery = useGroupsQuery();
   const lessonPlansQuery = useLessonPlansQuery();
-  const createMutation = useCreateLessonPlanMutation();
   const deleteMutation = useDeleteLessonPlanMutation();
 
   const [selectedSchoolId, setSelectedSchoolId] = useState<number | null>(null);
@@ -44,8 +43,6 @@ export default function PlaneacionesPage() {
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
   const [campoFilter, setCampoFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [showGenerateForm, setShowGenerateForm] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
   const [rowError, setRowError] = useState<string | null>(null);
 
   const schools = schoolsQuery.data ?? [];
@@ -55,6 +52,9 @@ export default function PlaneacionesPage() {
   );
   const visibleGroups = groupsForSchoolYear(groupsQuery.data ?? [], selectedSchoolYearId);
   const groupPlans = lessonPlansForGroup(lessonPlansQuery.data ?? [], selectedGroupId);
+  // Derived from the loaded rows rather than a hardcoded list: the filter can
+  // only usefully offer campos this group actually has plans for.
+  const availableCampos = [...new Set(groupPlans.map((plan) => plan.campo))].sort();
   const visiblePlans = groupPlans.filter(
     (plan) =>
       (campoFilter === "all" || plan.campo === campoFilter) &&
@@ -92,14 +92,6 @@ export default function PlaneacionesPage() {
       },
     ];
 
-  function handleGenerate(input: { group: number; campo: string; grade: string; theme: string }) {
-    setFormError(null);
-    createMutation.mutate(input, {
-      onSuccess: () => setShowGenerateForm(false),
-      onError: (error) => setFormError(error.message),
-    });
-  }
-
   function handleDelete(plan: LessonPlan) {
     if (!window.confirm(`¿Eliminar la planeación "${plan.theme}"?`)) return;
     setRowError(null);
@@ -121,7 +113,7 @@ export default function PlaneacionesPage() {
           size="lg"
           className="shadow-[0_2px_6px_color-mix(in_oklch,var(--primary),transparent_68%)]"
           disabled={selectedGroupId === null}
-          onClick={() => setShowGenerateForm((visible) => !visible)}
+          onClick={() => router.push(`/planeaciones/nueva?group=${selectedGroupId}`)}
         >
           <Plus />
           Nueva planeación
@@ -136,7 +128,6 @@ export default function PlaneacionesPage() {
             setSelectedSchoolId(value ? Number(value) : null);
             setSelectedSchoolYearId(null);
             setSelectedGroupId(null);
-            setFormError(null);
           }}
         >
           <option value="">Selecciona una escuela…</option>
@@ -152,7 +143,6 @@ export default function PlaneacionesPage() {
           onChange={(value) => {
             setSelectedSchoolYearId(value ? Number(value) : null);
             setSelectedGroupId(null);
-            setFormError(null);
           }}
         >
           <option value="">Selecciona un ciclo…</option>
@@ -167,7 +157,6 @@ export default function PlaneacionesPage() {
           disabled={selectedSchoolYearId === null}
           onChange={(value) => {
             setSelectedGroupId(value ? Number(value) : null);
-            setFormError(null);
           }}
         >
           <option value="">Selecciona un grupo…</option>
@@ -178,7 +167,7 @@ export default function PlaneacionesPage() {
 
         <SelectField label="Campo formativo" value={campoFilter} onChange={setCampoFilter}>
           <option value="all">Todos</option>
-          {AVAILABLE_CAMPOS.map((campo) => <option key={campo} value={campo}>{campo}</option>)}
+          {availableCampos.map((campo) => <option key={campo} value={campo}>{campo}</option>)}
         </SelectField>
 
         <SelectField
@@ -192,16 +181,6 @@ export default function PlaneacionesPage() {
           <option value="failed">Con error</option>
         </SelectField>
       </Card>
-
-      {showGenerateForm && selectedGroupId !== null ? (
-        <GenerateForm
-          groupId={selectedGroupId}
-          defaultGrade={String(visibleGroups.find((group) => group.id === selectedGroupId)?.grado ?? "")}
-          errorMessage={formError}
-          isPending={createMutation.isPending}
-          onSubmit={handleGenerate}
-        />
-      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {stats.map(({ label, value, caption, icon: Icon, tone }) => (

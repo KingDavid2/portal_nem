@@ -112,6 +112,22 @@ export interface paths {
         patch: operations["groups_partial_update"];
         trace?: never;
     };
+    "/api/health/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["health_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/lesson-plans/": {
         parameters: {
             query?: never;
@@ -159,6 +175,48 @@ export interface paths {
          *     (no partial/empty document is ever returned).
          */
         get: operations["lesson_plans_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lesson-plans/catalog/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["lesson_plans_catalog_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lesson-plans/quota/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /api/lesson-plans/quota/ — the monthly allowance of the active
+         *     workspace ("Generaciones de este mes").
+         *
+         *     Deliberately not folded into `catalog`: the card is rendered before
+         *     the teacher has picked a group or a field, and `catalog` requires
+         *     both. Reading is side-effect free — `current_usage` reports an absent
+         *     ledger row as `0` instead of seeding one, so merely opening the form
+         *     never writes.
+         */
+        get: operations["lesson_plans_quota_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -283,6 +341,72 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description An official content with its verified learning processes. */
+        CatalogContent: {
+            readonly id: string;
+            readonly text: string;
+            readonly pdas: components["schemas"]["CatalogPda"][];
+        };
+        /** @description A curriculum formative field (`campo formativo`). */
+        CatalogField: {
+            readonly id: string;
+            readonly name: string;
+        };
+        /** @description The automatic group context shown by the planning form. */
+        CatalogGroup: {
+            readonly id: number;
+            readonly label: string;
+            readonly grade: number;
+            readonly school_name: string;
+            readonly school_cct: string;
+            readonly school_year_label: string;
+        };
+        /** @description The official Phase 6 planning methodology. */
+        CatalogMethodology: {
+            readonly id: string;
+            readonly name: string;
+        };
+        /** @description A verified learning process (`PDA`) of an official content. */
+        CatalogPda: {
+            readonly id: string;
+            readonly text: string;
+        };
+        /** @description A subject belonging to a formative field. */
+        CatalogSubject: {
+            readonly id: string;
+            readonly name: string;
+            readonly field_id: string;
+        };
+        /** @description The requesting teacher's identity. */
+        CatalogTeacher: {
+            /** Format: email */
+            readonly email: string;
+        };
+        /** @description A cross-cutting theme (`eje articulador`). */
+        CatalogTheme: {
+            readonly id: string;
+            readonly name: string;
+        };
+        /** @description One official content plus the PDAs chosen under it. */
+        ContentSelection: {
+            content_id: string;
+            pda_ids: string[];
+        };
+        /**
+         * @description Full payload of `GET /api/lesson-plans/quota/` (the "Generaciones de
+         *     este mes" card).
+         *
+         *     `remaining` is served rather than left to the client: it is floored at
+         *     zero, and a lowered `LESSON_PLAN_MONTHLY_GENERATION_LIMIT` can leave a
+         *     workspace above its own allowance, where `limit - used` would render as
+         *     a negative countdown.
+         */
+        GenerationQuota: {
+            readonly period: string;
+            readonly used: number;
+            readonly limit: number;
+            readonly remaining: number;
+        };
         Group: {
             readonly id: number;
             school_year: number;
@@ -299,6 +423,18 @@ export interface components {
             campo: string;
             grade: string;
             theme: string;
+            readonly field_id: string;
+            readonly subject_id: string;
+            readonly methodology_id: string;
+            readonly duration_weeks: number | null;
+            /** Format: date */
+            readonly start_date: string | null;
+            /** Format: date */
+            readonly end_date: string | null;
+            readonly scenario: components["schemas"]["ScenarioEnum"];
+            readonly context_diagnosis: string;
+            readonly cross_cutting_theme_ids: string[];
+            readonly content_selections: components["schemas"]["ContentSelection"][];
             readonly title: string;
             readonly proyecto: unknown;
             readonly status: components["schemas"]["StatusEnum"];
@@ -312,6 +448,47 @@ export interface components {
             readonly generated_at: string | null;
             /** Format: date-time */
             readonly created_at: string;
+        };
+        /** @description Full payload of `GET /api/lesson-plans/catalog/`. */
+        LessonPlanCatalog: {
+            readonly phase: number;
+            readonly grade: number;
+            readonly field: components["schemas"]["CatalogField"];
+            readonly methodology: components["schemas"]["CatalogMethodology"];
+            readonly subjects: components["schemas"]["CatalogSubject"][];
+            readonly cross_cutting_themes: components["schemas"]["CatalogTheme"][];
+            readonly contents: components["schemas"]["CatalogContent"][];
+            readonly group: components["schemas"]["CatalogGroup"];
+            readonly teacher: components["schemas"]["CatalogTeacher"];
+        };
+        /**
+         * @description Write contract of `POST /api/lesson-plans/`.
+         *
+         *     Every curriculum value arrives as an official catalog id — free text is
+         *     only accepted for the teacher's own prose (`theme`, `context_diagnosis`).
+         *     `campo` and `grade` are deliberately absent: the server derives them from
+         *     the resolved field and the group, so a client that sends them is ignored.
+         *
+         *     All catalog rules live in `validate()` rather than in per-field
+         *     `validate_<name>` hooks because every one of them is answerable only once
+         *     `field_id` is known, and DRF does not order field-level hooks.
+         */
+        LessonPlanCreate: {
+            group: number;
+            field_id: string;
+            /** @default  */
+            subject_id: string;
+            methodology_id: string;
+            theme: string;
+            context_diagnosis: string;
+            scenario: components["schemas"]["ScenarioEnum"];
+            duration_weeks: number;
+            /** Format: date */
+            start_date: string;
+            /** Format: date */
+            end_date: string;
+            cross_cutting_theme_ids: string[];
+            content_selections: components["schemas"]["ContentSelection"][];
         };
         /**
          * @description * `preescolar` - Preescolar
@@ -376,6 +553,13 @@ export interface components {
          * @enum {string}
          */
         RoleEnum: "owner" | "admin" | "member";
+        /**
+         * @description * `classroom` - Classroom
+         *     * `school` - School
+         *     * `community` - Community
+         * @enum {string}
+         */
+        ScenarioEnum: "classroom" | "school" | "community";
         School: {
             readonly id: number;
             name: string;
@@ -645,6 +829,24 @@ export interface operations {
             };
         };
     };
+    health_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     lesson_plans_list: {
         parameters: {
             query?: never;
@@ -673,18 +875,28 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["LessonPlan"];
-                "application/x-www-form-urlencoded": components["schemas"]["LessonPlan"];
-                "multipart/form-data": components["schemas"]["LessonPlan"];
+                "application/json": components["schemas"]["LessonPlanCreate"];
+                "application/x-www-form-urlencoded": components["schemas"]["LessonPlanCreate"];
+                "multipart/form-data": components["schemas"]["LessonPlanCreate"];
             };
         };
         responses: {
-            201: {
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["LessonPlan"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -754,6 +966,49 @@ export interface operations {
                 content: {
                     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": string;
                     "text/markdown": string;
+                };
+            };
+        };
+    };
+    lesson_plans_catalog_retrieve: {
+        parameters: {
+            query: {
+                /** @description Id of the formative field whose catalog is requested. */
+                field: string;
+                /** @description Id of the secondary-school group being planned for. */
+                group: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LessonPlanCatalog"];
+                };
+            };
+        };
+    };
+    lesson_plans_quota_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GenerationQuota"];
                 };
             };
         };
