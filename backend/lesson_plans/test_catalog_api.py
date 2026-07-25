@@ -62,6 +62,55 @@ def group_factory():
     return make
 
 
+def test_fields_lists_every_formative_field_in_catalog_order(
+    membership_factory,
+    client_for,
+):
+    membership = membership_factory()
+
+    response = client_for(membership).get("/api/lesson-plans/fields/")
+
+    assert response.status_code == 200
+    assert [field["id"] for field in response.data] == [
+        "languages",
+        "scientific-thinking",
+        "ethics-nature-societies",
+        "human-community",
+    ]
+    assert response.data[0] == {"id": "languages", "name": "Lenguajes"}
+
+
+def test_fields_needs_no_group_or_field_query_parameters(
+    membership_factory,
+    client_for,
+):
+    """The Campo formativo picker renders before either is known, which is why
+    this action exists next to `catalog` instead of inside it."""
+    membership = membership_factory()
+
+    response = client_for(membership).get("/api/lesson-plans/fields/")
+
+    assert response.status_code == 200
+    assert len(response.data) == 4
+
+
+def test_fields_requires_authentication():
+    response = APIClient().get("/api/lesson-plans/fields/")
+
+    assert response.status_code in {401, 403}
+
+
+def test_fields_requires_view_workspace_permission(
+    membership_factory,
+    client_for,
+):
+    membership = membership_factory(role="no-capabilities-role")
+
+    response = client_for(membership).get("/api/lesson-plans/fields/")
+
+    assert response.status_code == 403
+
+
 def test_catalog_returns_group_context_and_verified_field_content(
     membership_factory,
     client_for,

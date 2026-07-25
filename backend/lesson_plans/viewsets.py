@@ -31,6 +31,7 @@ from lesson_plans.core.render.docx import render_docx
 from lesson_plans.core.render.markdown import render_md
 from lesson_plans.core.catalog import (
     CROSS_CUTTING_THEMES,
+    FIELDS,
     METHODOLOGIES,
     PHASE,
     official_content_for,
@@ -40,6 +41,7 @@ from lesson_plans.core.catalog import (
 from lesson_plans.core.schema import Proyecto
 from lesson_plans.models import LessonPlan
 from lesson_plans.serializers import (
+    CatalogFieldSerializer,
     GenerationQuotaSerializer,
     LessonPlanCatalogSerializer,
     LessonPlanCreateSerializer,
@@ -61,6 +63,7 @@ CAPABILITY_MAP = {
     "retrieve": "view_workspace",
     "create": "edit_content",
     "catalog": "view_workspace",
+    "formative_fields": "view_workspace",
     # Reading your own allowance is not an editing action, so it stays on
     # `view_workspace` even though the counter it reports is only ever moved
     # by `create` (`edit_content`).
@@ -162,6 +165,23 @@ class LessonPlanViewSet(viewsets.ModelViewSet):
 
     def perform_destroy(self, instance):
         delete_lesson_plan(membership=self.request.membership, lesson_plan=instance)
+
+    @extend_schema(responses=CatalogFieldSerializer(many=True))
+    @action(detail=False, methods=["get"], url_path="fields")
+    def formative_fields(self, request):
+        """GET /api/lesson-plans/fields/ — every formative field of the
+        curriculum, in catalog order.
+
+        Deliberately not folded into `catalog`: `catalog` needs a field id to
+        answer, and the picker that supplies it has to be rendered first. Every
+        field is listed, including the two with no verified content yet — the
+        form keeps them selectable behind an empty state rather than pretending
+        they do not exist.
+
+        Named `formative_fields` with an explicit `url_path` so the method does
+        not shadow anything named `fields` on the view.
+        """
+        return Response(CatalogFieldSerializer(FIELDS, many=True).data)
 
     @extend_schema(
         parameters=[
