@@ -27,6 +27,7 @@ import {
 import { GenerateForm, AVAILABLE_CAMPOS } from "./generate-form";
 import { StatusChip } from "@/components/ui/status-chip";
 import { Card } from "@/components/ui/card";
+import { Select } from "@/components/ui/select";
 
 type StatusFilter = "all" | LessonPlan["status"];
 
@@ -270,14 +271,16 @@ function SelectField({
   return (
     <label className="flex min-w-0 flex-col gap-1.5 text-sm">
       <span className="text-xs font-medium text-muted-foreground">{label}</span>
-      <select
-        className="h-10 min-w-0 rounded-md border border-input bg-background px-3 text-sm outline-none transition-shadow focus:ring-2 focus:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-50"
+      <Select
+        // These filters sit inside a `bg-card` surface, so the primitive's
+        // Pencil default would render white on white.
+        className="bg-background"
         value={value}
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
       >
         {children}
-      </select>
+      </Select>
     </label>
   );
 }

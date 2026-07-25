@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { FormField } from "@/components/ui/form-field";
+import { Select } from "@/components/ui/select";
 
 /** Fixture-backed campos formativos (backend `lesson_plans/core/pdas.py`'s
  * `available_campos()` — RAG is OFF for this milestone, so generation is
@@ -47,7 +48,7 @@ export function GenerateForm({
     <Card className="p-0"><form onSubmit={handleSubmit} className="flex flex-col gap-4 p-5">
       <h2 className="text-sm font-semibold">Generar planeación</h2>
 
-      <FormField id="plan-campo" label="Campo formativo"><select id="plan-campo" value={campo} onChange={(event) => setCampo(event.target.value)} className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm">{AVAILABLE_CAMPOS.map((option) => <option key={option} value={option}>{option}</option>)}</select></FormField>
+      <FormField id="plan-campo" label="Campo formativo"><Select id="plan-campo" value={campo} onChange={(event) => setCampo(event.target.value)}>{AVAILABLE_CAMPOS.map((option) => <option key={option} value={option}>{option}</option>)}</Select></FormField>
       <FormField id="plan-grade" label="Grado" required><Input id="plan-grade" required value={grade} onChange={(event) => setGrade(event.target.value)} /></FormField>
       <FormField id="plan-theme" label="Tema" required><Input id="plan-theme" required value={theme} onChange={(event) => setTheme(event.target.value)} /></FormField>
 
