@@ -1,0 +1,107 @@
+{
+  "datos": {
+    "school_name": "Secundaria General No. 12",
+    "cct": "[ESPACIO PARA SER LLENADO POR EL DOCENTE]",
+    "phase": 6,
+    "grade": "1º",
+    "campo_formativo": "Lenguajes",
+    "methodology": "Aprendizaje Basado en Proyectos Comunitarios",
+    "date": "01/08/2025",
+    "subject": "Español",
+    "start_date": "04/08/2025",
+    "end_date": "25/08/2025"
+  },
+  "title": "Relatos de nuestra comunidad",
+  "purpose": "Que los estudiantes recopilen y documenten relatos orales de sus abuelos y vecinos para preservar la memoria histórica de su comunidad.",
+  "articulating_axes": [
+    {
+      "name": "Apropiación de las culturas a través de la lectura, la escritura y el diálogo",
+      "justification": "Los estudiantes leen, escriben y comparten narrativas basadas en testimonios orales."
+    }
+  ],
+  "problem_or_theme": "Los relatos y tradiciones orales de la comunidad están en riesgo de perderse por la falta de documentación intergeneracional.",
+  "contents_and_pdas": [
+    {
+      "content": "El alumno valora los relatos orales como parte del patrimonio cultural.",
+      "pdas": [
+        "Recopila y registra relatos orales de miembros de la comunidad.",
+        "Identifica los elementos narrativos en los relatos recopilados."
+      ]
+    }
+  ],
+  "stages": [
+    {
+      "name": "Planeación",
+      "momentos": [
+        {
+          "number": 1,
+          "name": "Recolección de relatos",
+          "sessions": [
+            {
+              "duration_minutes": 100,
+              "steps": [
+                {
+                  "number": 1,
+                  "dynamic": "Los estudiantes entrevistan a un familiar o vecino mayor y registran su relato."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Acción",
+      "momentos": [
+        {
+          "number": 2,
+          "name": "Elaboración del libro de relatos",
+          "sessions": [
+            {
+              "duration_minutes": 100,
+              "steps": [
+                {
+                  "number": 1,
+                  "dynamic": "Redacción, edición y diseño de un libro colectivo con los relatos recopilados."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Intervención",
+      "momentos": [
+        {
+          "number": 3,
+          "name": "Presentación comunitaria",
+          "sessions": [
+            {
+              "duration_minutes": 100,
+              "steps": [
+                {
+                  "number": 1,
+                  "dynamic": "Los estudiantes presentan el libro en un evento abierto para la comunidad escolar y local."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "criterion": "Recopilación y registro de relatos",
+        "levels": [
+          "No recopila relatos.",
+          "Recopila un relato sin detalles.",
+          "Recopila y registra relatos con estructura clara.",
+          "Recopila varios relatos con profundidad y contexto histórico."
+        ]
+      }
+    ]
+  }
+}

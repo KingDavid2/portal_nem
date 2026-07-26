@@ -1,0 +1,253 @@
+{
+  "datos": {
+    "school_name": "Secundaria General No. 12",
+    "cct": "[ESPACIO PARA SER LLENADO POR EL DOCENTE]",
+    "phase": 6,
+    "grade": "1º",
+    "campo_formativo": "Ética, Naturaleza y Sociedades",
+    "methodology": "Aprendizaje Basado en Proyectos Comunitarios",
+    "date": "01/08/2025",
+    "subject": "Geografía",
+    "start_date": "04/08/2025",
+    "end_date": "25/08/2025"
+  },
+  "title": "Conociendo y protegiendo el ecosistema de nuestra comunidad",
+  "purpose": "Que los estudiantes identifiquen los principales problemas ambientales de su comunidad, diseñen un plan de acción basado en la ciencia, y lo ejecuten con el apoyo de la comunidad escolar y local para generar un impacto positivo en el medio ambiente.",
+  "articulating_axes": [
+    {
+      "name": "Apropiación de las culturas a través de la lectura, la escritura y el dialogue",
+      "justification": "Los estudiantes leen y escriben sobre los ecosistemas locales, documentan sus observaciones y comunican hallazgos a través de informes y campañas."
+    },
+    {
+      "name": "Vida sana y placentera",
+      "justification": "El proyecto promueve la conciencia sobre cómo el medio ambiente afecta la salud y el bienestar de la comunidad."
+    }
+  ],
+  "problem_or_theme": "La comunidad escolar carece de un conocimiento profundo sobre los ecosistemas locales, lo que genera una falta de acción frente a problemas como la contaminación del agua y la acumulación de residuos sólidos.",
+  "contents_and_pdas": [
+    {
+      "content": "El alumno reconoce la relación entre los ecosistemas locales y la actividad humana.",
+      "pdas": [
+        "Identifica los componentes bióticos y abióticos de un ecosistema local.",
+        "Describe las interacciones entre los seres vivos y su entorno en el ecosistema de la comunidad.",
+        "Analiza el impacto de la actividad humana en el equilibrio de los ecosistemas."
+      ]
+    },
+    {
+      "content": "El alumno valora la importancia de las prácticas sustentables para la conservación del medio ambiente.",
+      "pdas": [
+        "Explica el concepto de desarrollo sustentable y su relación con la conservación de recursos.",
+        "Propone acciones concretas para reducir el impacto ambiental en la comunidad."
+      ]
+    }
+  ],
+  "stages": [
+    {
+      "name": "Planeación",
+      "momentos": [
+        {
+          "number": 1,
+          "name": "Diagnóstico del entorno escolar y comunitario",
+          "sessions": [
+            {
+              "duration_minutes": 100,
+              "steps": [
+                {
+                  "number": 1,
+                  "dynamic": "El docente presenta el tema y los estudiantes realizan una salida de observación al entorno escolar para identificar problemas ambientales. Cada grupo toma notas y toma fotos."
+                },
+                {
+                  "number": 2,
+                  "dynamic": "En plenaria, los grupos comparten sus hallazgos y construyen un mapa conceptual colectivo sobre los problemas detectados."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "name": "Diseño del plan de acción",
+          "sessions": [
+            {
+              "duration_minutes": 100,
+              "steps": [
+                {
+                  "number": 1,
+                  "dynamic": "Cada grupo diseña su plan de acción definiendo objetivos, actividades, cronograma y roles. Se utiliza una rúbrica de planeación como gua."
+                },
+                {
+                  "number": 2,
+                  "dynamic": "Presentación de los planes ante el grupo. Retroalimentación entre pares y ajustes finales con orientación del docente."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "number": 3,
+          "name": "Socialización y validación del plan",
+          "sessions": [
+            {
+              "duration_minutes": 100,
+              "steps": [
+                {
+                  "number": 1,
+                  "dynamic": "Los grupos presentan su plan a la comunidad escolar en un foro abierto. Se invita a padres y autoridades para obtener retroalimentación y validación."
+                },
+                {
+                  "number": 2,
+                  "dynamic": "Ajustes al plan con base en las sugerencias recibidas. Firmas de compromiso por parte de los participantes."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Acción",
+      "momentos": [
+        {
+          "number": 4,
+          "name": "Ejecución de las actividades planeadas",
+          "sessions": [
+            {
+              "duration_minutes": 200,
+              "steps": [
+                {
+                  "number": 1,
+                  "dynamic": "Los grupos ejecutan sus actividades de limpieza, reforestación, y reciclaje en el plantel y alrededores. Se registra todo con bitácoras de campo."
+                },
+                {
+                  "number": 2,
+                  "dynamic": "Monitoreo y evaluación continua del avance de las actividades. Se comparan resultados con los objetivos establecidos."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "number": 5,
+          "name": "Registro y documentación del proceso",
+          "sessions": [
+            {
+              "duration_minutes": 100,
+              "steps": [
+                {
+                  "number": 1,
+                  "dynamic": "Cada grupo elabora un registro multimedia (fotos, videos, bitácoras) que documente todo el proceso de ejecución y los resultados obtenidos."
+                },
+                {
+                  "number": 2,
+                  "dynamic": "Organización de los materiales para la fase de intervención. Preparación de material de divulgación."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "number": 6,
+          "name": "Reflexión sobre el impacto",
+          "sessions": [
+            {
+              "duration_minutes": 100,
+              "steps": [
+                {
+                  "number": 1,
+                  "dynamic": "Los estudiantes reflexionan en grupo sobre el impacto de sus acciones en el ecosistema y en la comunidad, utilizando preguntas gua del docente."
+                },
+                {
+                  "number": 2,
+                  "dynamic": "Elaboración de diarios de reflexión individual donde cada estudiante expresa lo aprendido y sus vivencias."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Intervención",
+      "momentos": [
+        {
+          "number": 7,
+          "name": "Campaña de concientización comunitaria",
+          "sessions": [
+            {
+              "duration_minutes": 200,
+              "steps": [
+                {
+                  "number": 1,
+                  "dynamic": "Difusión de la campaña a través de carteles, redes sociales, y presentaciones en asambleas escolares. Los grupos toman el rol de promotores ambientales."
+                },
+                {
+                  "number": 2,
+                  "dynamic": "Taller abierto para padres de familia sobre prácticas sustentables en el hogar. Los estudiantes lideran las actividades con apoyo del docente."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "number": 8,
+          "name": "Evaluación y cierre del proyecto",
+          "sessions": [
+            {
+              "duration_minutes": 100,
+              "steps": [
+                {
+                  "number": 1,
+                  "dynamic": "Evaluación final del proyecto utilizando la rúbrica de evaluación. Autoevaluación y coevaluación entre los grupos."
+                },
+                {
+                  "number": 2,
+                  "dynamic": "Ceremonia de cierre donde los grupos presentan sus productos finales (informes, materiales de campaña, documentación). Se reconocen los logros y se establecen compromisos de continuidad."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "criterion": "Identificación de problemas ambientales del entorno",
+        "levels": [
+          "No identifica problemas ambientales en su entorno.",
+          "Identifica uno o dos problemas ambientales de forma superficial.",
+          "Identifica varios problemas ambientales y los describe con detalle.",
+          "Identifica, describe y analiza de manera crítica los problemas ambientales con evidencia de investigación."
+        ]
+      },
+      {
+        "criterion": "Diseño del plan de acción",
+        "levels": [
+          "El plan carece de objetivos claros y actividades definidas.",
+          "El plan incluye objetivos pero las actividades son genéricas.",
+          "El plan es detallado con objetivos claros, actividades concretas y cronograma.",
+          "El plan es integral, innovador, con participación comunitaria, indicadores de seguimiento y evaluación."
+        ]
+      },
+      {
+        "criterion": "Ejecución y documentación",
+        "levels": [
+          "No se ejecutan las actividades ni se documenta el proceso.",
+          "Se ejecutan algunas actividades con documentación mínima.",
+          "Se ejecutan la mayoría de las actividades con documentación adecuada.",
+          "Se ejecutan todas las actividades con documentación completa, creativa y reflexiva."
+        ]
+      },
+      {
+        "criterion": "Participación y trabajo colaborativo",
+        "levels": [
+          "No participa ni colabora con el grupo.",
+          "Participa de manera limitada y con poco apoyo al equipo.",
+          "Participa activamente y colabora con el grupo de manera constante.",
+          "Lidera la participación grupal, fomenta la inclusión y la responsabilidad compartida."
+        ]
+      }
+    ]
+  }
+}
