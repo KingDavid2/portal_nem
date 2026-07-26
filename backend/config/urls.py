@@ -19,6 +19,8 @@ from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
+from config import demo_mode
+
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
@@ -34,3 +36,10 @@ urlpatterns = [
     path("api/", include("users.urls")),
     path("api/", include("workspaces.urls")),
 ]
+
+# The demo endpoints provision real users with a shared password and require no
+# authentication. They are registered only when demo mode is on, so with the
+# toggle off they 404 because the routes do not exist — not because a check
+# rejected the caller.
+if demo_mode.enabled():
+    urlpatterns += [path("api/demo/", include("demo.urls"))]

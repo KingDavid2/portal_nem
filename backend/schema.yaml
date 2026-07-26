@@ -76,6 +76,77 @@ paths:
               schema:
                 $ref: '#/components/schemas/User'
           description: ''
+  /api/demo/personas/:
+    get:
+      operationId: demo_personas_list
+      description: Lists the personas the picker offers.
+      tags:
+      - demo
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Persona'
+          description: ''
+  /api/demo/sessions/:
+    post:
+      operationId: demo_sessions_create
+      description: Creates a `pending` receipt and hands provisioning to the worker.
+      tags:
+      - demo
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DemoSessionCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DemoSessionCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DemoSessionCreate'
+        required: true
+      security:
+      - {}
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoSession'
+          description: ''
+  /api/demo/sessions/{id}/:
+    get:
+      operationId: demo_sessions_retrieve
+      description: |-
+        Reports session status and, once ready, signs the guest in.
+
+        Sign-in lives on the poll rather than on a separate endpoint so that
+        re-opening a session URL later just re-signs into the same workspace —
+        provisioning never runs twice (paysys `SessionsController#show`).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - demo
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoSession'
+          description: ''
   /api/groups/:
     get:
       operationId: groups_list
@@ -1011,6 +1082,56 @@ components:
       required:
       - content_id
       - pda_ids
+    DemoSession:
+      type: object
+      description: |-
+        The provisioning receipt as the polling client sees it.
+
+        `workspace` and `email` are null until the session is `ready`;
+        `error_message` is empty unless it `failed`.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        persona:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEnum'
+          readOnly: true
+        workspace:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        email:
+          type: string
+          nullable: true
+          readOnly: true
+        error_message:
+          type: string
+          readOnly: true
+      required:
+      - email
+      - error_message
+      - id
+      - persona
+      - status
+      - workspace
+    DemoSessionCreate:
+      type: object
+      description: |-
+        Validates the requested persona against the registry.
+
+        Rejecting an unknown key here (400) rather than in the task keeps a
+        guaranteed-to-fail session from ever being written.
+      properties:
+        persona:
+          $ref: '#/components/schemas/PersonaEnum'
+      required:
+      - persona
     GenerationQuota:
       type: object
       description: |-
@@ -1419,6 +1540,39 @@ components:
           type: string
           format: uuid
           readOnly: true
+    Persona:
+      type: object
+      description: One entry of the frozen persona registry, as shown in the picker.
+      properties:
+        key:
+          type: string
+          readOnly: true
+        label:
+          type: string
+          readOnly: true
+        description:
+          type: string
+          readOnly: true
+        features:
+          type: array
+          items:
+            type: string
+          readOnly: true
+      required:
+      - description
+      - features
+      - key
+      - label
+    PersonaEnum:
+      enum:
+      - teacher_minimal
+      - teacher_full
+      - quota_exhausted
+      type: string
+      description: |-
+        * `teacher_minimal` - teacher_minimal
+        * `teacher_full` - teacher_full
+        * `quota_exhausted` - quota_exhausted
     RoleEnum:
       enum:
       - owner

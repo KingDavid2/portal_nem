@@ -51,8 +51,14 @@ jobs:
         working-directory: backend
         run: uv sync --frozen --all-groups
 
+      # DEMO_MODE is on for schema generation only: the demo routes are
+      # registered conditionally, and the committed schema documents them so the
+      # frontend can generate typed clients for the demo screens. It changes
+      # nothing about how the app is deployed.
       - name: Regenerate backend/schema.yaml
         working-directory: backend
+        env:
+          DEMO_MODE: "true"
         run: uv run manage.py spectacular --file schema.yaml --validate
 
       - name: Fail on schema.yaml drift
