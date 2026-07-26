@@ -10,13 +10,53 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Callable, Protocol
+from typing import Callable, NoReturn, Protocol
 
 from ..generation import GenerationRequest, build_messages
 from ..schema import ContentPda, Proyecto
 
 # complete(system, user) -> (proyecto, usage)
 Complete = Callable[[str, str], "tuple[Proyecto, Usage]"]
+
+# How long a single structured-completion HTTP call may take. Deliberately below
+# the Celery task's soft time limit so the HTTP layer always gives up first and
+# raises a clean, translatable timeout — rather than the task being decapitated
+# mid-call by Celery, which leaves nothing to translate.
+REQUEST_TIMEOUT_SECONDS = 540
+
+
+class TransientProviderError(Exception):
+    """Raised by a provider adapter for a retryable network/provider failure
+    (timeout, connection, 5xx, rate limit) — never for a schema/parse failure.
+
+    Lives here, on the port, because both adapters must raise it and neither may
+    import the Django task layer.
+    """
+
+
+def raise_provider_fault(exc: Exception, transient: tuple[type[BaseException], ...]) -> NoReturn:
+    """Re-raise `exc` as the port's error contract sees it.
+
+    The task layer routes purely on exception type, so every failure leaving an
+    adapter must be one of: `TransientProviderError` (retry), a terminal error the
+    task already knows (`ValidationError` / `KeyError` / `ValueError` — fail the
+    row), or an unrelated exception passed through untouched.
+
+    instructor raises the *same* exception class for a network timeout and for a
+    schema-parse failure; only `__cause__` tells them apart. Getting this wrong in
+    either direction is costly: a parse failure classified as transient burns the
+    whole retry budget re-producing identical garbage, and a timeout classified as
+    terminal fails a plan that a retry would have completed.
+    """
+    from instructor.core import InstructorError
+
+    if isinstance(exc, transient) or isinstance(exc.__cause__, transient):
+        raise TransientProviderError(str(exc) or type(exc).__name__) from exc
+    if isinstance(exc, InstructorError):
+        # Not a transient cause, so this is a structured-output failure. ValueError
+        # is terminal to the task layer; instructor's own class is not.
+        raise ValueError(str(exc) or type(exc).__name__) from exc
+    raise exc
 
 
 @dataclass(frozen=True)

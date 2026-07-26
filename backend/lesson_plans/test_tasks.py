@@ -39,8 +39,15 @@ import pytest
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import connections
 
+from celery.exceptions import SoftTimeLimitExceeded
+
 from lesson_plans.core.catalog import pda_by_id
-from lesson_plans.core.ports.llm import BaseProvider, GenerationResult, Usage
+from lesson_plans.core.ports.llm import (
+    BaseProvider,
+    GenerationResult,
+    TransientProviderError,
+    Usage,
+)
 from lesson_plans.core.schema import (
     ArticulatingAxis,
     ContentPda,
@@ -398,6 +405,105 @@ def test_task_without_content_selection_fails_terminally_without_retrying():
     updated = _read_plan_in(workspace, plan.id)
     assert updated.status == LessonPlan.Status.FAILED
     assert updated.failure_reason == NO_CONTENT_SELECTION_ERROR
+
+
+@pytest.mark.django_db(transaction=True)
+def test_task_retries_a_transient_provider_error_without_failing_the_row():
+    """A timeout against the self-hosted endpoint is worth retrying — the same
+    request may well succeed on a less loaded box. The row must NOT be marked
+    failed on the attempt that retries, or the teacher sees a permanent error
+    for a plan still in flight."""
+    from celery.exceptions import Retry
+    from workspaces.models import Workspace
+
+    workspace = Workspace.objects.create(type=Workspace.Type.GROUP)
+    group = _make_group(workspace)
+    plan = _create_pending_plan(workspace, group)
+
+    fake = _FakeProvider(error=TransientProviderError("Request timed out."))
+
+    with patch("lesson_plans.tasks.build_provider", return_value=fake):
+        with patch.object(generate_lesson_plan_task, "retry", side_effect=Retry()) as retry:
+            with pytest.raises(Retry):
+                _run_task_in_cold_thread(workspace_id=workspace.id, lesson_plan_id=plan.id)
+
+    retry.assert_called_once()
+    updated = _read_plan_in(workspace, plan.id)
+    assert updated.status == LessonPlan.Status.PENDING
+    assert updated.failure_reason == ""
+
+
+@pytest.mark.django_db(transaction=True)
+def test_task_exhausting_the_time_limit_fails_the_row_without_retrying():
+    """Celery raises `SoftTimeLimitExceeded` inside the task when the whole run
+    outlives its budget. Retrying would burn the identical budget again, so this
+    is terminal — but it must still land as `failed` with a reason rather than
+    escaping and orphaning the row at `pending`."""
+    from workspaces.models import Workspace
+
+    workspace = Workspace.objects.create(type=Workspace.Type.GROUP)
+    group = _make_group(workspace)
+    plan = _create_pending_plan(workspace, group)
+
+    fake = _FakeProvider(error=SoftTimeLimitExceeded())
+
+    with patch("lesson_plans.tasks.build_provider", return_value=fake):
+        with patch.object(generate_lesson_plan_task, "retry") as retry:
+            _run_task_in_cold_thread(workspace_id=workspace.id, lesson_plan_id=plan.id)
+
+    retry.assert_not_called()
+    updated = _read_plan_in(workspace, plan.id)
+    assert updated.status == LessonPlan.Status.FAILED
+    assert updated.failure_reason != ""
+
+
+@pytest.mark.django_db(transaction=True)
+def test_task_never_leaves_the_row_pending_on_an_unmapped_error():
+    """The regression that motivated this guard: `InstructorError` matched neither
+    the terminal tuple nor `TransientProviderError`, so it escaped both handlers,
+    `_fail()` never ran, and the plan sat at `pending` forever while the UI polled
+    a row that would never change. Any unmapped exception must fail the row — and
+    still propagate, so the failure stays visible in Celery."""
+    from workspaces.models import Workspace
+
+    workspace = Workspace.objects.create(type=Workspace.Type.GROUP)
+    group = _make_group(workspace)
+    plan = _create_pending_plan(workspace, group)
+
+    fake = _FakeProvider(error=RuntimeError("Request timed out."))
+
+    with patch("lesson_plans.tasks.build_provider", return_value=fake):
+        with pytest.raises(RuntimeError):
+            _run_task_in_cold_thread(workspace_id=workspace.id, lesson_plan_id=plan.id)
+
+    updated = _read_plan_in(workspace, plan.id)
+    assert updated.status == LessonPlan.Status.FAILED
+    assert "timed out" in updated.failure_reason
+
+
+@pytest.mark.django_db(transaction=True)
+def test_task_fails_the_row_once_the_retry_budget_is_exhausted():
+    """`self.retry()` raises `MaxRetriesExceededError` on the last attempt. Without
+    the catch-all that too would orphan the row, so the retry path must terminate
+    in `failed` rather than in silence."""
+    from celery.exceptions import MaxRetriesExceededError
+    from workspaces.models import Workspace
+
+    workspace = Workspace.objects.create(type=Workspace.Type.GROUP)
+    group = _make_group(workspace)
+    plan = _create_pending_plan(workspace, group)
+
+    fake = _FakeProvider(error=TransientProviderError("Request timed out."))
+    exhausted = MaxRetriesExceededError("retries exhausted")
+
+    with patch("lesson_plans.tasks.build_provider", return_value=fake):
+        with patch.object(generate_lesson_plan_task, "retry", side_effect=exhausted):
+            with pytest.raises(MaxRetriesExceededError):
+                _run_task_in_cold_thread(workspace_id=workspace.id, lesson_plan_id=plan.id)
+
+    updated = _read_plan_in(workspace, plan.id)
+    assert updated.status == LessonPlan.Status.FAILED
+    assert updated.failure_reason != ""
 
 
 @pytest.mark.django_db

@@ -18,6 +18,7 @@ from __future__ import annotations
 import logging
 
 from celery import shared_task
+from celery.exceptions import MaxRetriesExceededError, SoftTimeLimitExceeded
 from django.utils import timezone
 from pydantic import ValidationError
 
@@ -27,7 +28,10 @@ from .core.catalog import subject_by_id, theme_by_id
 from .core.catalog_pdas import content_pdas_for
 from .core.factory import build_provider
 from .core.generation import GenerationRequest, scenario_label, stamp_request_context
+from .core.ports.llm import TransientProviderError
 from .models import LessonPlan
+
+__all__ = ["TransientProviderError", "generate_lesson_plan_task"]
 
 logger = logging.getLogger(__name__)
 
@@ -45,10 +49,16 @@ FAILURE_REASON_MAX_LENGTH = 2000
 # — retrying would produce the same failure.
 _TERMINAL_ERRORS = (ValidationError, KeyError, ValueError)
 
+# Shown to the teacher when the whole run outlived its budget. `SoftTimeLimitExceeded`
+# carries no message of its own, and "" would render as a failed plan with no
+# explanation at all.
+TIME_LIMIT_ERROR = "Generation exceeded its time limit before the provider responded."
 
-class TransientProviderError(Exception):
-    """Raised by a provider adapter for a retryable network/provider failure
-    (timeout, 5xx, rate limit) — never for a schema/parse failure."""
+# Any exception that reaches the catch-all is, by definition, one nobody classified.
+UNEXPECTED_ERROR = "Unexpected generation failure: "
+
+# The provider stayed unreachable across every attempt.
+RETRIES_EXHAUSTED_ERROR = "Generation failed after all retries: "
 
 
 def _selected_pdas(plan: LessonPlan):
@@ -99,19 +109,31 @@ def _fail(workspace_id, lesson_plan_id, reason: str) -> None:
     max_retries=2,
     retry_backoff=True,
     retry_backoff_max=60,
-    soft_time_limit=90,
+    # A 20k-token nested `Proyecto` under vLLM guided-JSON decoding takes minutes on
+    # the self-hosted box, not the seconds a cloud provider needs. The soft limit sits
+    # above `REQUEST_TIMEOUT_SECONDS` so the HTTP client always times out first and the
+    # adapter gets to translate the failure; the hard limit is the backstop for a
+    # worker wedged somewhere the soft limit cannot interrupt.
+    soft_time_limit=600,
+    time_limit=660,
 )
 def generate_lesson_plan_task(self, *, workspace_id, lesson_plan_id):
     """Generate the ABPC proyecto for `lesson_plan_id` in `workspace_id`.
 
     Design Interfaces/Contracts: `provider=build_provider()`;
     `result=provider.generate(...)` runs *outside* any transaction (the
-    ~10-30s network call must never hold a DB txn open); on success the row
+    minutes-long network call must never hold a DB txn open); on success the row
     is updated inside `workspace_scope(workspace_id)` with `status=ready`;
     on schema-parse/validation/unresolvable-selection failure, `status=failed` with a
     truncated `failure_reason` (no retry — the output would not change).
     Transient provider/network errors retry up to twice with exponential
     backoff.
+
+    Every exit path must leave the row in a terminal state. A `pending` plan the
+    worker has already given up on is the worst outcome available: the client polls
+    it forever and the teacher is never told anything went wrong. The catch-all
+    below exists solely to make that unreachable — it is a safety net, not a
+    substitute for classifying failures in the adapters.
     """
     # Establish workspace context for the read of the pending row itself —
     # this is the task's own context-setting step (tenancy-isolation spec),
@@ -134,7 +156,38 @@ def generate_lesson_plan_task(self, *, workspace_id, lesson_plan_id):
         _fail(workspace_id, lesson_plan_id, str(exc))
         return
     except TransientProviderError as exc:
-        raise self.retry(exc=exc)
+        try:
+            raise self.retry(exc=exc)
+        except MaxRetriesExceededError:
+            # Raised from inside this handler, so no sibling `except` below can see
+            # it — the row would be orphaned unless it is failed right here.
+            logger.warning(
+                "generate_lesson_plan_task retries exhausted workspace=%s plan=%s: %s",
+                workspace_id,
+                lesson_plan_id,
+                exc,
+            )
+            _fail(workspace_id, lesson_plan_id, f"{RETRIES_EXHAUSTED_ERROR}{exc}")
+            raise
+    except SoftTimeLimitExceeded:
+        # Not retried: a run that exhausted the budget once will exhaust it again.
+        logger.warning(
+            "generate_lesson_plan_task timed out workspace=%s plan=%s",
+            workspace_id,
+            lesson_plan_id,
+        )
+        _fail(workspace_id, lesson_plan_id, TIME_LIMIT_ERROR)
+        return
+    except Exception as exc:
+        # Unclassified — the adapter should have translated this. Fail the row so it
+        # is never orphaned, then re-raise so the gap stays loud in the worker log.
+        logger.exception(
+            "generate_lesson_plan_task unexpected failure workspace=%s plan=%s",
+            workspace_id,
+            lesson_plan_id,
+        )
+        _fail(workspace_id, lesson_plan_id, f"{UNEXPECTED_ERROR}{exc}")
+        raise
 
     # The asignatura and the date range in the header are the request's, not
     # the model's — stamp them over whatever came back.
