@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     "schools",
     "students",
     "lesson_plans",
+    "demo",
 ]
 
 MIDDLEWARE = [
