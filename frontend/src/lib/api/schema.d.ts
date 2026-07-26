@@ -80,6 +80,63 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/demo/personas/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Lists the personas the picker offers. */
+        get: operations["demo_personas_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/demo/sessions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Creates a `pending` receipt and hands provisioning to the worker. */
+        post: operations["demo_sessions_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/demo/sessions/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Reports session status and, once ready, signs the guest in.
+         *
+         *     Sign-in lives on the poll rather than on a separate endpoint so that
+         *     re-opening a session URL later just re-signs into the same workspace —
+         *     provisioning never runs twice (paysys `SessionsController#show`).
+         */
+        get: operations["demo_sessions_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/groups/": {
         parameters: {
             query?: never;
@@ -422,6 +479,31 @@ export interface components {
             pda_ids: string[];
         };
         /**
+         * @description The provisioning receipt as the polling client sees it.
+         *
+         *     `workspace` and `email` are null until the session is `ready`;
+         *     `error_message` is empty unless it `failed`.
+         */
+        DemoSession: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly persona: string;
+            readonly status: components["schemas"]["StatusEnum"];
+            /** Format: uuid */
+            readonly workspace: string | null;
+            readonly email: string | null;
+            readonly error_message: string;
+        };
+        /**
+         * @description Validates the requested persona against the registry.
+         *
+         *     Rejecting an unknown key here (400) rather than in the task keeps a
+         *     guaranteed-to-fail session from ever being written.
+         */
+        DemoSessionCreate: {
+            persona: components["schemas"]["PersonaEnum"];
+        };
+        /**
          * @description Full payload of `GET /api/lesson-plans/quota/` (the "Generaciones de
          *     este mes" card).
          *
@@ -575,6 +657,20 @@ export interface components {
             /** Format: uuid */
             readonly workspace?: string;
         };
+        /** @description One entry of the frozen persona registry, as shown in the picker. */
+        Persona: {
+            readonly key: string;
+            readonly label: string;
+            readonly description: string;
+            readonly features: string[];
+        };
+        /**
+         * @description * `teacher_minimal` - teacher_minimal
+         *     * `teacher_full` - teacher_full
+         *     * `quota_exhausted` - quota_exhausted
+         * @enum {string}
+         */
+        PersonaEnum: "teacher_minimal" | "teacher_full" | "quota_exhausted";
         /**
          * @description * `owner` - Owner
          *     * `admin` - Admin
@@ -711,6 +807,71 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["User"];
+                };
+            };
+        };
+    };
+    demo_personas_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Persona"][];
+                };
+            };
+        };
+    };
+    demo_sessions_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemoSessionCreate"];
+                "application/x-www-form-urlencoded": components["schemas"]["DemoSessionCreate"];
+                "multipart/form-data": components["schemas"]["DemoSessionCreate"];
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoSession"];
+                };
+            };
+        };
+    };
+    demo_sessions_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoSession"];
                 };
             };
         };

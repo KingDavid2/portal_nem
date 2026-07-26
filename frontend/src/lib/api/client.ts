@@ -27,12 +27,19 @@ export function isWorkspaceListPath(pathname: string): boolean {
   return pathname === "/api/workspaces/" || pathname === "/api/workspaces";
 }
 
+/** Guest paths do not require an active workspace or authentication —
+ * demo endpoints and the health probe must be reachable by unauthenticated
+ * visitors before they have a workspace selected. */
+export function isGuestPath(pathname: string): boolean {
+  return pathname.startsWith("/api/demo/") || pathname === "/api/health/";
+}
+
 /** A "data" request is any request that must carry the active workspace's
- * `X-Workspace-Id` — everything except the auth surface and the unscoped
- * workspace-list endpoint (design.md: workspace-list "must not require
- * `X-Workspace-Id`"). */
+ * `X-Workspace-Id` — everything except the auth surface, the unscoped
+ * workspace-list endpoint, and guest paths (design.md: workspace-list "must
+ * not require `X-Workspace-Id`"). */
 export function isDataRequest(pathname: string): boolean {
-  return !isAuthPath(pathname) && !isWorkspaceListPath(pathname);
+  return !isAuthPath(pathname) && !isWorkspaceListPath(pathname) && !isGuestPath(pathname);
 }
 
 function readCookie(name: string): string | null {

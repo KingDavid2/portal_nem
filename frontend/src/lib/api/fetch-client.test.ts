@@ -22,6 +22,7 @@ const {
   authMiddleware,
   isAuthPath,
   isDataRequest,
+  isGuestPath,
   isWorkspaceListPath,
   MissingWorkspaceError,
 } = await import("./client");
@@ -57,10 +58,22 @@ describe("path classification", () => {
     expect(isWorkspaceListPath("/api/schools/")).toBe(false);
   });
 
-  it("treats everything except auth and workspace-list as a data request", () => {
+  it("treats /api/demo/* and /api/health/ as guest paths", () => {
+    expect(isGuestPath("/api/demo/personas/")).toBe(true);
+    expect(isGuestPath("/api/demo/sessions/")).toBe(true);
+    expect(isGuestPath("/api/demo/sessions/abc-123/")).toBe(true);
+    expect(isGuestPath("/api/health/")).toBe(true);
+    expect(isGuestPath("/api/schools/")).toBe(false);
+    expect(isGuestPath("/api/auth/me/")).toBe(false);
+  });
+
+  it("treats everything except auth, workspace-list, and guest paths as a data request", () => {
     expect(isDataRequest("/api/schools/")).toBe(true);
     expect(isDataRequest("/api/auth/me/")).toBe(false);
     expect(isDataRequest("/api/workspaces/")).toBe(false);
+    expect(isDataRequest("/api/demo/personas/")).toBe(false);
+    expect(isDataRequest("/api/demo/sessions/abc/")).toBe(false);
+    expect(isDataRequest("/api/health/")).toBe(false);
   });
 });
 
@@ -107,6 +120,15 @@ describe("authMiddleware.onRequest", () => {
       makeRequest("GET", "/api/workspaces/"),
     );
     expect(workspacesResult.headers.get("X-Workspace-Id")).toBeNull();
+  });
+
+  it("does not throw or attach X-Workspace-Id on guest paths even without workspace", async () => {
+    activeWorkspaceId = null;
+    const demoResult = await runOnRequest(makeRequest("GET", "/api/demo/personas/"));
+    expect(demoResult.headers.get("X-Workspace-Id")).toBeNull();
+
+    const healthResult = await runOnRequest(makeRequest("GET", "/api/health/"));
+    expect(healthResult.headers.get("X-Workspace-Id")).toBeNull();
   });
 
   it("attaches X-Workspace-Id on data requests when a workspace is active", async () => {
