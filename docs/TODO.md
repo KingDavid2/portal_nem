@@ -39,15 +39,22 @@ Neither blocks the RAG code — both block the final measured exit-gate number.
 
 Left open by the twelve-unit alignment (`a4dd883`..`118ad72`). Full context:
 `docs/archive/2026-07-25-nueva-planeacion-progress.md`. The dotenv, header, select and
-regenerate-hint items closed in `fd247bc`..`470ea33`; the two items below them are new,
-surfaced by that work.
+regenerate-hint items closed in `fd247bc`..`470ea33`; the generation-timeout item closed
+in `a62868b`. The remaining items below were surfaced by that work.
 
-- [ ] **Smoke `/planeaciones/nueva` against a live stack.** Never driven end to end —
-      Redis + runserver + Celery + `npm run dev`, then `/planeaciones` → Nueva planeación
-      → a secundaria group + "Lenguajes" or "Ética, Naturaleza y Sociedades" → Generar
-      proyecto → pending → ready. Quota smoke: set
+- [ ] **Smoke `/planeaciones/nueva` against a live stack.** Still never driven end to end
+      through the browser — Redis + runserver + Celery + `npm run dev`, then
+      `/planeaciones` → Nueva planeación → a secundaria group + "Lenguajes" or "Ética,
+      Naturaleza y Sociedades" → Generar proyecto → pending → ready. Quota smoke: set
       `LESSON_PLAN_MONTHLY_GENERATION_LIMIT=1` in the repo-root `.env` (Django reads it
       now — `backend/config/env.py`), create twice, expect 429.
+
+      **Partly de-risked.** The provider leg now has a measured number: a real
+      `provider.generate()` against the DGX Spark box returned a valid `Proyecto` in
+      **114.1s / 8413 output tokens**. That also explains why this smoke could never have
+      passed before `a62868b` — Celery's `soft_time_limit` was 90s, so every generation
+      was killed roughly twenty seconds short of finishing. What remains unsmoked is the
+      HTTP/Celery/browser path around that call, not the call itself.
 
 - [ ] **No refund-on-failure path for quota.** A generation the provider later fails
       still counts. Product decision, flagged not built — refunding needs an
@@ -61,6 +68,13 @@ surfaced by that work.
       (`planeaciones/proyecto-viewer.tsx`, types in `proyecto-types.ts`) still prints only
       escuela/CCT/fase/grado/campo/metodología/fecha. The web header and the exported
       header now disagree.
+
+- [ ] **The timeout ordering is a convention, not an invariant.** `a62868b` depends on
+      `REQUEST_TIMEOUT_SECONDS` (540, `core/ports/llm.py`) staying below the task's
+      `soft_time_limit` (600, `tasks.py`), so the HTTP client always fails first and the
+      adapter gets something translatable to work with. Invert the two and the row is
+      orphaned again — by exactly the bug that was just fixed. Nothing asserts the
+      ordering; a one-line test comparing the two constants would pin it.
 
 - [ ] **Backend tests inherit whatever the environment says.** There is no
       `backend/conftest.py`; fixtures are per-file. Loading the repo-root `.env`

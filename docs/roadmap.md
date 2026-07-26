@@ -21,7 +21,7 @@
 |---|---|---|---|
 | M3 | School structure CRUD (school → school_year → group → student) | ✅ Done — schools + students apps, RLS, services, first DRF HTTP surface; 131/131 tests | ✅ Done — Next.js foundation (see M3 — Frontend below): auth seam + generated TS client + school/year/group/student CRUD screens; 142 backend / 22 frontend tests |
 | M4 | **AI planeaciones** (persisted + attached to group / school_year) | ✅ Done — `lesson_plans` app: ported M1 core behind `LLMProvider` port, `LessonPlan` ScopedModel + RLS, Celery generation task, DRF generate/CRUD/export; 189 backend tests | ✅ Done — Planeaciones screen: generate form + async poll + proyecto viewer + docx export; 35 frontend tests |
-| M5 | **Frontend design alignment** — align built screens to `designs/teachers.pen` + lock the design system | 🟡 Partial — the Nueva planeación alignment needed a backend contract it did not have: catalog enrichment, persisted project context, request validation, PDA grounding, monthly quota (`a4dd883`..`868be76`), then dotenv loading + an asignatura/periodo header (`fd247bc`, `675ce02`) | 🟡 In progress — **Nueva planeación + Selector de contenidos y PDAs done** (`/planeaciones/nueva`, end to end, unsmoked). Auth, school CRUD and the remaining planeaciones screens still to re-skin; `Select` and `ChoiceChip` primitives extracted and every hand-rolled select retired |
+| M5 | **Frontend design alignment** — align built screens to `designs/teachers.pen` + lock the design system | 🟡 Partial — the Nueva planeación alignment needed a backend contract it did not have: catalog enrichment, persisted project context, request validation, PDA grounding, monthly quota (`a4dd883`..`868be76`), then dotenv loading + an asignatura/periodo header (`fd247bc`, `675ce02`) and a generation-timeout fix the first live run forced (`a62868b`) | 🟡 In progress — **Nueva planeación + Selector de contenidos y PDAs done** (`/planeaciones/nueva`, end to end, unsmoked). Auth, school CRUD and the remaining planeaciones screens still to re-skin; `Select` and `ChoiceChip` primitives extracted and every hand-rolled select retired |
 | M6 | Attendance + grades entry grids (daily-use core) | ⬜ | ⬜ Attendance + grades entry grids (TanStack Table) |
 | M7 | report_card (boleta) PDF export (SEP deliverable) | ⬜ | ⬜ Boleta preview/download surface |
 | M8 | Billing + subscription | ⬜ | ⬜ Plan/checkout + billing settings screens |
@@ -352,7 +352,7 @@ drift, existing frontend tests still green.
 Twelve reviewed units, `a4dd883`..`118ad72`. `/planeaciones/nueva` renders the designed screen end to end
 — automatic context banner, ejes, contenidos/PDAs, summary panel — and `Generar proyecto` POSTs and lands
 on `/planeaciones/{id}`, where the existing pending→ready poll takes over. Tree green after the
-follow-ups below: 304 pytest, 149 vitest (29 files), `tsc` clean, lint at its 1 pre-existing warning.
+follow-ups below: 317 pytest, 149 vitest (29 files), `tsc` clean, lint at its 1 pre-existing warning.
 
 Handoff detail — every unit, decision, and accepted design gap — archived at
 [`archive/2026-07-25-nueva-planeacion-progress.md`](archive/2026-07-25-nueva-planeacion-progress.md).
@@ -384,8 +384,31 @@ One trap found on the way: the backend suite had been inheriting the settings qu
 the root `.env` (which sets the limit to 1 for the smoke) turned a quota test red. It pins the limit now.
 The backend has no `conftest.py` — nothing else stops ambient env from steering a test.
 
+**Then the first real generation exposed why the smoke could never have passed** (`a62868b`). Pointing the
+task at the live vLLM box produced `InstructorError('Request timed out.')` and left the `LessonPlan` at
+`status=pending` forever: the exception matched neither the task's terminal tuple nor
+`TransientProviderError`, so it escaped both handlers and `_fail()` never ran. The client polled a row
+nothing would ever update. Three causes — no `timeout=` on the OpenAI client, adapters that never raised
+the `TransientProviderError` their own contract documents, and a `soft_time_limit` of 90s.
+
+**A generation measures 114.1s / 8413 output tokens** on the DGX Spark box for a full nested `Proyecto`.
+The box was never too slow; the limit sat just under the honest cost of the work, so every run was killed
+roughly twenty seconds short. Budget now 600s soft / 660s hard, with the HTTP client at 540s so it always
+fails first with something the adapter can translate. `TransientProviderError` moved onto the port and
+both adapters translate their SDK faults; the task gained handlers for the time limit, an exhausted retry
+budget, and a catch-all that fails the row and re-raises. No exit path leaves a row pending, and
+`/planeaciones/{id}` already renders `failed` with the stored reason, so the teacher is finally told.
+
+Two things worth carrying forward. instructor raises the **same exception class** for a network timeout
+and for a schema-parse failure — only `__cause__` separates them, and misreading one as the other either
+burns the whole retry budget re-producing identical garbage or permanently fails a plan a retry would have
+completed. And `raise self.retry(...)` runs *inside* an `except` handler, so `MaxRetriesExceededError` from
+it is invisible to sibling `except` clauses; it needs its own nested handler or the last attempt orphans
+the row.
+
 **Not done:** the end-to-end smoke against a live stack (Redis + runserver + Celery + `npm run dev`).
-Everything below the API boundary is verified only by vitest. Walkthrough script in the archived doc.
+The provider leg is now measured, but everything else below the API boundary is verified only by vitest.
+Walkthrough script in the archived doc.
 Also still open: refund-on-failure for the quota (a product decision — exactly-once is not Celery's
 to give) and `find_invented_pdas`' cross-content guard, unreachable until a field gains a second content.
 
