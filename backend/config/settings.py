@@ -33,6 +33,13 @@ SECRET_KEY = env(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env.bool("DEBUG", default=True)
 
+# Boot guard: refuse to start if DEMO_MODE is set while DEBUG is off.
+# DEMO_MODE creates real users via an unauthenticated endpoint; this
+# aborts the process rather than degrading silently.
+from config.demo_mode import validate as _demo_mode_validate  # noqa: E402
+
+_demo_mode_validate()
+
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 
 
