@@ -4,8 +4,12 @@ import { createRoot } from "react-dom/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ login: vi.fn(), push: vi.fn(), refresh: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push, refresh: mocks.refresh }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push, refresh: mocks.refresh, replace: vi.fn() }) }));
 vi.mock("@/lib/auth/auth-context", () => ({ useAuth: () => ({ login: mocks.login }) }));
+vi.mock("@/lib/api/demo", async (importActual) => ({
+  ...(await importActual<object>()),
+  useDemoModeQuery: () => ({ data: false, isLoading: false, isError: false }),
+}));
 import LoginPage from "./page";
 
 async function mount() {

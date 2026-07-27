@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { LogoutButton } from "@/components/logout-button";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { useAuth } from "@/lib/auth/auth-context";
+import { useDemoGuestRedirect } from "@/lib/demo/use-demo-guest-redirect";
 
 export default function Home() {
+  useDemoGuestRedirect();
   const { user, isLoading } = useAuth();
 
   return (

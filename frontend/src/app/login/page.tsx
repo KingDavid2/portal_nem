@@ -8,8 +8,10 @@ import { Card } from "@/components/ui/card";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth/auth-context";
+import { useDemoGuestRedirect } from "@/lib/demo/use-demo-guest-redirect";
 
 export default function LoginPage() {
+  useDemoGuestRedirect();
   const { login } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState("");
