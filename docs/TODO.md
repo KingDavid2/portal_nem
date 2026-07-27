@@ -35,7 +35,7 @@ Neither blocks the RAG code — both block the final measured exit-gate number.
       the tenant-scoped M4 generation service so planeaciones ground on real SEP
       contenido instead of pure model output.
 
-## M5 — Nueva planeación follow-ups
+## M6 — Nueva planeación follow-ups
 
 Left open by the twelve-unit alignment (`a4dd883`..`118ad72`). Full context:
 `docs/archive/2026-07-25-nueva-planeacion-progress.md`. The dotenv, header, select and
@@ -83,7 +83,7 @@ in `a62868b`. The remaining items below were surfaced by that work.
       doing the same. An autouse fixture pinning the settings that tests depend on would
       close it.
 
-## M8 — carried in from M5
+## M9 — carried in from M6
 
 - [ ] **"Límite alcanzado" modal** (frame `ImG3U`) deliberately unbuilt. Prices per
       **ciclo** ("60 planeaciones por ciclo", "+$1,000") while the backend quota is per

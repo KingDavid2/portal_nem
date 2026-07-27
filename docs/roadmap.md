@@ -21,27 +21,34 @@
 |---|---|---|---|
 | M3 | School structure CRUD (school → school_year → group → student) | ✅ Done — schools + students apps, RLS, services, first DRF HTTP surface; 131/131 tests | ✅ Done — Next.js foundation (see M3 — Frontend below): auth seam + generated TS client + school/year/group/student CRUD screens; 142 backend / 22 frontend tests |
 | M4 | **AI planeaciones** (persisted + attached to group / school_year) | ✅ Done — `lesson_plans` app: ported M1 core behind `LLMProvider` port, `LessonPlan` ScopedModel + RLS, Celery generation task, DRF generate/CRUD/export; 189 backend tests | ✅ Done — Planeaciones screen: generate form + async poll + proyecto viewer + docx export; 35 frontend tests |
-| M5 | **Frontend design alignment** — align built screens to `designs/teachers.pen` + lock the design system | 🟡 Partial — the Nueva planeación alignment needed a backend contract it did not have: catalog enrichment, persisted project context, request validation, PDA grounding, monthly quota (`a4dd883`..`868be76`), then dotenv loading + an asignatura/periodo header (`fd247bc`, `675ce02`) and a generation-timeout fix the first live run forced (`a62868b`) | 🟡 In progress — **Nueva planeación + Selector de contenidos y PDAs done** (`/planeaciones/nueva`, end to end, unsmoked). Auth, school CRUD and the remaining planeaciones screens still to re-skin; `Select` and `ChoiceChip` primitives extracted and every hand-rolled select retired |
-| M6 | Attendance + grades entry grids (daily-use core) | ⬜ | ⬜ Attendance + grades entry grids (TanStack Table) |
-| M7 | report_card (boleta) PDF export (SEP deliverable) | ⬜ | ⬜ Boleta preview/download surface |
-| M8 | Billing + subscription | ⬜ | ⬜ Plan/checkout + billing settings screens |
-| M9 | Tutor/parent read-only portal | ⬜ | ⬜ Read-only tutor/parent portal |
+| M5 | **Demo mode** — one-click seeded demo tenants behind `DEMO_MODE` | ✅ Done — `demo` app: `DemoSession` receipt + persona registry, provisioning through the real signup path, `teacher_minimal`/`teacher_full`/`quota_exhausted` personas, Celery provisioning task, three guest DRF endpoints registered only when the flag is on (`4577f64`..`ff5043c`) | ✅ Done — guest demo API layer + persona picker + session polling page that signs the guest into the provisioned workspace (`1de20fd`, `a35b3ba`) |
+| M6 | **Frontend design alignment** — align built screens to `designs/teachers.pen` + lock the design system | 🟡 Partial — the Nueva planeación alignment needed a backend contract it did not have: catalog enrichment, persisted project context, request validation, PDA grounding, monthly quota (`a4dd883`..`868be76`), then dotenv loading + an asignatura/periodo header (`fd247bc`, `675ce02`) and a generation-timeout fix the first live run forced (`a62868b`) | 🟡 In progress — **Nueva planeación + Selector de contenidos y PDAs done** (`/planeaciones/nueva`, end to end, unsmoked). Auth, school CRUD and the remaining planeaciones screens still to re-skin; `Select` and `ChoiceChip` primitives extracted and every hand-rolled select retired |
+| M7 | Attendance + grades entry grids (daily-use core) | ⬜ | ⬜ Attendance + grades entry grids (TanStack Table) |
+| M8 | report_card (boleta) PDF export (SEP deliverable) | ⬜ | ⬜ Boleta preview/download surface |
+| M9 | Billing + subscription | ⬜ | ⬜ Plan/checkout + billing settings screens |
+| M10 | Tutor/parent read-only portal | ⬜ | ⬜ Read-only tutor/parent portal |
 
 **Frontend is interleaved, not a trailing phase.** From M3 onward every milestone ships its own Next.js
-surface in the same slice as its API. Reason: the daily-use value (M6 attendance + grades) IS the grid UI —
+surface in the same slice as its API. Reason: the daily-use value (M7 attendance + grades) IS the grid UI —
 building the API and bolting the UI on later means re-deriving the auth seam and type pipeline under pressure.
-M3 carries the one-time **frontend foundation** (auth seam + generated TS client); M4–M9 build screens on it.
+M3 carries the one-time **frontend foundation** (auth seam + generated TS client); M4–M10 build screens on it.
 
 **M4 pulls the AI path forward.** The M1 spike proved a model can produce an acceptable NEM planeación;
 M4 turns that into a real, tenant-scoped, persisted product feature (the highest-value screen) before the
 daily-use grids. All later milestones shift down one number.
 
-**M5 locks the visual foundation.** M3–M4 shipped screens thin-on-purpose (prove the pipe, not the polish).
-M5 aligns everything already built (auth, school CRUD, planeaciones) to the finished `designs/teachers.pen`
-and extracts its reusable components into the frontend's design system — so M6–M9 build against a settled
+**M5 opens the product to strangers.** Everything through M4 needs an account, a workspace and seeded
+school structure before a single screen says anything. M5 adds `DEMO_MODE`: a guest picks a persona, the
+backend provisions a real tenant through the real signup path, and the guest is signed into it — so the
+product can be shown without a sales call and without a fixture-only code path that drifts from production.
+Off by default, refuses to boot in production, and its URLs are never registered when the flag is off.
+
+**M6 locks the visual foundation.** M3–M4 shipped screens thin-on-purpose (prove the pipe, not the polish).
+M6 aligns everything already built (auth, school CRUD, planeaciones) to the finished `designs/teachers.pen`
+and extracts its reusable components into the frontend's design system — so M7–M10 build against a settled
 visual language instead of re-inventing it per screen. Planned frontend-only; the Nueva planeación slice
-proved that wrong (see *M5 progress* below) and every later screen should budget for it. Inserting it here
-shifts the old M5–M8 (attendance/grades, boleta, billing, tutor) down one number to M6–M9.
+proved that wrong (see *M6 progress* below) and every later screen should budget for it. Inserting M5 and
+M6 here shifts the old M5–M8 (attendance/grades, boleta, billing, tutor) down two numbers to M7–M10.
 
 M0/M1 code is throwaway-tolerant: the `LLMProvider` port, the Pydantic output schema, and the prompt/eval
 assets carry forward into M2+; the standalone project wiring does not have to.
@@ -207,7 +214,7 @@ Commits on `main`: `dfbcc62` model+migration, `45babe1` move core, `869dec5` aut
 ## Milestone 3 — School structure CRUD ✅ Complete
 
 The NEM domain hierarchy `school → school_year → group → student` — the data that lesson
-plans (M4), grades, and attendance (M6) attach to. Also the backend's **first real HTTP
+plans (M4), grades, and attendance (M7) attach to. Also the backend's **first real HTTP
 surface**. Built via the SDD cycle; designs archived under
 `openspec/changes/archive/2026-07-22-m3-school-structure/`. 6 deliveries, one commit each,
 strict TDD; 131/131 tests green.
@@ -234,7 +241,7 @@ real scoped models exist.
 ### M3 — Frontend (Next.js foundation) ✅ Complete
 
 The one-time frontend bootstrap, shipped as M3's frontend slice because M3 is the first API worth
-consuming. Everything M4–M9 UI depends on lands here once. Built via the SDD cycle (8 deliveries,
+consuming. Everything M4–M10 UI depends on lands here once. Built via the SDD cycle (8 deliveries,
 one commit each); designs archived under `openspec/changes/archive/2026-07-23-m3-frontend-foundation/`.
 142 backend / 22 frontend tests green, zero schema drift. Resolved forks: dedicated
 `GET /api/auth/csrf/` bootstrap; `openapi-typescript` + `openapi-fetch` (types-only) codegen;
@@ -252,7 +259,7 @@ exit-gate walkthrough is code-complete and test-verified but not yet run live lo
   TS client, wired into CI from day one. Manual codegen rots; generated types are the contract.
 - **Workspace context** — the active-workspace switcher sends `X-Workspace-Id` on every request.
 - **First screens** — school / school_year / group / student CRUD, proving the whole pipe end-to-end
-  (auth → typed client → scoped data → grid). Thin on purpose; the real grids are M6/M7.
+  (auth → typed client → scoped data → grid). Thin on purpose; the real grids are M7/M8.
 
 **Exit gate:** a logged-in teacher can create a school → ciclo → grupo → alumno through Next.js screens
 backed by the generated TS client, with the session cookie + CSRF + workspace scoping all live.
@@ -313,22 +320,55 @@ shape (Group vs SchoolYear vs both); how much of the proyecto is editable vs reg
 
 ---
 
-## Milestone 5 — Frontend design alignment (`designs/teachers.pen`) 🟡 In progress
+## Milestone 5 — Demo mode ✅ Complete
+
+**Goal:** let a stranger see the real product in one click. With `DEMO_MODE=true`, a logged-out visitor
+lands on `/demo`, picks a persona, and the backend provisions a real tenant for them — same signup service,
+same models, same RLS as a paying user — then signs them into it. No fixture-only read path, so the demo
+cannot drift away from production behaviour.
+
+**Off by default and inert when off.** `DEMO_MODE` is read once at boot; with `DEBUG=false` and the flag on
+the app refuses to start. The demo URLs are included in `config/urls.py` only when the flag is on, so with
+it off every `/api/demo/*` route 404s because it was never registered — not because a permission denied it.
+`/api/health/` carries the flag so the frontend can decide whether guests get redirected to `/demo`.
+
+**Personas** (`demo/personas.py` registry → `demo/provisioning/`): `teacher_minimal` (empty tenant, just
+signed up), `teacher_full` (school, ciclo, grupos, alumnos and two planeaciones), `quota_exhausted`
+(`teacher_full` with the monthly generation quota already spent, so the 429 surface can be demoed).
+
+**Flow:** `POST /api/demo/sessions/` writes a `DemoSession` receipt and enqueues provisioning on
+`transaction.on_commit` (the project runs `ATOMIC_REQUESTS`), returning **202** with a pending receipt.
+The frontend polls `GET /api/demo/sessions/{id}/` every 2s; on `ready` it sets the active workspace,
+awaits a refetch of the auth query, and pushes `/`. Re-opening a finished session URL signs back into the
+*same* workspace — provisioning is idempotent on status, and every exit path is terminal, so no receipt is
+left pending.
+
+**Shipped in eight reviewed deliveries** — `4577f64` toggle + boot guard + health flag, `efb3c72` receipt
+model + persona registry, `cbe3e7b` provisioning base, `2637b78` the two richer personas, `ff5043c` the
+three guest endpoints, `1de20fd` frontend API layer + persona picker, `a35b3ba` session polling + auto-login
++ guest redirects, and this docs pass.
+
+**Not done:** the end-to-end smoke against a live stack (Redis + runserver + Celery worker + `npm run dev`)
+— the same smoke M6 still owes. The walkthrough is the acceptance test for both.
+
+---
+
+## Milestone 6 — Frontend design alignment (`designs/teachers.pen`) 🟡 In progress
 
 **Goal:** bring the frontend built through M3–M4 up to the finished design in
 [`designs/teachers.pen`](../designs/teachers.pen), and turn that file's reusable components into the
-project's real design system — so every later screen (M6–M9) is built against a settled visual language
+project's real design system — so every later screen (M7–M10) is built against a settled visual language
 instead of styling ad-hoc. **Frontend-only; no new backend API.** This is the visual counterpart to M3's
-one-time frontend foundation: M3 locked the plumbing (auth seam + typed client), M5 locks the look.
+one-time frontend foundation: M3 locked the plumbing (auth seam + typed client), M6 locks the look.
 
 **Why now.** M3 and M4 shipped screens thin-on-purpose — enough to prove the auth → typed-client → scoped-data
 → UI pipe end to end, not to be pretty. `teachers.pen` is now the finished visual source of truth for the
-whole product. Aligning once, before the daily-use grids, means M6 attendance/grades and M7 boleta inherit
+whole product. Aligning once, before the daily-use grids, means M7 attendance/grades and M8 boleta inherit
 the component library rather than re-deriving spacing, states, and tokens under pressure.
 
 **Design source — `designs/teachers.pen`** covers the full product surface (25 screens, 10 reusable
-components). Only the screens whose backend already exists are *aligned* in M5; the rest are the visual
-contract M6–M9 implement against.
+components). Only the screens whose backend already exists are *aligned* in M6; the rest are the visual
+contract M7–M10 implement against.
 
 - **Reusable components → design system (the core deliverable):** Nav Item, Stat Card, Status Chip, Estado
   Button, Avatar, Form Field, PDA Row, Paso Row, Contenido Card, Momento Card. Extract these into the
@@ -338,16 +378,16 @@ contract M6–M9 implement against.
   - School structure — Alumnos, Nuevo Alumno (M3 CRUD). ⬜
   - Planeaciones — **Nueva planeación ✅**, **Selector de contenidos y PDAs ✅** (same page, frame `IA35k`);
     Planeaciones list ⬜, Proyecto — Detalle ⬜, Proyecto — Generando ⬜ (M4).
-- **Screens that stay design-only until their milestone** (visual contract, not built in M5): Asistencia,
-  Calificaciones (+ Secundaria), Actividades (+ Modal / Por alumno) → **M6**; Boletas, Boleta — Vista previa
-  → **M7**; Planes, Checkout, Pago pendiente — OXXO, Suscripción, Límite alcanzado → **M8**.
+- **Screens that stay design-only until their milestone** (visual contract, not built in M6): Asistencia,
+  Calificaciones (+ Secundaria), Actividades (+ Modal / Por alumno) → **M7**; Boletas, Boleta — Vista previa
+  → **M8**; Planes, Checkout, Pago pendiente — OXXO, Suscripción, Límite alcanzado → **M9**.
 
 **Exit gate:** the auth, school-CRUD, and planeaciones screens match `teachers.pen` (layout, tokens, states)
 using shared design-system components; the reusable-component library is in `frontend/` and documented; a
 new screen can be assembled from those primitives with no bespoke restyling. No backend change, no schema
 drift, existing frontend tests still green.
 
-### M5 progress — Nueva planeación 🟡 shipped, unsmoked
+### M6 progress — Nueva planeación 🟡 shipped, unsmoked
 
 Twelve reviewed units, `a4dd883`..`118ad72`. `/planeaciones/nueva` renders the designed screen end to end
 — automatic context banner, ejes, contenidos/PDAs, summary panel — and `Generar proyecto` POSTs and lands
@@ -361,11 +401,11 @@ Handoff detail — every unit, decision, and accepted design gap — archived at
 guarantees the M4 API could not give: school/teacher blocks in the catalog response, persisted project
 context so a plan can be regenerated as requested, validation of catalog-backed ids, PDA grounding, and a
 monthly generation quota. Six backend units landed for it (`a4dd883`..`868be76`, migration
-`lesson_plans/0003`). Later M5 screens should expect the same: aligning a design can surface a missing
+`lesson_plans/0003`). Later M6 screens should expect the same: aligning a design can surface a missing
 contract, and that is not scope creep.
 
 **Design-system extraction so far:** `Select` (`97c1123`) and `ChoiceChip` (`f5a17c1`). Of the ten reusable
-components M5 names, the ones the nueva planeación page needed exist; the rest arrive with their screens.
+components M6 names, the ones the nueva planeación page needed exist; the rest arrive with their screens.
 No hand-rolled `<select>` is left in the app: the last six call sites moved onto the primitive in
 `cf2c022`, the compact inline ones keeping their geometry as a `className` override.
 
@@ -412,23 +452,23 @@ Walkthrough script in the archived doc.
 Also still open: refund-on-failure for the quota (a product decision — exactly-once is not Celery's
 to give) and `find_invented_pdas`' cross-content guard, unreachable until a field gains a second content.
 
-**Deferred to M8, deliberately:** the "Límite alcanzado" modal (frame `ImG3U`). It is a billing surface
+**Deferred to M9, deliberately:** the "Límite alcanzado" modal (frame `ImG3U`). It is a billing surface
 priced per **ciclo**, while `GenerationUsage.period` is per **month** — building it would put a price and a
 period on screen that nothing can honour. The 429 is surfaced instead as one inline sentence carrying the
-server's own limit. Whoever reconciles ciclo-vs-month in M8 owns that modal.
+server's own limit. Whoever reconciles ciclo-vs-month in M9 owns that modal.
 
 ---
 
-### Frontend per milestone (M6–M9) ⬜
+### Frontend per milestone (M7–M10) ⬜
 
-Each builds on the M3 foundation (auth/type plumbing) **and the M5 design system** — just screens + the
+Each builds on the M3 foundation (auth/type plumbing) **and the M6 design system** — just screens + the
 milestone's API, composed from the shared component library.
 
-- **M6 — Attendance + grades:** the daily-use entry grids (TanStack Table) — attendance bulk-mark and
+- **M7 — Attendance + grades:** the daily-use entry grids (TanStack Table) — attendance bulk-mark and
   grades (campos formativos × periodos + observaciones).
-- **M7 — Boleta:** the report_card preview/download surface over the PDF export endpoint.
-- **M8 — Billing:** plan selection / checkout + billing-settings screens over the subscription API.
-- **M9 — Tutor/parent portal:** read-only portal (attendance + grades + boleta) for a restricted role.
+- **M8 — Boleta:** the report_card preview/download surface over the PDF export endpoint.
+- **M9 — Billing:** plan selection / checkout + billing-settings screens over the subscription API.
+- **M10 — Tutor/parent portal:** read-only portal (attendance + grades + boleta) for a restricted role.
 
 ---
 

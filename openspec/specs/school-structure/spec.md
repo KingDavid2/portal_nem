@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines the CRUD data spine for the school hierarchy — School, SchoolYear, Group, Student — as workspace-scoped entities, their invariants, service-layer behavior, and DRF HTTP contracts. This spec is the foundation for M4 lesson plans and M5 grades/attendance.
+Defines the CRUD data spine for the school hierarchy — School, SchoolYear, Group, Student — as workspace-scoped entities, their invariants, service-layer behavior, and DRF HTTP contracts. This spec is the foundation for M4 lesson plans and M7 grades/attendance.
 
 ## Requirements
 
