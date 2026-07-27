@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "env": {
+    "ANTHROPIC_BASE_URL": "http://192.168.1.241:8091",
+    "ANTHROPIC_CUSTOM_MODEL_OPTION": "qwen-27b-fable",
+    "ANTHROPIC_CUSTOM_MODEL_OPTION_NAME": "Qwen 27B Fable",
+    "ANTHROPIC_CUSTOM_MODEL_OPTION_DESCRIPTION": "DGX Spark via llama.cpp (MTP) — free, no cloud",
+    "ANTHROPIC_CUSTOM_MODEL_OPTION_SUPPORTED_CAPABILITIES": "thinking,temperature"
+  }
+}
