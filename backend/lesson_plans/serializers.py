@@ -33,6 +33,13 @@ class ContentSelectionSerializer(serializers.Serializer):
     pda_ids = serializers.ListField(child=serializers.CharField(), allow_empty=False)
 
 
+class ContentPdaTextSerializer(serializers.Serializer):
+    """One official content from the grounding snapshot plus its PDAs."""
+
+    content = serializers.CharField()
+    pdas = serializers.ListField(child=serializers.CharField())
+
+
 class LessonPlanSerializer(serializers.ModelSerializer):
     # Declared rather than left to `JSONField` inference: the model stores both
     # as bare JSON, which the schema would emit untyped, and the client needs
@@ -41,6 +48,11 @@ class LessonPlanSerializer(serializers.ModelSerializer):
         child=serializers.CharField(), read_only=True
     )
     content_selections = ContentSelectionSerializer(many=True, read_only=True)
+
+    invented_pda_texts = serializers.ListField(
+        child=serializers.CharField(), read_only=True
+    )
+    grounding_selections = ContentPdaTextSerializer(many=True, read_only=True)
 
     class Meta:
         model = LessonPlan
@@ -70,6 +82,8 @@ class LessonPlanSerializer(serializers.ModelSerializer):
             "prompt_tokens",
             "completion_tokens",
             "invented_pdas",
+            "invented_pda_texts",
+            "grounding_selections",
             "generated_at",
             "created_at",
         ]
@@ -94,6 +108,8 @@ class LessonPlanSerializer(serializers.ModelSerializer):
             "prompt_tokens",
             "completion_tokens",
             "invented_pdas",
+            "invented_pda_texts",
+            "grounding_selections",
             "generated_at",
             "created_at",
         ]

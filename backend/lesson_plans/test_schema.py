@@ -31,3 +31,21 @@ def test_content_selections_references_the_content_selection_schema(
         "items": {"$ref": "#/components/schemas/ContentSelection"},
         "readOnly": True,
     }
+
+
+def test_invented_pda_texts_is_typed_and_read_only(lesson_plan_schema):
+    assert lesson_plan_schema["invented_pda_texts"] == {
+        "type": "array",
+        "items": {"type": "string"},
+        "readOnly": True,
+    }
+
+
+def test_grounding_selections_references_the_content_pda_text_schema(
+    lesson_plan_schema,
+):
+    assert lesson_plan_schema["grounding_selections"] == {
+        "type": "array",
+        "items": {"$ref": "#/components/schemas/ContentPdaText"},
+        "readOnly": True,
+    }

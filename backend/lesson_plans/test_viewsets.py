@@ -357,3 +357,95 @@ def test_destroy_success(membership_factory, api_client_for, group_factory):
     response = client.delete(f"/api/lesson-plans/{create_response.data['id']}/")
 
     assert response.status_code == 204
+
+
+def test_retrieve_exposes_grounding_audit_trail_fields(
+    membership_factory, api_client_for, group_factory
+):
+    """A plan with populated `invented_pda_texts` and `grounding_selections`
+    serializes both with the correct structure — nested snapshots keep their
+    `{content, pdas}` shape, not stringified or flattened."""
+    from lesson_plans.models import LessonPlan
+    from workspaces.context import active_workspace
+
+    membership = membership_factory("member")
+    client = api_client_for(membership)
+    group = group_factory(membership)
+
+    with patch("lesson_plans.tasks.build_provider", return_value=_fake_provider()):
+        create_response = client.post(
+            "/api/lesson-plans/",
+            _payload(group),
+            format="json",
+        )
+
+    plan_id = create_response.data["id"]
+    token = active_workspace.set(membership.workspace_id)
+    try:
+        LessonPlan.objects.filter(id=plan_id).update(
+            invented_pda_texts=["PDA inventada uno", "PDA inventada dos"],
+            grounding_selections=[
+                {
+                    "content": "Recursos lingüísticos y textuales.",
+                    "pdas": [
+                        "Emplea las reglas de acentuación.",
+                        "Produce textos coherentes.",
+                    ],
+                },
+                {
+                    "content": "Convenciones ortográficas.",
+                    "pdas": ["Respeta los signos de puntuación."],
+                },
+            ],
+        )
+    finally:
+        active_workspace.reset(token)
+
+    response = client.get(f"/api/lesson-plans/{plan_id}/")
+
+    assert response.status_code == 200
+    assert response.data["invented_pda_texts"] == [
+        "PDA inventada uno",
+        "PDA inventada dos",
+    ]
+    assert response.data["grounding_selections"] == [
+        {
+            "content": "Recursos lingüísticos y textuales.",
+            "pdas": [
+                "Emplea las reglas de acentuación.",
+                "Produce textos coherentes.",
+            ],
+        },
+        {
+            "content": "Convenciones ortográficas.",
+            "pdas": ["Respeta los signos de puntuación."],
+        },
+    ]
+
+
+def test_create_ignores_grounding_fields_sent_by_client(
+    membership_factory, api_client_for, group_factory
+):
+    """Both fields are read-only: a client that POSTs values for them does not
+    get them persisted. The create serializer does not declare these fields,
+    so DRF drops them — the row keeps its defaults."""
+    membership = membership_factory("member")
+    client = api_client_for(membership)
+    group = group_factory(membership)
+
+    with patch("lesson_plans.tasks.build_provider", return_value=_fake_provider()):
+        response = client.post(
+            "/api/lesson-plans/",
+            _payload(
+                group,
+                invented_pda_texts=["forged-pda"],
+                grounding_selections=[
+                    {"content": "fake", "pdas": ["fake-pda"]}
+                ],
+            ),
+            format="json",
+        )
+
+    assert response.status_code == 202
+    assert response.data["invented_pda_texts"] == []
+    assert response.data["grounding_selections"] == []

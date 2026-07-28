@@ -1069,6 +1069,19 @@ components:
       required:
       - id
       - name
+    ContentPdaText:
+      type: object
+      description: One official content from the grounding snapshot plus its PDAs.
+      properties:
+        content:
+          type: string
+        pdas:
+          type: array
+          items:
+            type: string
+      required:
+      - content
+      - pdas
     ContentSelection:
       type: object
       description: One official content plus the PDAs chosen under it.
@@ -1275,6 +1288,16 @@ components:
         invented_pdas:
           type: boolean
           readOnly: true
+        invented_pda_texts:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        grounding_selections:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContentPdaText'
+          readOnly: true
         generated_at:
           type: string
           format: date-time
@@ -1297,8 +1320,10 @@ components:
       - field_id
       - generated_at
       - grade
+      - grounding_selections
       - group
       - id
+      - invented_pda_texts
       - invented_pdas
       - methodology_id
       - model_name
