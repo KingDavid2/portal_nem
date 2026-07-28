@@ -45,6 +45,8 @@ function plan(overrides: Partial<LessonPlan>): LessonPlan {
     prompt_tokens: null,
     completion_tokens: null,
     invented_pdas: false,
+    invented_pda_texts: [],
+    grounding_selections: [],
     generated_at: null,
     created_at: "2026-07-01T00:00:00Z",
     ...overrides,

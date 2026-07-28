@@ -473,6 +473,11 @@ export interface components {
             readonly id: string;
             readonly name: string;
         };
+        /** @description One official content from the grounding snapshot plus its PDAs. */
+        ContentPdaText: {
+            content: string;
+            pdas: string[];
+        };
         /** @description One official content plus the PDAs chosen under it. */
         ContentSelection: {
             content_id: string;
@@ -555,6 +560,8 @@ export interface components {
             readonly prompt_tokens: number | null;
             readonly completion_tokens: number | null;
             readonly invented_pdas: boolean;
+            readonly invented_pda_texts: string[];
+            readonly grounding_selections: components["schemas"]["ContentPdaText"][];
             /** Format: date-time */
             readonly generated_at: string | null;
             /** Format: date-time */
