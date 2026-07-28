@@ -195,6 +195,38 @@ the model's echoed plain strings, which carry no ids at all
 **Exit gate:** a plan carrying an invented PDA names it and shows what it was checked against.
 `test_tasks.py:357` still passes.
 
+### Results — run 2026-07-28
+
+Implemented as `core/grounding.py` (one normalization rule, one home), two new columns
+(`invented_pda_texts`, `grounding_selections`) with migration `0006_grounding_audit`, typed
+serializer fields, grounding-aware docx/markdown renderers, and a viewer that marks every PDA.
+
+**Automated:** backend 417 passed, `makemigrations --check` clean, ruff at the HEAD baseline;
+frontend 185 passed, `tsc --noEmit` clean, lint 0 errors. `test_tasks.py:357` passes unmodified in
+its original assertions.
+
+**Live, against the running stack** (Redis + Celery + `runserver`, demo mode on). The ⚠ path was
+forced deterministically the way `test_tasks.py:357` does — select `languages-accentuation` only,
+have the provider echo `languages-coherent-texts` (official Phase 6 text in the same field, outside
+the selection) — writing a real browsable row rather than a test-DB row:
+
+- **DB:** `invented_pda_texts` holds the verbatim offending PDA; `grounding_selections` holds the
+  verbatim official snapshot it was checked against.
+- **API** `GET /api/lesson-plans/22/`: both fields present and correctly typed.
+- **docx** `GET …/export/?format=docx`: `✓` on the in-selection PDA, `⚠ FUERA DE TU SELECCIÓN —` on
+  the offender, and a `Fundamentación oficial (SEP)` section carrying the official text verbatim.
+
+**Not walked: the browser legs.** No browser driver is available in this environment. The viewer's
+marks, the named alert, and the Fundamentación section are covered by component tests (mutation-
+proved in both directions) against the same payload shape the live API returned, but they have not
+been confirmed visually. That is the one outstanding item on this gate.
+
+**Deploy note the smoke surfaced.** The first provisioning attempt failed with
+`null value in column "grounding_selections" … violates not-null constraint`. Not a code defect: the
+Celery worker predated migration `0006`, so its in-memory model omitted the column from every
+INSERT, and the new column is `NOT NULL` with no DB-level default. **Workers must be restarted
+alongside this migration**, or every insert they perform fails.
+
 ---
 
 ## Phase 2 — Port the eval harness
