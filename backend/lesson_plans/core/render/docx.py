@@ -18,6 +18,7 @@ from io import BytesIO
 
 from docx import Document
 
+from ..grounding import GroundingReport
 from ..schema import Proyecto
 
 _DISCLAIMER = (
@@ -52,7 +53,7 @@ def _datos_rows(p: Proyecto) -> list[tuple[str, str]]:
     ]
 
 
-def render_docx(proyecto: Proyecto) -> BytesIO:
+def render_docx(proyecto: Proyecto, grounding: GroundingReport | None = None) -> BytesIO:
     doc = Document()
     doc.add_paragraph(_DISCLAIMER)
 
@@ -71,7 +72,21 @@ def render_docx(proyecto: Proyecto) -> BytesIO:
     for group in proyecto.contents_and_pdas:
         doc.add_paragraph(group.content)
         for pda in group.pdas:
-            doc.add_paragraph(pda)
+            if grounding is not None:
+                if grounding.is_official(pda):
+                    doc.add_paragraph(f"✓ {pda}")
+                else:
+                    doc.add_paragraph(f"⚠ FUERA DE TU SELECCIÓN — {pda}")
+            else:
+                doc.add_paragraph(pda)
+
+    # 2b. Fundamentación oficial (SEP) — only when grounding is provided.
+    if grounding is not None and grounding.selected:
+        doc.add_heading("Fundamentación oficial (SEP)", level=1)
+        for sel in grounding.selected:
+            doc.add_paragraph(sel.content)
+            for pda in sel.pdas:
+                doc.add_paragraph(pda)
 
     # 3. Stages -> momentos -> sessions.
     for stage_idx, stage in enumerate(proyecto.stages, start=1):

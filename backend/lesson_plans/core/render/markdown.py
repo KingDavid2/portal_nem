@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from ..grounding import GroundingReport
 from ..schema import Proyecto
 
 
-def render_md(proyecto: Proyecto) -> str:
+def render_md(proyecto: Proyecto, grounding: GroundingReport | None = None) -> str:
     d = proyecto.datos
     out: list[str] = [f"# {proyecto.title}", ""]
     out += [
@@ -33,7 +34,21 @@ def render_md(proyecto: Proyecto) -> str:
     out += ["", "## Contenidos y PDAs seleccionados"]
     for group in proyecto.contents_and_pdas:
         out.append(f"- {group.content}")
-        out += [f"  - {pda}" for pda in group.pdas]
+        for pda in group.pdas:
+            if grounding is not None:
+                if grounding.is_official(pda):
+                    out.append(f"  - ✓ {pda}")
+                else:
+                    out.append(f"  - ⚠ FUERA DE TU SELECCIÓN — {pda}")
+            else:
+                out.append(f"  - {pda}")
+
+    # Fundamentación oficial (SEP) — only when grounding is provided.
+    if grounding is not None and grounding.selected:
+        out += ["", "## Fundamentación oficial (SEP)"]
+        for sel in grounding.selected:
+            out.append(f"- {sel.content}")
+            out += [f"  - {pda}" for pda in sel.pdas]
 
     for stage_idx, stage in enumerate(proyecto.stages, start=1):
         out += ["", f"## Fase {stage_idx}: {stage.name}"]

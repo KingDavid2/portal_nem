@@ -27,8 +27,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.renderers import BaseRenderer
 from rest_framework.response import Response
 
+from lesson_plans.core.grounding import GroundingReport
 from lesson_plans.core.render.docx import render_docx
 from lesson_plans.core.render.markdown import render_md
+from lesson_plans.core.schema import ContentPda
 from lesson_plans.core.catalog import (
     CROSS_CUTTING_THEMES,
     FIELDS,
@@ -312,14 +314,30 @@ class LessonPlanViewSet(viewsets.ModelViewSet):
         proyecto = Proyecto.model_validate(plan.proyecto)
         export_format = request.query_params.get("format", "docx")
 
+        # Build a GroundingReport from the persisted columns, but only when
+        # grounding data actually exists. A plan with empty columns was never
+        # checked against anything; passing an empty report would mark every
+        # PDA as "⚠ FUERA DE TU SELECCIÓN" because is_official() returns False
+        # against an empty selection. That would corrupt the export of a
+        # perfectly good legacy plan.
+        grounding: GroundingReport | None = None
+        if plan.grounding_selections or plan.invented_pda_texts:
+            grounding = GroundingReport(
+                selected=[
+                    ContentPda.model_validate(sel)
+                    for sel in plan.grounding_selections
+                ],
+                invented=list(plan.invented_pda_texts),
+            )
+
         if export_format == "md":
-            body = render_md(proyecto)
+            body = render_md(proyecto, grounding=grounding)
             return HttpResponse(body, content_type="text/markdown; charset=utf-8")
 
         if export_format != "docx":
             raise ValidationError(f"Unsupported export format: {export_format!r}")
 
-        buffer = render_docx(proyecto)
+        buffer = render_docx(proyecto, grounding=grounding)
         response = HttpResponse(buffer.getvalue(), content_type=DOCX_CONTENT_TYPE)
         filename = f"{plan.title or plan.theme}.docx"
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
