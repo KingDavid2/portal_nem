@@ -106,8 +106,24 @@ export default function PlaneacionViewerPage({
               className="border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
               role="alert"
             >
-              Esta planeación incluye al menos un PDA que no está en el conjunto fuente
-              (posible invención del modelo). Revísala antes de usarla.
+              {plan.invented_pda_texts.length > 0 ? (
+                <>
+                  <p className="font-medium">
+                    Esta planeación incluye los siguientes PDAs que no están en el conjunto fuente
+                    (posible invención del modelo). Revísalos antes de usarla:
+                  </p>
+                  <ul className="mt-2 list-disc pl-5">
+                    {plan.invented_pda_texts.map((text, index) => (
+                      <li key={index}>{text}</li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <p>
+                  Esta planeación incluye al menos un PDA que no está en el conjunto fuente
+                  (posible invención del modelo). Revísala antes de usarla.
+                </p>
+              )}
             </Card>
           ) : null}
 
@@ -132,7 +148,10 @@ export default function PlaneacionViewerPage({
             </p>
           ) : null}
 
-          <ProyectoViewer proyecto={plan.proyecto as Proyecto} />
+          <ProyectoViewer
+            proyecto={plan.proyecto as Proyecto}
+            groundingSelections={plan.grounding_selections}
+          />
         </>
       )}
     </div>

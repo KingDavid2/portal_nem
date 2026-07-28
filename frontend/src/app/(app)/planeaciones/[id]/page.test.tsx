@@ -9,10 +9,10 @@ import Page from "./page";
 /** Project context the backend persists, as a regenerable plan carries it. */
 const context={field_id:"languages",subject_id:"spanish",methodology_id:"community-based-project-learning",context_diagnosis:"Diagnóstico",scenario:"community",duration_weeks:4,start_date:"2026-01-12",end_date:"2026-02-06",cross_cutting_theme_ids:["critical-thinking"],content_selections:[{content_id:"languages-text-resources",pda_ids:["languages-accentuation"]}]};
 async function mount(){const host=document.createElement("div");const root=createRoot(host);await act(async()=>root.render(<Page params={Promise.resolve({id:"7"})}/>));return{host,root}}
-describe("Planeacion detail",()=>{beforeEach(()=>{mocks.query={isLoading:true,isError:false,data:undefined};mocks.mutate.mockReset();mocks.push.mockReset();mocks.export.mockReset()});it("shows loading",async()=>{const {host,root}=await mount();expect(host.textContent).toContain("Cargando planeación");await act(async()=>root.unmount())});it("shows invented PDA warning for ready plans",async()=>{mocks.query={isLoading:false,isError:false,data:{id:7,status:"ready",invented_pdas:true,group:1,campo:"L",grade:"1",theme:"T",proyecto:{},...context}};const {host,root}=await mount();expect(host.textContent).toContain("posible invención");await act(async()=>root.unmount())});});
+describe("Planeacion detail",()=>{beforeEach(()=>{mocks.query={isLoading:true,isError:false,data:undefined};mocks.mutate.mockReset();mocks.push.mockReset();mocks.export.mockReset()});it("shows loading",async()=>{const {host,root}=await mount();expect(host.textContent).toContain("Cargando planeación");await act(async()=>root.unmount())});it("shows legacy invented PDA warning when list is empty",async()=>{mocks.query={isLoading:false,isError:false,data:{id:7,status:"ready",invented_pdas:true,invented_pda_texts:[],group:1,campo:"L",grade:"1",theme:"T",proyecto:{},...context}};const {host,root}=await mount();expect(host.textContent).toContain("al menos un PDA que no está en el conjunto fuente");await act(async()=>root.unmount())});it("lists invented PDA texts verbatim in the alert",async()=>{mocks.query={isLoading:false,isError:false,data:{id:7,status:"ready",invented_pdas:true,invented_pda_texts:["El alumno analiza la estructura del cuento.","El alumno identifica el tema principal."],group:1,campo:"L",grade:"1",theme:"T",proyecto:{},...context}};const {host,root}=await mount();expect(host.textContent).toContain("El alumno analiza la estructura del cuento.");expect(host.textContent).toContain("El alumno identifica el tema principal.");await act(async()=>root.unmount())});});
 
 it("exports the ready plan and surfaces export failures", async () => {
-  mocks.query={isLoading:false,isError:false,data:{id:7,status:"ready",invented_pdas:false,group:1,campo:"L",grade:"1",theme:"T",proyecto:{},...context}};
+  mocks.query={isLoading:false,isError:false,data:{id:7,status:"ready",invented_pdas:false,invented_pda_texts:[],group:1,campo:"L",grade:"1",theme:"T",proyecto:{},...context}};
   mocks.export.mockRejectedValue(new Error("export failed"));
   const {host,root}=await mount();
   const exportButton=[...host.querySelectorAll("button")].find((button)=>button.textContent?.includes("Exportar"))!;
@@ -48,7 +48,7 @@ it("does not offer regeneration for plans without persisted context", async () =
 });
 
 it("explains the disabled regenerate button on a ready legacy plan", async () => {
-  mocks.query={isLoading:false,isError:false,data:{id:7,status:"ready",invented_pdas:false,group:1,campo:"L",grade:"1",theme:"T",proyecto:{},...context,field_id:"",duration_weeks:null,start_date:null,end_date:null}};
+  mocks.query={isLoading:false,isError:false,data:{id:7,status:"ready",invented_pdas:false,invented_pda_texts:[],group:1,campo:"L",grade:"1",theme:"T",proyecto:{},...context,field_id:"",duration_weeks:null,start_date:null,end_date:null}};
   const {host,root}=await mount();
   const regenerate=[...host.querySelectorAll("button")].find((button)=>button.textContent?.includes("Regenerar"))!;
   expect(regenerate.disabled).toBe(true);
@@ -57,7 +57,7 @@ it("explains the disabled regenerate button on a ready legacy plan", async () =>
 });
 
 it("says nothing about regeneration when the plan carries its context", async () => {
-  mocks.query={isLoading:false,isError:false,data:{id:7,status:"ready",invented_pdas:false,group:1,campo:"L",grade:"1",theme:"T",proyecto:{},...context}};
+  mocks.query={isLoading:false,isError:false,data:{id:7,status:"ready",invented_pdas:false,invented_pda_texts:[],group:1,campo:"L",grade:"1",theme:"T",proyecto:{},...context}};
   const {host,root}=await mount();
   const regenerate=[...host.querySelectorAll("button")].find((button)=>button.textContent?.includes("Regenerar"))!;
   expect(regenerate.disabled).toBe(false);

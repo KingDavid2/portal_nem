@@ -1,13 +1,32 @@
-import type { Proyecto } from "./proyecto-types";
+import type { ContentPda, Proyecto } from "./proyecto-types";
 import { Card } from "@/components/ui/card";
 import { ContenidoCard } from "@/components/ui/contenido-card";
 import { MomentoCard } from "@/components/ui/momento-card";
 
+/** Normalize PDA text for comparison — mirrors backend grounding.py rule. */
+function normalizePda(text: string): string {
+  return text.replace(/\s+/g, " ").trim().toLocaleLowerCase();
+}
+
 /** Read-only renderer for a `ready` LessonPlan's ABPC `proyecto` JSON
  * (ai-planeaciones spec — regenerate-only per proposal scope, no in-app
  * partial editing; tasks.md D8.1 "stages → moments → sessions → rubric"). */
-export function ProyectoViewer({ proyecto }: { proyecto: Proyecto }) {
+export function ProyectoViewer({
+  proyecto,
+  groundingSelections,
+}: {
+  proyecto: Proyecto;
+  groundingSelections?: ContentPda[];
+}) {
   const { datos } = proyecto;
+
+  // Built once, outside the render loop. A plan with no snapshot was never
+  // checked against anything, so it gets no marks at all — an empty set would
+  // mark every row of a legacy plan as outside a selection that never existed.
+  const hasGrounding = groundingSelections != null && groundingSelections.length > 0;
+  const officialPdas = hasGrounding
+    ? new Set(groundingSelections.flatMap((g) => g.pdas.map(normalizePda)))
+    : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -41,7 +60,47 @@ export function ProyectoViewer({ proyecto }: { proyecto: Proyecto }) {
         </ul>
       </section>
 
-      <section><h3 className="text-sm font-semibold">Contenidos y PDAs</h3>{proyecto.contents_and_pdas.length === 0 ? <p className="mt-2 text-sm text-muted-foreground">Sin contenidos ni PDAs</p> : <div className="mt-2 grid gap-3">{proyecto.contents_and_pdas.map((group, index) => <ContenidoCard key={`${group.content}-${index}`} readOnly title={group.content} pdaRows={group.pdas.map((content, pdaIndex) => ({ id: `${index}-${pdaIndex}`, content }))} />)}</div>}</section>
+      <section>
+        <h3 className="text-sm font-semibold">Contenidos y PDAs</h3>
+        {proyecto.contents_and_pdas.length === 0 ? (
+          <p className="mt-2 text-sm text-muted-foreground">Sin contenidos ni PDAs</p>
+        ) : (
+          <div className="mt-2 grid gap-3">
+            {proyecto.contents_and_pdas.map((group, index) => (
+              <ContenidoCard
+                key={`${group.content}-${index}`}
+                readOnly
+                title={group.content}
+                pdaRows={group.pdas.map((content, pdaIndex) => ({
+                  id: `${index}-${pdaIndex}`,
+                  content,
+                  unofficial:
+                    officialPdas != null && !officialPdas.has(normalizePda(content)),
+                }))}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {hasGrounding ? (
+        <section>
+          <h3 className="text-sm font-semibold">Fundamentación oficial (SEP)</h3>
+          <div className="mt-2 grid gap-3">
+            {groundingSelections.map((selection, index) => (
+              <ContenidoCard
+                key={`${selection.content}-${index}`}
+                readOnly
+                title={selection.content}
+                pdaRows={selection.pdas.map((pda, pdaIndex) => ({
+                  id: `grounding-${index}-${pdaIndex}`,
+                  content: pda,
+                }))}
+              />
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {proyecto.stages.map((stage) => (
         <section key={stage.name} className="rounded-lg border border-border p-4">
