@@ -8,11 +8,11 @@ the input fixture. In Phase B the same guard runs against the retrieved corpus.
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from typing import Callable, NoReturn, Protocol
 
 from ..generation import GenerationRequest, build_messages
+from ..grounding import find_invented_pdas
 from ..schema import ContentPda, Proyecto
 
 # complete(system, user) -> (proyecto, usage)
@@ -70,17 +70,6 @@ class GenerationResult:
     proyecto: Proyecto
     usage: Usage
     invented_pdas: list[str]
-
-
-def _norm(text: str) -> str:
-    """Collapse whitespace + casefold so trivial reformatting is not flagged as invention."""
-    return re.sub(r"\s+", " ", text).strip().casefold()
-
-
-def find_invented_pdas(proyecto: Proyecto, allowed: list[ContentPda]) -> list[str]:
-    """Output PDAs (verbatim) absent from the allowed fixture — the hallucination signal."""
-    allowed_norms = {_norm(pda) for group in allowed for pda in group.pdas}
-    return [pda for pda in proyecto.all_pdas() if _norm(pda) not in allowed_norms]
 
 
 class LLMProvider(Protocol):
