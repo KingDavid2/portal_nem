@@ -15,7 +15,7 @@
 | # | Phase | Proves | Status |
 | - | ----- | ------ | ------ |
 | **P0** | Live smoke | The stack actually runs end to end — the acceptance test M4, M5 and M6 all still owe | ✅ |
-| P1 | Grounding audit trail | A teacher can see *which* PDA is unofficial, and what it was checked against | ⬜ |
+| P1 | Grounding audit trail | A teacher can see *which* PDA is unofficial, and what it was checked against | ✅ |
 | P2 | Eval harness | Generation quality is a number, so prompt and model changes stop shipping blind | ⬜ |
 | P3 | Cost · latency · prompt version · failure taxonomy | A generation can be priced, timed, attributed and categorized | ⬜ |
 | P4 | MCP server over the scoped API | The workspace is reachable conversationally, without weakening tenancy | ⬜ |
@@ -150,8 +150,10 @@ was measured on.
    skip it. **P4's MCP surface has no CSRF cookie**, so it needs an auth path that is not session
    auth — settle that at design time, not during implementation.
 
-**Still unwalked:** every browser leg. The frontend was never started; all of the above is HTTP. The
-`/demo` picker, the polling page, the `nueva planeación` form and the viewer remain unverified.
+**Still unwalked at the time of this run:** every browser leg — all of the above is HTTP. The
+`/demo` picker, the polling page, the `nueva planeación` form and the viewer were all walked later,
+during the P1 browser run below; the one leg still never driven from a browser is **Generar
+proyecto** itself, which remains HTTP-only.
 
 ---
 
@@ -202,7 +204,7 @@ Implemented as `core/grounding.py` (one normalization rule, one home), two new c
 serializer fields, grounding-aware docx/markdown renderers, and a viewer that marks every PDA.
 
 **Automated:** backend 417 passed, `makemigrations --check` clean, ruff at the HEAD baseline;
-frontend 185 passed, `tsc --noEmit` clean, lint 0 errors. `test_tasks.py:357` passes unmodified in
+frontend 187 passed, `tsc --noEmit` clean, lint 0 errors. `test_tasks.py:357` passes unmodified in
 its original assertions.
 
 **Live, against the running stack** (Redis + Celery + `runserver`, demo mode on). The ⚠ path was
@@ -216,10 +218,43 @@ the selection) — writing a real browsable row rather than a test-DB row:
 - **docx** `GET …/export/?format=docx`: `✓` on the in-selection PDA, `⚠ FUERA DE TU SELECCIÓN —` on
   the offender, and a `Fundamentación oficial (SEP)` section carrying the official text verbatim.
 
-**Not walked: the browser legs.** No browser driver is available in this environment. The viewer's
-marks, the named alert, and the Fundamentación section are covered by component tests (mutation-
-proved in both directions) against the same payload shape the live API returned, but they have not
-been confirmed visually. That is the one outstanding item on this gate.
+**The browser legs, walked.** The earlier note that no browser driver was available was wrong —
+Playwright resolves and drives the installed Chrome directly (`channel: "chrome"`, no download). The
+walk ran from a throwaway scratchpad script, not a committed e2e suite; adding an e2e harness is its
+own decision, not part of this gate.
+
+Route: `/demo` picker → `teacher_full` → `/demo/[id]` provisioning poll → signed in → `/planeaciones`
+→ the viewer → `/planeaciones/nueva`. **13/13 assertions passed**, and the three P1 claims are now
+confirmed visually *and* in the accessibility tree:
+
+- the `role="alert"` card names the offending PDA verbatim as an `<li>`, and does **not** fall back to
+  the anonymous "al menos un PDA" wording;
+- the in-selection row renders a `Star`, the offender an `AlertTriangle` — and the offender's sr-only
+  text `fuera de tu selección` reaches the accessibility tree, which a screenshot alone cannot prove;
+- `Fundamentación oficial (SEP)` carries the selected PDA verbatim and does not list the offender.
+
+**Seeded, not generated.** The ⚠ row was written directly into the DB, mirroring the persist block of
+`tasks.py` and reusing `core/grounding.py` for the fidelity rule so the fixture cannot drift from the
+production check. This gate is about *display*; the generation leg is already green from P0.
+
+**`/planeaciones/nueva` was walked up to but not through Generar proyecto.** The form filled end to
+end — grupo, campo, materia, tema, diagnóstico, fechas, eje, contenidos + PDAs — and the summary panel
+enabled **Generar proyecto** with nothing outstanding. The button was deliberately not clicked: that
+leg is P0's and costs 223–541 s.
+
+**One defect the walk caught, and fixed.** `ContenidoCard`'s header rendered a filled green `Star`
+unconditionally — so a card whose only PDA was flagged ⚠ still carried an "official" mark on its
+title, the exact class of unearned green this phase exists to remove. The header mark now derives
+from its rows: any unofficial row turns it into an `AlertTriangle` with sr-only *contiene PDAs fuera
+de tu selección*; otherwise the `Star` stays. Two tests, mutation-proved in both directions, and
+re-confirmed in the browser — card 0 star / card 1 warning, and the `Fundamentación oficial (SEP)`
+cards keep their star.
+
+Two observations left unfixed, both outside this gate: (1) the `ContenidoCard` header checkbox in the
+contents picker is inert (`onChange={() => {}}`) — it looks interactive and does nothing, selection is
+driven by the PDA rows; (2) the seeded plan shows "se creó antes del formulario actual, por eso no
+puede regenerarse", a fixture artifact (the seed omits `subject_id` / `methodology_id` /
+`duration_weeks` / dates / `scenario`), not a product defect.
 
 **Deploy note the smoke surfaced.** The first provisioning attempt failed with
 `null value in column "grounding_selections" … violates not-null constraint`. Not a code defect: the
