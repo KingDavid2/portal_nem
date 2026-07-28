@@ -242,6 +242,12 @@ LLM_API_KEY = env("LLM_API_KEY", default="dummy")
 ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default=None)
 ANTHROPIC_MODEL = env("ANTHROPIC_MODEL", default="claude-opus-4-8")
 
+# Eval judge (Quizzy P2). Read only by `lesson_plans.eval.judge`, and kept
+# separate from ANTHROPIC_MODEL on purpose: the judge has to stay fixed while
+# the *generation* model is swapped, or every previously committed scorecard
+# stops being comparable to the new one.
+EVAL_JUDGE_MODEL = env("EVAL_JUDGE_MODEL", default="claude-opus-5")
+
 # Lesson-plan generation quota (design "Generaciones de este mes — 7 de 30").
 # Accepted generations per workspace per calendar month, in TIME_ZONE. Read at
 # call time by `lesson_plans.quota`, so overriding it needs no code change.

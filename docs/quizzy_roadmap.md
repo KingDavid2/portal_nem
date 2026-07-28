@@ -16,7 +16,7 @@
 | - | ----- | ------ | ------ |
 | **P0** | Live smoke | The stack actually runs end to end — the acceptance test M4, M5 and M6 all still owe | ✅ |
 | P1 | Grounding audit trail | A teacher can see *which* PDA is unofficial, and what it was checked against | ✅ |
-| P2 | Eval harness | Generation quality is a number, so prompt and model changes stop shipping blind | ⬜ |
+| P2 | Eval harness | Generation quality is a number, so prompt and model changes stop shipping blind | 🟡 harness built, first scorecard deferred |
 | P3 | Cost · latency · prompt version · failure taxonomy | A generation can be priced, timed, attributed and categorized | ⬜ |
 | P4 | MCP server over the scoped API | The workspace is reachable conversationally, without weakening tenancy | ⬜ |
 | P5 | Targeted edit | Fixing one rubric criterion stops costing a full regeneration | ⬜ |
@@ -296,6 +296,56 @@ the vLLM path is production-viable at all.
 **Exit gate:** `manage.py run_evals` produces a scorecard for at least two providers, and the
 self-hosted schema-failure rate is a known number rather than an open question.
 
+### Results — harness landed, first scorecard deliberately deferred
+
+The harness is built and its token-free parts are under test (42 tests; full suite 459 green). No
+scorecard exists, and that is a decision rather than an oversight: `ANTHROPIC_API_KEY` is unset in
+`.env`, `backend/.env` and the shell, and the first paid sweep is being held until there is a change
+worth measuring. The gate stays open until a committed scorecard exists.
+
+**What shipped**
+
+| Piece | Where |
+| --- | --- |
+| Eval cases from the frozen catalog | `backend/lesson_plans/eval/cases.py` |
+| Committed golden references, one per campo | `backend/lesson_plans/eval/golden/*.md` |
+| LLM judge, four axes 1–5 | `backend/lesson_plans/eval/judge.py` |
+| Scorecard assembly, cost, schema probe | `backend/lesson_plans/eval/run.py` |
+| On-demand command | `manage.py run_evals` |
+
+`lift.py` was not ported, as planned.
+
+**Three decisions worth carrying forward**
+
+1. **The judge takes three inputs, not M1's two.** The committed goldens are form references whose
+   PDAs are *not* the catalog's — the Lenguajes docx is about identity and literary texts, not
+   accentuation, and the Ética one says "mapas mentales" where the catalog says "recursos gráficos".
+   Grading fidelity against them would penalize a plan for quoting the teacher's actual selection.
+   So the official selection is passed as its own block, the golden calibrates form and depth only,
+   and the deterministic `invented_pdas` count stays the hard fidelity signal.
+2. **`EVAL_JUDGE_MODEL` is separate from `ANTHROPIC_MODEL`.** Swapping the generation model must not
+   silently swap the judge, or every previously committed scorecard stops being comparable. Both
+   models are recorded in the scorecard header, alongside the same-family-bias caveat: Claude judging
+   Claude is self-preference, and pinning the judge separately is what makes it swappable later.
+3. **Providers are built in the command, not through `core/factory.py`.** The factory reads one
+   global `LLM_PROVIDER`; a scorecard needs several arms live in one process.
+
+**Scope stated honestly.** Both arms are behind `--provider`, but Claude is the P2 baseline by
+decision and the self-hosted arm is deferred. A Claude-only run therefore satisfies the scorecard
+half of the gate and leaves the self-hosted schema-failure rate — the half that decides whether the
+vLLM path is production-viable — still unmeasured.
+
+**Remaining to close P2** — one sitting, whenever the first paid sweep is wanted:
+
+```
+export ANTHROPIC_API_KEY=...
+cd backend && python manage.py run_evals --provider claude --schema-runs 10
+```
+
+Then commit the scorecard, re-run once to confirm the diff is readable, and flip the status above.
+Until that happens the harness is infrastructure, not evidence — nothing here has yet scored a real
+generation, so no claim about generation quality rests on it.
+
 ---
 
 ## Phase 3 — Cost, latency, prompt version, failure taxonomy
@@ -327,12 +377,15 @@ with provider time, so it is not a substitute.
 - Serializer + `npm run gen:all`, then a provenance strip in the viewer:
   provider · model · tokens · cost · latency · grounded ✓/⚠.
 
-**Two live bugs to fix while here** — both surface on a provider swap:
+**One live bug to fix while here** — it surfaces on a provider swap:
 
 | bug | effect |
 | --- | ------ |
 | `lesson_plans/core/factory.py:30-36` is not an exhaustive match | anything not the literal `"claude"` silently falls through to vLLM, so a typo in `LLM_PROVIDER` is invisible |
-| `ANTHROPIC_MODEL` defaults to `"claude-opus-4-8"` (`config/settings.py:243`) | not a valid model id — the Claude leg errors unless the env var is set |
+
+A second entry here previously claimed `ANTHROPIC_MODEL`'s default `"claude-opus-4-8"`
+(`config/settings.py:243`) was not a valid model id. It is valid and current; the claim was wrong and
+the entry is dropped.
 
 **Exit gate:** a completed plan reports its own cost, latency, prompt version and failure category;
 an unpriced self-hosted model reports `null` cost, **not `0`**. Combined with P2's scorecard,
@@ -511,8 +564,9 @@ P4: `lesson_plans/tests/test_tasks.py:199`, `:510`, and `workspaces/tests/test_p
    everything after it. P4–P6 are each a week-ish. Decide the cut before starting P4.
 3. **P5 scope** — which single mutation goes first.
 4. **Demo hosting posture** — P6c, local-only vs a hardened deploy flag.
-5. **Which provider is the baseline.** P0 measured llama.cpp with the 27B GGUF, where the 540 s
-   client timeout is a coin flip. Either restore vLLM with the NVFP4 35B on `:8000` and re-measure,
-   or accept the 27B and raise the timeout — but a timeout that fires on roughly a third of
-   generations makes every number P2 and P3 produce unreproducible. **Settle this before P2**, since
-   the eval harness bakes whatever it measures into a committed scorecard.
+5. ~~**Which provider is the baseline.**~~ **Resolved: Claude.** P0 measured llama.cpp with the 27B
+   GGUF, where the 540 s client timeout is a coin flip — a timeout firing on roughly a third of
+   generations makes every number P2 and P3 produce unreproducible. Claude is the P2 baseline; the
+   self-hosted arm stays coded behind `--provider vllm` and gets measured once the local model is
+   settled. The consequence is recorded in the P2 results: the self-hosted schema-failure rate, which
+   decides whether the vLLM path is production-viable, remains unknown until then.

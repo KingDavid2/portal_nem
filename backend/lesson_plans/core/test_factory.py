@@ -6,6 +6,11 @@ configuration selects vLLM; Switching to Claude requires only configuration).
 never triggers a live model-discovery network call (config.model is truthy,
 short-circuiting the `config.model or raw_client.models.list()...` fallback
 in `ports/openai_compat.py`).
+
+`LLM_PROVIDER` is pinned rather than left to the settings default. Settings are
+built from the developer's real `.env`, so a machine configured for Claude made
+the vLLM cases assert against `LLM_PROVIDER=claude` and fail. What the factory
+owns is the id -> adapter mapping; which id is configured is not its behaviour.
 """
 
 from __future__ import annotations
@@ -16,6 +21,7 @@ from lesson_plans.core.ports.openai_compat import OpenAICompatProvider
 
 
 def test_default_configuration_selects_the_openai_compat_vllm_adapter(settings):
+    settings.LLM_PROVIDER = "vllm"
     settings.LLM_MODEL = "test-model"
 
     provider = build_provider()
@@ -40,6 +46,7 @@ def test_llm_provider_claude_selects_the_claude_adapter(settings):
 def test_switching_provider_requires_only_the_env_setting(settings):
     """No service/task-layer code changes needed to swap providers — only
     `LLM_PROVIDER` changes between the two calls below."""
+    settings.LLM_PROVIDER = "vllm"
     settings.LLM_MODEL = "test-model"
     default_provider = build_provider()
 
