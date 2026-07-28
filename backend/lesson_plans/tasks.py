@@ -202,6 +202,10 @@ def generate_lesson_plan_task(self, *, workspace_id, lesson_plan_id):
         plan.prompt_tokens = result.usage.input_tokens
         plan.completion_tokens = result.usage.output_tokens
         plan.invented_pdas = bool(result.invented_pdas)
+        plan.invented_pda_texts = list(result.invented_pdas)
+        plan.grounding_selections = [
+            {"content": group.content, "pdas": list(group.pdas)} for group in pdas
+        ]
         plan.status = LessonPlan.Status.READY
         plan.generated_at = timezone.now()
         plan.save()

@@ -62,6 +62,16 @@ class LessonPlan(ScopedModel):
     prompt_tokens = models.IntegerField(null=True, blank=True)
     completion_tokens = models.IntegerField(null=True, blank=True)
     invented_pdas = models.BooleanField(default=False)
+    # The verbatim PDAs the fidelity guard flagged as invented, so the audit
+    # trail shows exactly what was checked and what did not match — not just
+    # that something was wrong.
+    invented_pda_texts = models.JSONField(default=list, blank=True)
+    # A snapshot of the verbatim official text this plan was checked against,
+    # not the catalog ids from `content_selections`. The viewer must faithfully
+    # render what the plan was grounded on at generation time, even if the
+    # underlying catalog entry has since been edited or retired; re-resolving
+    # from ids at read time would silently rewrite the audit trail.
+    grounding_selections = models.JSONField(default=list, blank=True)
     generated_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

@@ -365,7 +365,8 @@ def test_task_flags_an_official_pda_of_a_non_selected_content_as_invented():
     group = _make_group(workspace)
     plan = _create_pending_plan(workspace, group)
 
-    proyecto = _canned_proyecto(pdas=[pda_by_id("languages", UNSELECTED_PDA).text])
+    offending_pda = pda_by_id("languages", UNSELECTED_PDA).text
+    proyecto = _canned_proyecto(pdas=[offending_pda])
 
     with patch(
         "lesson_plans.tasks.build_provider", return_value=_GuardedFakeProvider(proyecto)
@@ -375,6 +376,47 @@ def test_task_flags_an_official_pda_of_a_non_selected_content_as_invented():
     updated = _read_plan_in(workspace, plan.id)
     assert updated.status == LessonPlan.Status.READY
     assert updated.invented_pdas is True
+    # Persist the verbatim offending PDA so the audit trail shows exactly what was invented.
+    assert updated.invented_pda_texts == [offending_pda]
+    # Persist the resolved selection the plan was checked against.
+    assert updated.grounding_selections == [
+        {
+            "content": "Recursos lingüísticos y textuales para la comprensión y producción de textos.",
+            "pdas": [pda_by_id("languages", SELECTED_PDA).text],
+        }
+    ]
+
+
+@pytest.mark.django_db(transaction=True)
+def test_task_persists_empty_invented_texts_and_non_empty_selection_on_clean_plan():
+    """A plan whose output PDAs are all inside the selection must still persist
+    the grounding selections — an empty list would mean the viewer has nothing
+    to show a teacher even when everything is fine."""
+    from workspaces.models import Workspace
+
+    workspace = Workspace.objects.create(type=Workspace.Type.GROUP)
+    group = _make_group(workspace)
+    plan = _create_pending_plan(workspace, group)
+
+    proyecto = _canned_proyecto()  # uses SELECTED_PDA, which is in the plan's selection
+
+    with patch(
+        "lesson_plans.tasks.build_provider", return_value=_GuardedFakeProvider(proyecto)
+    ):
+        _run_task_in_cold_thread(workspace_id=workspace.id, lesson_plan_id=plan.id)
+
+    updated = _read_plan_in(workspace, plan.id)
+    assert updated.status == LessonPlan.Status.READY
+    assert updated.invented_pdas is False
+    assert updated.invented_pda_texts == []
+    # The critical assertion: even on a clean plan, grounding_selections must be
+    # non-empty so the viewer can show what the plan was checked against.
+    assert updated.grounding_selections == [
+        {
+            "content": "Recursos lingüísticos y textuales para la comprensión y producción de textos.",
+            "pdas": [pda_by_id("languages", SELECTED_PDA).text],
+        }
+    ]
 
 
 @pytest.mark.django_db(transaction=True)
