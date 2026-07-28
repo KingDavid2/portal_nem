@@ -14,7 +14,7 @@
 
 | # | Phase | Proves | Status |
 | - | ----- | ------ | ------ |
-| **P0** | Live smoke | The stack actually runs end to end — the acceptance test M4, M5 and M6 all still owe | ⬜ |
+| **P0** | Live smoke | The stack actually runs end to end — the acceptance test M4, M5 and M6 all still owe | ✅ |
 | P1 | Grounding audit trail | A teacher can see *which* PDA is unofficial, and what it was checked against | ⬜ |
 | P2 | Eval harness | Generation quality is a number, so prompt and model changes stop shipping blind | ⬜ |
 | P3 | Cost · latency · prompt version · failure taxonomy | A generation can be priced, timed, attributed and categorized | ⬜ |
@@ -70,7 +70,8 @@ Carried forward from M1 and M6 (`roadmap.md:152-158`, `:434`):
 
 | | |
 | - | - |
-| Full nested `Proyecto`, self-hosted | **114.1 s**, 8413 output tokens (DGX Spark) |
+| Full nested `Proyecto`, self-hosted (M1, vLLM · NVFP4 35B) | **114.1 s**, 8413 output tokens (DGX Spark) |
+| Same, re-measured at P0 (llama.cpp · 27B GGUF Q8) | **223 s / 402 s / >541 s** across three attempts — see Phase 0 results |
 | Cloud estimate, per generation | Opus ≈ $0.24 · Sonnet ≈ $0.14 · Haiku ≈ $0.05 |
 | Self-hosted cost | electricity |
 | Celery budget | 600 s soft / 660 s hard |
@@ -94,6 +95,63 @@ first.** Every later phase inherits whatever this finds.
 
 **Exit gate:** completes twice in a row from a cold `/demo` click. Record per-leg wall-clock; P3
 needs it as a baseline.
+
+### Results — run 2026-07-28
+
+Both passes reached `status: ready` and exported a valid docx, so the gate is **met** — but only
+because the second pass was rescued by a retry. Driven below the API boundary with curl against
+Redis + Celery + `runserver`; the browser legs are still unwalked.
+
+| leg | pass 1 | pass 2 |
+| --- | ------ | ------ |
+| `POST /api/demo/sessions/` → `ready` | 1.3 s | 1.3 s |
+| catalog fetch | 0.1 s | 0.1 s |
+| `POST /api/lesson-plans/` → 202 | 0.1 s | 0.1 s |
+| **generation** | **402 s** | **541 s timeout → 180 s backoff → 223 s retry = 944 s** |
+| docx export | 40,725 B | 40,036 B |
+| tokens (in/out) | 2698 / 5671 | 2698 / 3588 |
+
+**The provider timeout is marginal on this hardware.** Three generations of the *same* payload took
+223 s, 402 s and >541 s. The 540 s HTTP client timeout fired exactly as designed — below Celery's
+600 s soft limit, translated into `TransientProviderError`, retried, recovered — but a teacher
+waiting 944 s for a plan is a failure in every sense except the technical one. Note the provider on
+`:8000` is now **llama.cpp serving `Qwen3.6-27B-…Q8_0.gguf`**, not the vLLM NVFP4 35B the M1 baseline
+was measured on.
+
+**Findings that change later phases:**
+
+1. **`invented_pdas: False` on a pedagogically incoherent plan.** Theme *"Cuidado del agua en nuestra
+   comunidad"* against the only content `ethics-nature-societies` offers — *"Las gestas de
+   resistencia y los movimientos independentistas"* — produced *"Agua que nos une: resistencia
+   histórica y cuidado comunitario del recurso hídrico."* Grounding passed because it checks **PDA
+   fidelity, not topical fit**. The trust signal reads ✓ on an unusable document. This is the
+   strongest available argument for **P2**, and it is a direct consequence of the catalog-coverage
+   ceiling recorded under *Adjacent*.
+2. **Recorded provenance is wrong.** `model_name` persisted as `nvidia/Qwen3.6-35B-A3B-NVFP4` — the
+   settings value — while the 27B GGUF answered. llama.cpp ignores the request's `model` field and
+   echoes back whatever it is sent. **P3 must record the model the server reports, not the one the
+   client asked for**, or the provenance strip will state a falsehood confidently.
+3. **`instructor` JSON-mode succeeded 2/2** on the full nested `Proyecto` against llama.cpp — all
+   eight top-level keys, ~11 KB. First evidence against `roadmap.md:280`'s "unproven". Output is
+   thin, though: 3 stages and a **single** rubric row. P2's scorecard should measure depth, not just
+   parse success.
+4. **A retrying plan is indistinguishable from a queued one.** Status stays `pending` across the
+   whole timeout + backoff + retry window with `failure_reason` empty, so the UI cannot explain a
+   15-minute wait. P3's `failure_kind` should be written on the *attempt*, not only the terminal
+   outcome.
+5. **The declared retry backoff is dead config.** `tasks.py:110-111` sets `retry_backoff=True,
+   retry_backoff_max=60`, but `:160` calls `self.retry(exc=exc)` explicitly, which bypasses backoff
+   and uses Celery's `default_retry_delay` — the log shows `Retry in 180s`, not the declared 60 s
+   cap. Fix alongside the two provider-swap bugs in P3.
+6. **Quota is charged once at create, and retries do not double-charge** — verified against
+   `GenerationUsage`. That narrows open decision 1: the refund question is live only for *terminal*
+   failures.
+7. **Writes require CSRF** (`GET /api/auth/csrf/` → `X-CSRFToken` + `Referer`); the demo endpoints
+   skip it. **P4's MCP surface has no CSRF cookie**, so it needs an auth path that is not session
+   auth — settle that at design time, not during implementation.
+
+**Still unwalked:** every browser leg. The frontend was never started; all of the above is HTTP. The
+`/demo` picker, the polling page, the `nueva planeación` form and the viewer remain unverified.
 
 ---
 
@@ -325,7 +383,9 @@ None of these are code-only. Record each here as it resolves.
 1. **Quota refund on failure** (`roadmap.md:453`, currently open). P3 makes it decidable: refunding a
    transient timeout is arguably fair since no useful tokens were spent, while refunding a
    schema-parse failure is not — the model burned output tokens producing garbage. Exactly-once is
-   not Celery's to give, so whatever policy is chosen **must tolerate double-fire**.
+   not Celery's to give, so whatever policy is chosen **must tolerate double-fire**. *P0 narrowed
+   this:* quota is charged once at create and retries do not double-charge, so only **terminal**
+   failures are in question.
 2. **PII boundary on provider swap.** `context_diagnosis` and `scenario` are free-text teacher input
    about a real group of minors, and the catalog response carries `teacher {email}` plus the school
    CCT. With `LLM_PROVIDER=vllm` that stays on hardware you own; flipping one `.env` value sends it
@@ -384,3 +444,8 @@ P4: `lesson_plans/tests/test_tasks.py:199`, `:510`, and `workspaces/tests/test_p
    everything after it. P4–P6 are each a week-ish. Decide the cut before starting P4.
 3. **P5 scope** — which single mutation goes first.
 4. **Demo hosting posture** — P6c, local-only vs a hardened deploy flag.
+5. **Which provider is the baseline.** P0 measured llama.cpp with the 27B GGUF, where the 540 s
+   client timeout is a coin flip. Either restore vLLM with the NVFP4 35B on `:8000` and re-measure,
+   or accept the 27B and raise the timeout — but a timeout that fires on roughly a third of
+   generations makes every number P2 and P3 produce unreproducible. **Settle this before P2**, since
+   the eval harness bakes whatever it measures into a committed scorecard.
