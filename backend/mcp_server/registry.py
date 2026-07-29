@@ -10,7 +10,11 @@ layer, and no module compares `membership.role` to a literal string.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from workspaces.permissions import has_permission
+
+Tool = Callable[..., dict]
 
 # Tool name → capability mapping. Mirrors `lesson_plans/viewsets.py:64` for the
 # same `view_workspace` / `edit_content` discipline: raw action verbs are never
@@ -40,10 +44,10 @@ class ToolNotFoundError(ToolError):
     """A requested resource was not found.
 
     Indistinguishable by payload from a malformed id or a cross-workspace miss:
-    one message, one shape.
+    one message, one shape. Callers pass the fixed message explicitly; this
+    class holds no default, so a per-resource message can never drift into a
+    distinguishing signal.
     """
-
-    message = "Not found."
 
 
 class ToolInputError(ToolError):
@@ -83,8 +87,8 @@ def _search_catalog(_membership, **_kwargs: dict) -> dict:
     raise ToolInputError("search_catalog tool not yet implemented")
 
 
-# Single registry mapping name → (tool_callable).
-_TOOLS: dict[str, callable] = {
+# Single registry mapping name → tool callable.
+_TOOLS: dict[str, Tool] = {
     "list_groups": _list_groups,
     "list_lesson_plans": _list_lesson_plans,
     "get_lesson_plan": _get_lesson_plan,
@@ -93,40 +97,54 @@ _TOOLS: dict[str, callable] = {
 }
 
 
-def register(name: str, func: callable) -> None:
-    """Register a tool callable under `name`.
+def register(name: str, func: Tool, capability: str) -> None:
+    """Register a tool callable under `name`, requiring its capability.
+
+    The capability is not optional: a tool in `_TOOLS` with no `CAPABILITY_MAP`
+    entry is undispatchable, because `dispatch` treats a capability miss as an
+    unknown tool. Taking both here keeps the two tables populated together
+    instead of leaving that invariant to whoever calls this next.
 
     Raises `KeyError` if the name is already registered.
     """
     if name in _TOOLS:
         raise KeyError(f"Tool already registered: {name}")
     _TOOLS[name] = func
+    CAPABILITY_MAP[name] = capability
 
 
 def dispatch(name: str, arguments: dict, membership) -> dict:
     """Dispatch a tool call synchronously.
 
     Order:
-    1. Resolve capability from `CAPABILITY_MAP[name]` (miss → `UnknownToolError`).
-    2. Check `has_permission(membership, capability)` (false → `ToolDenied`).
-    3. Call the registered tool body → return its dict result.
+    1. Membership present (absent → `ToolDenied`).
+    2. Resolve capability from `CAPABILITY_MAP[name]` (miss → `UnknownToolError`).
+    3. Check `has_permission(membership, capability)` (false → `ToolDenied`).
+    4. Call the registered tool body → return its dict result.
+
+    Step 1 precedes step 2 deliberately. Resolving the tool name first would let
+    an unresolved identity tell a registered name from an unregistered one by the
+    error it gets back — enumeration of the tool surface before authentication.
+    Unresolved identity and insufficient role share the one `ToolDenied` shape.
 
     The raw tool name never reaches `has_permission`; no module compares
     `membership.role` to a literal string.
     """
-    # Step 1: capability map — miss means unknown tool, not a raw KeyError.
+    # Step 1: identity before anything name-dependent, so an anonymous caller
+    # learns nothing about which names exist.
+    if membership is None:
+        raise ToolDenied()
+
+    # Step 2: capability map — miss means unknown tool, not a raw KeyError.
     if name not in CAPABILITY_MAP:
         raise UnknownToolError(name)
 
     capability = CAPABILITY_MAP[name]
 
-    # Step 2: authorization via the capability matrix.
+    # Step 3: authorization via the capability matrix.
     if not has_permission(membership, capability):
         raise ToolDenied()
 
-    # Step 3: call the tool body.
-    tool = _TOOLS.get(name)
-    if tool is None:
-        raise UnknownToolError(name)
-
-    return tool(membership, **arguments)
+    # Step 4: call the tool body. Registry and capability map are populated
+    # together, so a name past step 2 always resolves here.
+    return _TOOLS[name](membership, **arguments)

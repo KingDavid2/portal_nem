@@ -11,7 +11,6 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from django.conf import settings
 from django.contrib.auth import get_user_model
 from workspaces.models import Membership, Workspace
 
@@ -21,9 +20,9 @@ User = get_user_model()
 class TestRegisteredTools:
     """2a.2: Exactly five names are registered."""
 
-    def test_exactly_five_tools_registered(self, settings):
+    def test_exactly_five_tools_registered(self):
         """The registry must expose exactly the five read-only tools."""
-        from mcp_server.registry import CAPABILITY_MAP, UnknownToolError, dispatch, _TOOLS
+        from mcp_server.registry import _TOOLS, CAPABILITY_MAP
 
         # Assert the capability map and registry both list exactly five tools.
         assert set(CAPABILITY_MAP.keys()) == {
@@ -42,7 +41,7 @@ class TestUnknownToolError:
     def test_unregistered_name_raises_typed_error(self):
         from mcp_server.registry import UnknownToolError, dispatch
 
-        membership = Membership(role="owner")
+        membership = Membership(role=Membership.Role.OWNER)
         with pytest.raises(UnknownToolError) as exc_info:
             dispatch("delete_everything", {}, membership)
 
@@ -51,21 +50,21 @@ class TestUnknownToolError:
     def test_unregistered_name_does_not_leak_keyerror(self):
         from mcp_server.registry import ToolError, dispatch
 
-        membership = Membership(role="owner")
+        membership = Membership(role=Membership.Role.OWNER)
+        # pytest.raises(ToolError) is itself the assertion: a raw KeyError or
+        # AttributeError escaping the dispatcher is not a ToolError, so this
+        # block fails rather than passing on the wrong exception type.
         with pytest.raises(ToolError):
             dispatch("ghost_tool", {}, membership)
-
-        # No KeyError or AttributeError should propagate past the dispatcher.
-        # (If they did, we'd see the original exception here.)
 
 
 class TestCapabilityMap:
     """2a.4: Raw tool name never reaches has_permission; uses capability instead."""
 
     @pytest.mark.django_db(transaction=True)
-    def test_has_permission_receives_capability_not_tool_name(self, settings):
+    def test_has_permission_receives_capability_not_tool_name(self):
         """has_permission must be called with 'view_workspace', never 'get_quota'."""
-        from mcp_server.registry import dispatch
+        from mcp_server.registry import ToolInputError, dispatch
 
         workspace = Workspace.objects.create(type=Workspace.Type.PERSONAL)
         user = User.objects.create(email="test@example.com")
@@ -83,7 +82,10 @@ class TestCapabilityMap:
             return True
 
         with patch("mcp_server.registry.has_permission", side_effect=capture_permission):
-            with pytest.raises(Exception):  # get_quota will fail with empty args
+            # The Slice 2a stub body raises ToolInputError. Naming it exactly —
+            # rather than a bare Exception — keeps this test from passing on an
+            # authorization crash, which is the very thing it is here to observe.
+            with pytest.raises(ToolInputError):
                 dispatch("get_quota", {}, membership)
 
         assert "get_quota" not in captured_actions, (
@@ -98,7 +100,7 @@ class TestAuthorizationDenial:
     """2a.5: Role absent from capability matrix is denied all five tools."""
 
     @pytest.mark.django_db(transaction=True)
-    def test_unknown_role_denied_all_tools(self, settings):
+    def test_unknown_role_denied_all_tools(self):
         """A membership whose role is not in the capability matrix gets ToolDenied."""
         from mcp_server.registry import ToolDenied, dispatch
 
@@ -122,6 +124,24 @@ class TestAuthorizationDenial:
         for name in tools:
             with pytest.raises(ToolDenied):
                 dispatch(name, {}, membership)
+
+
+class TestUnresolvedIdentity:
+    """2a.7 dispatch order: identity is checked before the tool name is resolved."""
+
+    def test_absent_membership_is_denied_and_reveals_no_tool_names(self):
+        """A registered and an unregistered name must be indistinguishable.
+
+        `dispatch` checks the capability map before authorization, so if the
+        identity check came second, an anonymous caller would get
+        `UnknownToolError` for a bogus name and `ToolDenied` for a real one —
+        enumerating the tool surface without authenticating.
+        """
+        from mcp_server.registry import ToolDenied, dispatch
+
+        for name in ("get_quota", "delete_everything"):
+            with pytest.raises(ToolDenied):
+                dispatch(name, {}, None)
 
 
 class TestNoInlineRoleComparison:
