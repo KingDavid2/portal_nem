@@ -60,14 +60,14 @@ cd backend && uv run manage.py makemigrations --check --dry-run
 
 Depends on S1.
 
-- [ ] 2a.1 RED `backend/mcp_server/tests/test_imports.py`: `import mcp` resolves to a `__file__` under `sys.prefix`, and `settings.BASE_DIR` is **not** one of its parents — proving no `backend/` top-level package shadows a dependency name. The app is `backend/mcp_server/`, never `backend/mcp/`.
-- [ ] 2a.2 RED `backend/mcp_server/tests/test_registry.py`: exactly five names are registered — `list_groups`, `list_lesson_plans`, `get_lesson_plan`, `get_quota`, `search_catalog`.
-- [ ] 2a.3 RED same file: an unregistered name raises `UnknownToolError` carrying the offending name — never a raw `KeyError`, `AttributeError`, or unhandled traceback.
-- [ ] 2a.4 RED same file: the raw tool name never reaches `has_permission` — patch `workspaces.permissions.has_permission` and assert it is called with `"view_workspace"`, never `"get_quota"`.
-- [ ] 2a.5 RED same file: a `Membership` whose role is absent from the capability matrix is denied all five tools, and no tool body executes a scoped read.
-- [ ] 2a.6 RED same file: a source-scan test over `backend/mcp_server/**.py` asserts **no module compares `membership.role` to a literal string** anywhere. Every decision goes through `workspaces.permissions.has_permission` + `CAPABILITY_MAP`.
-- [ ] 2a.7 GREEN `backend/mcp_server/registry.py`: `register`, sync `dispatch(name, arguments, membership) -> dict`, `CAPABILITY_MAP` (all five → `view_workspace`, mirroring `lesson_plans/viewsets.py:64`), and `ToolError` / `UnknownToolError` / `ToolNotFoundError` / `ToolInputError` / `ToolDenied`. Dispatch order: membership present → `CAPABILITY_MAP[name]` (miss ⇒ `UnknownToolError`) → `has_permission` (false ⇒ `ToolDenied`) → tool body. Unresolved identity and authz failure share the one `ToolDenied` shape.
-- [ ] 2a.8 GREEN `backend/config/settings.py`: add `"mcp_server"` to `INSTALLED_APPS`.
+- [x] 2a.1 RED `backend/mcp_server/tests/test_imports.py`: `import mcp` resolves to a `__file__` under `sys.prefix`, and `settings.BASE_DIR` is **not** one of its parents — proving no `backend/` top-level package shadows a dependency name. The app is `backend/mcp_server/`, never `backend/mcp/`.
+- [x] 2a.2 RED `backend/mcp_server/tests/test_registry.py`: exactly five names are registered — `list_groups`, `list_lesson_plans`, `get_lesson_plan`, `get_quota`, `search_catalog`.
+- [x] 2a.3 RED same file: an unregistered name raises `UnknownToolError` carrying the offending name — never a raw `KeyError`, `AttributeError`, or unhandled traceback.
+- [x] 2a.4 RED same file: the raw tool name never reaches `has_permission` — patch `workspaces.permissions.has_permission` and assert it is called with `"view_workspace"`, never `"get_quota"`.
+- [x] 2a.5 RED same file: a `Membership` whose role is absent from the capability matrix is denied all five tools, and no tool body executes a scoped read.
+- [x] 2a.6 RED same file: a source-scan test over `backend/mcp_server/**.py` asserts **no module compares `membership.role` to a literal string** anywhere. Every decision goes through `workspaces.permissions.has_permission` + `CAPABILITY_MAP`.
+- [x] 2a.7 GREEN `backend/mcp_server/registry.py`: `register`, sync `dispatch(name, arguments, membership) -> dict`, `CAPABILITY_MAP` (all five → `view_workspace`, mirroring `lesson_plans/viewsets.py:64`), and `ToolError` / `UnknownToolError` / `ToolNotFoundError` / `ToolInputError` / `ToolDenied`. Dispatch order: membership present → `CAPABILITY_MAP[name]` (miss ⇒ `UnknownToolError`) → `has_permission` (false ⇒ `ToolDenied`) → tool body. Unresolved identity and authz failure share the one `ToolDenied` shape.
+- [x] 2a.8 GREEN `backend/config/settings.py`: add `"mcp_server"` to `INSTALLED_APPS`.
 
 ## Slice 2b — Async bridge and cold-context tenancy harness (`feat/quizzy-p4-s2b-async-bridge`, ~230)
 

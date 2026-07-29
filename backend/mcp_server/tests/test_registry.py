@@ -1,0 +1,158 @@
+"""Registry and dispatch tests (mcp-tool-surface + authorization specs).
+
+These tests verify the tool registry dispatch, capability map, typed errors,
+and that no module compares membership.role to a literal string.
+"""
+
+from __future__ import annotations
+
+import re
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from workspaces.models import Membership, Workspace
+
+User = get_user_model()
+
+
+class TestRegisteredTools:
+    """2a.2: Exactly five names are registered."""
+
+    def test_exactly_five_tools_registered(self, settings):
+        """The registry must expose exactly the five read-only tools."""
+        from mcp_server.registry import CAPABILITY_MAP, UnknownToolError, dispatch, _TOOLS
+
+        # Assert the capability map and registry both list exactly five tools.
+        assert set(CAPABILITY_MAP.keys()) == {
+            "list_groups",
+            "list_lesson_plans",
+            "get_lesson_plan",
+            "get_quota",
+            "search_catalog",
+        }
+        assert set(_TOOLS.keys()) == set(CAPABILITY_MAP.keys())
+
+
+class TestUnknownToolError:
+    """2a.3: Unregistered name raises UnknownToolError carrying the name."""
+
+    def test_unregistered_name_raises_typed_error(self):
+        from mcp_server.registry import UnknownToolError, dispatch
+
+        membership = Membership(role="owner")
+        with pytest.raises(UnknownToolError) as exc_info:
+            dispatch("delete_everything", {}, membership)
+
+        assert str(exc_info.value) == "Unknown tool: delete_everything"
+
+    def test_unregistered_name_does_not_leak_keyerror(self):
+        from mcp_server.registry import ToolError, dispatch
+
+        membership = Membership(role="owner")
+        with pytest.raises(ToolError):
+            dispatch("ghost_tool", {}, membership)
+
+        # No KeyError or AttributeError should propagate past the dispatcher.
+        # (If they did, we'd see the original exception here.)
+
+
+class TestCapabilityMap:
+    """2a.4: Raw tool name never reaches has_permission; uses capability instead."""
+
+    @pytest.mark.django_db(transaction=True)
+    def test_has_permission_receives_capability_not_tool_name(self, settings):
+        """has_permission must be called with 'view_workspace', never 'get_quota'."""
+        from mcp_server.registry import dispatch
+
+        workspace = Workspace.objects.create(type=Workspace.Type.PERSONAL)
+        user = User.objects.create(email="test@example.com")
+        membership = Membership.objects.create(
+            user=user,
+            workspace=workspace,
+            role=Membership.Role.MEMBER,
+        )
+
+        # Patch has_permission to capture the action argument.
+        captured_actions = []
+
+        def capture_permission(membership, action):
+            captured_actions.append(action)
+            return True
+
+        with patch("mcp_server.registry.has_permission", side_effect=capture_permission):
+            with pytest.raises(Exception):  # get_quota will fail with empty args
+                dispatch("get_quota", {}, membership)
+
+        assert "get_quota" not in captured_actions, (
+            "Raw tool name 'get_quota' must not reach has_permission"
+        )
+        assert any(
+            a == "view_workspace" for a in captured_actions
+        ), "has_permission must be called with 'view_workspace' capability"
+
+
+class TestAuthorizationDenial:
+    """2a.5: Role absent from capability matrix is denied all five tools."""
+
+    @pytest.mark.django_db(transaction=True)
+    def test_unknown_role_denied_all_tools(self, settings):
+        """A membership whose role is not in the capability matrix gets ToolDenied."""
+        from mcp_server.registry import ToolDenied, dispatch
+
+        workspace = Workspace.objects.create(type=Workspace.Type.PERSONAL)
+        user = User.objects.create(email="ghost@example.com")
+        membership = Membership.objects.create(
+            user=user,
+            workspace=workspace,
+            # "ghost" is not a known role — absent from the capability matrix.
+            role="ghost",
+        )
+
+        tools = [
+            "list_groups",
+            "list_lesson_plans",
+            "get_lesson_plan",
+            "get_quota",
+            "search_catalog",
+        ]
+
+        for name in tools:
+            with pytest.raises(ToolDenied):
+                dispatch(name, {}, membership)
+
+
+class TestNoInlineRoleComparison:
+    """2a.6: Source-scan — no module compares membership.role to a literal string."""
+
+    def test_no_membership_role_string_comparison(self):
+        """Every authz decision in mcp_server must go through has_permission.
+
+        This scans all Python files under mcp_server/ for any direct comparison
+        of membership.role against a literal string (==, !=, 'in', 'is').
+        """
+        mcp_server_root = Path(__file__).resolve().parent.parent
+
+        forbidden_pattern = re.compile(
+            r"""membership\.role\s*(?:==|!=|is|in)\s*['"]"""
+        )
+
+        violations = []
+        for py_file in mcp_server_root.rglob("*.py"):
+            if "test_" in py_file.stem and "_test" not in py_file.stem:
+                # Skip test files themselves.
+                continue
+            content = py_file.read_text(encoding="utf-8")
+            for lineno, line in enumerate(content.splitlines(), start=1):
+                if forbidden_pattern.search(line):
+                    violations.append(
+                        f"{py_file.relative_to(mcp_server_root)}:{lineno}: {line.strip()}"
+                    )
+
+        assert not violations, (
+            "No module may compare membership.role to a literal string.\n"
+            "Use has_permission(membership, action) + CAPABILITY_MAP instead.\n\n"
+            "Violations:\n" + "\n".join(violations)
+        )
