@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     "students",
     "lesson_plans",
     "demo",
+    "mcp_server",
 ]
 
 MIDDLEWARE = [
