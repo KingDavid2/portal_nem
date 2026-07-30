@@ -293,6 +293,24 @@ class CatalogContentSerializer(serializers.Serializer):
     pdas = CatalogPdaSerializer(many=True, read_only=True)
 
 
+def catalog_group_payload(group) -> dict:
+    """Group identity dict shared by the catalog action and `list_groups`.
+
+    Extracted from the inline dict formerly at `viewsets.catalog` so the HTTP
+    catalog surface and the MCP tool cannot drift (design D2 — same anti-drift
+    move as `quota.format_period`).
+    """
+    school = group.school_year.school
+    return {
+        "id": group.pk,
+        "label": f"{group.grado}° {group.grupo}",
+        "grade": group.grado,
+        "school_name": school.name,
+        "school_cct": school.cct,
+        "school_year_label": group.school_year.label,
+    }
+
+
 class CatalogGroupSerializer(serializers.Serializer):
     """The automatic group context shown by the planning form."""
 

@@ -48,6 +48,7 @@ from lesson_plans.serializers import (
     LessonPlanCatalogSerializer,
     LessonPlanCreateSerializer,
     LessonPlanSerializer,
+    catalog_group_payload,
 )
 from lesson_plans.quota import (
     QuotaExceeded,
@@ -239,7 +240,6 @@ class LessonPlanViewSet(viewsets.ModelViewSet):
                     ],
                 }
             )
-        school = group.school_year.school
         payload = {
             "phase": PHASE,
             "grade": group.grado,
@@ -248,14 +248,7 @@ class LessonPlanViewSet(viewsets.ModelViewSet):
             "subjects": [asdict(subject) for subject in subjects_for(field.id)],
             "cross_cutting_themes": [asdict(theme) for theme in CROSS_CUTTING_THEMES],
             "contents": contents,
-            "group": {
-                "id": group.pk,
-                "label": f"{group.grado}° {group.grupo}",
-                "grade": group.grado,
-                "school_name": school.name,
-                "school_cct": school.cct,
-                "school_year_label": group.school_year.label,
-            },
+            "group": catalog_group_payload(group),
             "teacher": {"email": request.user.email},
         }
         return Response(LessonPlanCatalogSerializer(payload).data)

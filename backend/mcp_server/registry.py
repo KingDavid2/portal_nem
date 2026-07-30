@@ -65,36 +65,24 @@ class ToolDenied(ToolError):
 
 
 # ---------------------------------------------------------------------------
-# Placeholder tool stubs — replaced by `tools.py` in Slice 3.
+# Tool callables — bodies live in tools.py (Slice 3).
 # ---------------------------------------------------------------------------
 
-def _list_groups(_membership, **_kwargs: dict) -> dict:
-    raise ToolInputError("list_groups tool not yet implemented")
-
-
-def _list_lesson_plans(_membership, **_kwargs: dict) -> dict:
-    raise ToolInputError("list_lesson_plans tool not yet implemented")
-
-
-def _get_lesson_plan(_membership, **_kwargs: dict) -> dict:
-    raise ToolInputError("get_lesson_plan tool not yet implemented")
-
-
-def _get_quota(_membership, **_kwargs: dict) -> dict:
-    raise ToolInputError("get_quota tool not yet implemented")
-
-
-def _search_catalog(_membership, **_kwargs: dict) -> dict:
-    raise ToolInputError("search_catalog tool not yet implemented")
-
+from mcp_server.tools import (  # noqa: E402
+    get_lesson_plan,
+    get_quota,
+    list_groups,
+    list_lesson_plans,
+    search_catalog,
+)
 
 # Single registry mapping name → tool callable.
 _TOOLS: dict[str, Tool] = {
-    "list_groups": _list_groups,
-    "list_lesson_plans": _list_lesson_plans,
-    "get_lesson_plan": _get_lesson_plan,
-    "get_quota": _get_quota,
-    "search_catalog": _search_catalog,
+    "list_groups": list_groups,
+    "list_lesson_plans": list_lesson_plans,
+    "get_lesson_plan": get_lesson_plan,
+    "get_quota": get_quota,
+    "search_catalog": search_catalog,
 }
 
 

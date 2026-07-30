@@ -64,7 +64,7 @@ class TestCapabilityMap:
     @pytest.mark.django_db(transaction=True)
     def test_has_permission_receives_capability_not_tool_name(self):
         """has_permission must be called with 'view_workspace', never 'get_quota'."""
-        from mcp_server.registry import ToolInputError, dispatch
+        from mcp_server.registry import dispatch
 
         workspace = Workspace.objects.create(type=Workspace.Type.PERSONAL)
         user = User.objects.create(email="test@example.com")
@@ -82,12 +82,12 @@ class TestCapabilityMap:
             return True
 
         with patch("mcp_server.registry.has_permission", side_effect=capture_permission):
-            # The Slice 2a stub body raises ToolInputError. Naming it exactly —
-            # rather than a bare Exception — keeps this test from passing on an
-            # authorization crash, which is the very thing it is here to observe.
-            with pytest.raises(ToolInputError):
-                dispatch("get_quota", {}, membership)
+            # Real get_quota body runs once authorization passes — success is
+            # the signal that has_permission was consulted with the capability,
+            # not that a stub raised.
+            result = dispatch("get_quota", {}, membership)
 
+        assert isinstance(result, dict)
         assert "get_quota" not in captured_actions, (
             "Raw tool name 'get_quota' must not reach has_permission"
         )
