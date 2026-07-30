@@ -187,7 +187,33 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    # Per-view ScopedRateThrottle rates (no DEFAULT_THROTTLE_CLASSES — zero
+    # blast radius on untouched endpoints). Quizzy P6 Slice 1a demo scopes.
+    "DEFAULT_THROTTLE_RATES": {
+        "demo_personas": "60/hour",
+        "demo_session_create": "5/hour",
+        "demo_session_poll": "120/hour",
+    },
 }
+
+# Shared cache for DRF throttle counters across gunicorn/celery processes.
+# Broker stays on Redis db 0; cache uses db 1 so throttle keys never collide
+# with Celery messages. Under pytest, LocMem replaces Redis so CI needs no
+# live broker — mirrors the CELERY_TASK_ALWAYS_EAGER block below.
+REDIS_CACHE_URL = env("REDIS_CACHE_URL", default="redis://localhost:6379/1")
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": REDIS_CACHE_URL,
+    },
+}
+if "PYTEST_VERSION" in os.environ:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "portal-nem-pytest",
+        },
+    }
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "portal_nem API",

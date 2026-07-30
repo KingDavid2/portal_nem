@@ -15,6 +15,7 @@ from drf_spectacular.utils import extend_schema
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.status import HTTP_202_ACCEPTED
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from demo import personas
@@ -32,6 +33,8 @@ class DemoPersonaListView(APIView):
 
     permission_classes = [AllowAny]
     authentication_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "demo_personas"
     serializer_class = PersonaSerializer
 
     @extend_schema(responses={200: PersonaSerializer(many=True)})
@@ -44,6 +47,8 @@ class DemoSessionCreateView(APIView):
 
     permission_classes = [AllowAny]
     authentication_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "demo_session_create"
     serializer_class = DemoSessionCreateSerializer
 
     @extend_schema(
@@ -73,6 +78,8 @@ class DemoSessionDetailView(APIView):
 
     permission_classes = [AllowAny]
     authentication_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "demo_session_poll"
     serializer_class = DemoSessionSerializer
 
     @extend_schema(responses={200: DemoSessionSerializer})
