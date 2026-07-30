@@ -33,12 +33,21 @@ SECRET_KEY = env(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env.bool("DEBUG", default=True)
 
+# Hardened public demo host (Quizzy P6). When True, demo routes may mount
+# with DEBUG=False; validate_deploy_hardening at the tail of this file owns
+# the boot gate. When False, the classic ProductionNotAllowed guard below
+# still rejects DEMO_MODE with DEBUG off.
+DEMO_DEPLOY = env.bool("DEMO_DEPLOY", default=False)
+
 # Boot guard: refuse to start if DEMO_MODE is set while DEBUG is off.
 # DEMO_MODE creates real users via an unauthenticated endpoint; this
-# aborts the process rather than degrading silently.
+# aborts the process rather than degrading silently. Skipped under
+# DEMO_DEPLOY — the deploy hardening validator runs after CACHES/cookies
+# are resolved (see tail of this file).
 from config.demo_mode import validate as _demo_mode_validate  # noqa: E402
 
-_demo_mode_validate()
+if not DEMO_DEPLOY:
+    _demo_mode_validate()
 
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 
@@ -330,3 +339,27 @@ CELERY_BEAT_SCHEDULE = {
 if "PYTEST_VERSION" in os.environ:
     CELERY_TASK_ALWAYS_EAGER = True
     CELERY_TASK_EAGER_PROPAGATES = True
+
+# DEMO_DEPLOY hosting posture (Quizzy P6 Slice 3). Runs after CACHES,
+# cookies, and SPECTACULAR_SETTINGS are fully resolved so the pure
+# validator receives concrete values. Forces schema-serve off and drops
+# the browsable API renderer on a public demo host.
+if DEMO_DEPLOY:
+    from config.demo_mode import (  # noqa: E402
+        demo_mode_requested as _demo_mode_requested,
+        validate_deploy_hardening as _validate_deploy_hardening,
+    )
+
+    _validate_deploy_hardening(
+        debug=DEBUG,
+        allowed_hosts=ALLOWED_HOSTS,
+        secret_key=SECRET_KEY,
+        caches=CACHES,
+        session_cookie_secure=SESSION_COOKIE_SECURE,
+        csrf_cookie_secure=CSRF_COOKIE_SECURE,
+        demo_mode=_demo_mode_requested(),
+    )
+    SPECTACULAR_SETTINGS["SERVE_INCLUDE_SCHEMA"] = False
+    REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"] = [
+        "rest_framework.renderers.JSONRenderer",
+    ]

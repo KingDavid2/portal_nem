@@ -1,8 +1,8 @@
 # Apply Progress: quizzy-p6-demo-hardening
 
 **Mode**: Strict TDD  
-**Batch**: Slice 2 (Phase 3, tasks 3.1–3.5) — cumulative with Slice 1a + 1b  
-**Branch**: `feat/quizzy-p6-s2-ttl-reap` (stacked on `feat/quizzy-p6-s1b-generate-mcp-throttle` @ `f10993e`)  
+**Batch**: Slice 3 (Phase 4, tasks 4.1–4.6) — cumulative with Slice 1a + 1b + 2  
+**Branch**: `feat/quizzy-p6-s3-demo-deploy` (stacked on `feat/quizzy-p6-s2-ttl-reap` @ `e1e2160`)  
 **Updated**: 2026-07-30
 
 ## Completed Tasks
@@ -27,7 +27,7 @@
 - [x] 2.8 GREEN `mcp_http_view` throttle after 401 + `Retry-After`
 - [x] 2.9 VERIFY focused + full suite
 
-### Slice 2 (Phase 3) — this batch
+### Slice 2 (Phase 3)
 
 - [x] 3.1 RED `backend/demo/tests/test_reaping.py`
 - [x] 3.2 GREEN `DEMO_SESSION_TTL_HOURS` + `CELERY_BEAT_SCHEDULE` (`crontab(minute=0)`)
@@ -35,10 +35,18 @@
 - [x] 3.4 GREEN `reap_expired_demo_sessions_task` thin Celery wrapper
 - [x] 3.5 VERIFY focused + full suite
 
+### Slice 3 (Phase 4) — this batch
+
+- [x] 4.1 RED `backend/config/tests/test_demo_deploy.py`
+- [x] 4.2 GREEN `demo_mode.py`: `enabled()` formula + `validate_deploy_hardening` + two exceptions (`validate`/`ProductionNotAllowed` body untouched)
+- [x] 4.3 GREEN `settings.py`: `DEMO_DEPLOY`, skip early `validate()` when deploy, tail hardening call, schema/browsable drop
+- [x] 4.4 GREEN `.env.example` posture block
+- [x] 4.5 GREEN `docs/quizzy_roadmap.md` Q4 resolved
+- [x] 4.6 VERIFY focused + full suite
+
 ## Remaining (not this batch)
 
-- [ ] Phase 4 Slice 3 (4.1–4.6)
-- [ ] Phase 5 Slice 4 (5.1–5.5)
+- [ ] Phase 5 Slice 4 (5.1–5.5) showcase persona
 
 ### TDD Cycle Evidence
 
@@ -63,8 +71,23 @@
 | 3.3 | same | Integration | N/A (new) | ✅ Covered by 3.1 | ✅ leaf-first inside `workspace_scope` incl. `workspace.delete()` | ✅ GenerationUsage path + pending direct delete | ➖ None needed |
 | 3.4 | same | Integration | ✅ tasks module | ✅ Covered by wrapper tests | ✅ thin `reap_expired_demo_sessions_task` | ✅ mock delegate + real pending reap | ➖ None needed |
 | 3.5 | same | Integration | — | — | ✅ 8/8 focused; ✅ **518 passed** full suite | — | — |
+| 4.1 | `config/tests/test_demo_deploy.py` | Unit | ✅ 20/20 `config/test_demo_mode.py` | ✅ Written (ImportError on new symbols) | ✅ Deferred to 4.2 | ✅ debug + 7 hardening + 8-row enabled truth table | ➖ N/A (test-only) |
+| 4.2 | same | Unit | ✅ existing gate tests | ✅ Covered by 4.1 | ✅ `enabled()` formula + pure validator + 2 exceptions | ✅ all violation paths + truth table | ➖ validate() body left intact |
+| 4.3 | same | Unit | ✅ settings load | ✅ Covered by contract | ✅ `DEMO_DEPLOY` + skip early validate + tail call + renderer/schema | ➖ Structural (settings wiring) | ➖ None needed |
+| 4.4 | — | — | N/A | ➖ Docs | ✅ `.env.example` posture block | ➖ Structural | ➖ |
+| 4.5 | — | — | N/A | ➖ Docs | ✅ Q4 resolved in roadmap | ➖ Structural | ➖ |
+| 4.6 | same | Unit | — | — | ✅ 17/17 focused; ✅ 20/20 existing; ✅ **535 passed** full suite | — | — |
 
-### Work Unit Evidence (Slice 2)
+### Work Unit Evidence (Slice 3)
+
+| Evidence | Value |
+|----------|-------|
+| Focused test command | `cd backend && uv run pytest config/tests/test_demo_deploy.py config/test_demo_mode.py` → **37 passed** |
+| Full suite | `cd backend && uv run pytest` → **535 passed in 39.23s** |
+| Runtime harness | N/A — validator called with explicit args; no live Django boot under DEMO_DEPLOY in CI |
+| Rollback boundary | Leave `DEMO_DEPLOY` unset; revert `demo_mode.py` enabled/validator + settings tail + `.env.example` + Q4 docs + `config/tests/test_demo_deploy.py` |
+
+### Work Unit Evidence (Slice 2 — preserved)
 
 | Evidence | Value |
 |----------|-------|
@@ -96,16 +119,15 @@
 ### Workload / PR Boundary
 
 - Mode: stacked PR slice (`stacked-to-main`)
-- Current work unit: Slice 2 — TTL reap (beat + leaf-first delete)
-- Boundary: stops before DEMO_DEPLOY gate (Slice 3)
+- Current work unit: Slice 3 — DEMO_DEPLOY hosting posture + docs
+- Boundary: stops before showcase persona (Slice 4)
 - Estimated review budget: Low–Medium (under 400 authored lines)
 
 ### Deviations from Design
 
-None material — implementation matches design (entire reap including `workspace.delete()` inside `workspace_scope`; leaf-first order; settings crontab beat; no django-celery-beat).
-
-Companion fix: `workspaces/tests/test_managers.py` now defines/unregisters ephemeral `ScopedProbe` inside the fixture so Django's delete collector does not target a rolled-back probe table when later tests call `Workspace.delete()`. Required for full-suite green after introducing workspace reap.
+- `validate_deploy_hardening` takes an explicit `demo_mode: bool` kwarg (design interface snippet omitted it) so `DEMO_DEPLOY ∧ ¬DEMO_MODE` stays a pure unit-testable check.
+- Early `_demo_mode_validate()` is skipped when `DEMO_DEPLOY` so `validate()` body stays untouched while `DEMO_MODE ∧ ¬DEBUG ∧ DEMO_DEPLOY` can boot; ProductionNotAllowed still fires when deploy is off.
 
 ### Issues Found
 
-None. Note: sessions without workspace (pending/failed) are deleted directly as designed; user delete skips when memberships or `sent_invitations` remain (PROTECT).
+None.

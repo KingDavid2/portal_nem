@@ -632,7 +632,15 @@ other three in that file depend on.
    started, so the cut is now P0 → P1 → P2 (harness only) → P4. **P3 is still a hard dependency for
    M9** and P4 does not remove that — it defers it.
 3. **P5 scope** — which single mutation goes first.
-4. **Demo hosting posture** — P6c, local-only vs a hardened deploy flag.
+4. ~~**Demo hosting posture** — P6c, local-only vs a hardened deploy flag.~~
+   **Resolved:** `DEMO_DEPLOY` additive flag. `enabled()` is
+   `DEMO_MODE ∧ (DEBUG ∨ DEMO_DEPLOY)`. Boot rejects `DEMO_DEPLOY ∧ DEBUG`
+   (`DebugNotAllowedInDemoDeploy`) and any hardening gap (default
+   `SECRET_KEY`, localhost/`*` `ALLOWED_HOSTS`, non-Redis cache, insecure
+   cookies, or `DEMO_DEPLOY` without `DEMO_MODE`) via
+   `DemoDeployNotHardened`. Classic `ProductionNotAllowed` still guards
+   `DEMO_MODE ∧ ¬DEBUG ∧ ¬DEMO_DEPLOY`. Public hosts must run celery beat
+   (TTL reap is contractual, not boot-enforced). See `.env.example`.
 5. ~~**Which provider is the baseline.**~~ **Resolved: Claude.** P0 measured llama.cpp with the 27B
    GGUF, where the 540 s client timeout is a coin flip — a timeout firing on roughly a third of
    generations makes every number P2 and P3 produce unreproducible. Claude is the P2 baseline; the

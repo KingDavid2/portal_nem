@@ -58,12 +58,12 @@ Chain strategy: stacked-to-main
 
 ## Phase 4 — DEMO_DEPLOY hosting-posture gate + docs (Slice 3)
 
-- [ ] 4.1 **[RED]** Create `backend/config/tests/test_demo_deploy.py` — failing: `DEMO_DEPLOY=True` + `DEBUG=True` → `DebugNotAllowedInDemoDeploy`; each hardening violation → `DemoDeployNotHardened`; `DEMO_DEPLOY=True` + `DEMO_MODE=False` → `DemoDeployNotHardened`; `enabled()` truth table for all four `DEMO_MODE`/`DEBUG`/`DEMO_DEPLOY` combinations
-- [ ] 4.2 **[GREEN]** Modify `backend/config/demo_mode.py`: update `enabled()` to `DEMO_MODE and (DEBUG or DEMO_DEPLOY)`; add `validate_deploy_hardening(*, debug, allowed_hosts, secret_key, caches, session_cookie_secure, csrf_cookie_secure)` — raises `DebugNotAllowedInDemoDeploy` or `DemoDeployNotHardened` per contract; add both exception classes; existing `validate()` and `ProductionNotAllowed` untouched
-- [ ] 4.3 **[GREEN]** Modify `backend/config/settings.py`: add `DEMO_DEPLOY = env.bool("DEMO_DEPLOY", default=False)`; call `validate_deploy_hardening(...)` at tail; force `SPECTACULAR_SETTINGS["SERVE_INCLUDE_SCHEMA"] = False` and drop browsable renderer when `DEMO_DEPLOY`
-- [ ] 4.4 **[GREEN]** Modify `.env.example`: add `REDIS_CACHE_URL`, `DEMO_SESSION_TTL_HOURS`, `DEMO_DEPLOY` entries + posture comment block
-- [ ] 4.5 **[GREEN]** Modify `docs/quizzy_roadmap.md`: resolve open Q4 with `DEMO_DEPLOY` contract summary
-- [ ] 4.6 **[VERIFY]** `uv run pytest backend/config/tests/test_demo_deploy.py` green; existing `test_demo_mode.py` still green; `uv run pytest` full suite clean
+- [x] 4.1 **[RED]** Create `backend/config/tests/test_demo_deploy.py` — failing: `DEMO_DEPLOY=True` + `DEBUG=True` → `DebugNotAllowedInDemoDeploy`; each hardening violation → `DemoDeployNotHardened`; `DEMO_DEPLOY=True` + `DEMO_MODE=False` → `DemoDeployNotHardened`; `enabled()` truth table for all four `DEMO_MODE`/`DEBUG`/`DEMO_DEPLOY` combinations
+- [x] 4.2 **[GREEN]** Modify `backend/config/demo_mode.py`: update `enabled()` to `DEMO_MODE and (DEBUG or DEMO_DEPLOY)`; add `validate_deploy_hardening(*, debug, allowed_hosts, secret_key, caches, session_cookie_secure, csrf_cookie_secure)` — raises `DebugNotAllowedInDemoDeploy` or `DemoDeployNotHardened` per contract; add both exception classes; existing `validate()` and `ProductionNotAllowed` untouched
+- [x] 4.3 **[GREEN]** Modify `backend/config/settings.py`: add `DEMO_DEPLOY = env.bool("DEMO_DEPLOY", default=False)`; call `validate_deploy_hardening(...)` at tail; force `SPECTACULAR_SETTINGS["SERVE_INCLUDE_SCHEMA"] = False` and drop browsable renderer when `DEMO_DEPLOY`
+- [x] 4.4 **[GREEN]** Modify `.env.example`: add `REDIS_CACHE_URL`, `DEMO_SESSION_TTL_HOURS`, `DEMO_DEPLOY` entries + posture comment block
+- [x] 4.5 **[GREEN]** Modify `docs/quizzy_roadmap.md`: resolve open Q4 with `DEMO_DEPLOY` contract summary
+- [x] 4.6 **[VERIFY]** `uv run pytest backend/config/tests/test_demo_deploy.py` green; existing `test_demo_mode.py` still green; `uv run pytest` full suite clean
 
 ## Phase 5 — Showcase persona provisioner (Slice 4)
 
