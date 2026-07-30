@@ -36,6 +36,7 @@ urlpatterns = [
     path("api/", include("students.urls")),
     path("api/", include("users.urls")),
     path("api/", include("workspaces.urls")),
+    path("api/", include("quizzy.urls")),
 ]
 
 # The demo endpoints provision real users with a shared password and require no

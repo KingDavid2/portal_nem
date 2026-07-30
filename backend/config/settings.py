@@ -72,6 +72,7 @@ INSTALLED_APPS = [
     "lesson_plans",
     "demo",
     "mcp_server",
+    "quizzy",
 ]
 
 MIDDLEWARE = [
@@ -287,6 +288,13 @@ LLM_MODEL = env("LLM_MODEL", default=None)
 LLM_API_KEY = env("LLM_API_KEY", default="dummy")
 ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default=None)
 ANTHROPIC_MODEL = env("ANTHROPIC_MODEL", default="claude-opus-4-8")
+
+# Quizzy DEBUG chat stub — Cursor Composer via cursor-sdk (local agent).
+# Route is registered only when DEBUG=True; key from Cursor Dashboard →
+# Integrations. No default for the key.
+CURSOR_API_KEY = env("CURSOR_API_KEY", default=None)
+QUIZZY_CURSOR_MODEL = env("QUIZZY_CURSOR_MODEL", default="composer-2.5")
+QUIZZY_CURSOR_CWD = env("QUIZZY_CURSOR_CWD", default=str(BASE_DIR.parent))
 
 # Eval judge (Quizzy P2). Read only by `lesson_plans.eval.judge`, and kept
 # separate from ANTHROPIC_MODEL on purpose: the judge has to stay fixed while
