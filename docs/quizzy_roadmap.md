@@ -18,7 +18,7 @@
 | P1 | Grounding audit trail | A teacher can see *which* PDA is unofficial, and what it was checked against | ✅ |
 | P2 | Eval harness | Generation quality is a number, so prompt and model changes stop shipping blind | 🟡 harness built, first scorecard deferred |
 | P3 | Cost · latency · prompt version · failure taxonomy | A generation can be priced, timed, attributed and categorized | ⬜ |
-| P4 | MCP server over the scoped API | The workspace is reachable conversationally, without weakening tenancy | ⬜ |
+| P4 | MCP server over the scoped API | The workspace is reachable conversationally, without weakening tenancy | 🟡 26/49 tasks — auth, registry and the async bridge landed; no transport yet |
 | P5 | Targeted edit | Fixing one rubric criterion stops costing a full regeneration | ⬜ |
 | P6 | Demo hardening + showcase persona | The demo link can be handed to a stranger safely | ⬜ |
 
@@ -403,9 +403,10 @@ scoped door instead of bespoke endpoints. This is the backend of the Quizzy chat
 tool-calling today is inbound and internal — `instructor` using tool-use purely to enforce the
 `Proyecto` schema.
 
-New `backend/mcp/` app (screaming-architecture convention), launched via a `manage.py` command so it
-shares settings and the ORM. Read-only tools for v1: `list_groups`, `list_lesson_plans`,
-`get_lesson_plan`, `get_quota`, `search_catalog`.
+New `backend/mcp_server/` app (screaming-architecture convention — **not** `mcp/`, which would
+shadow the `mcp` pip package on `sys.path` and break `import mcp` inside the app itself), launched
+via a `manage.py` command so it shares settings and the ORM. Read-only tools for v1: `list_groups`,
+`list_lesson_plans`, `get_lesson_plan`, `get_quota`, `search_catalog`.
 
 **The non-negotiable constraint:** the MCP process, like the Celery worker, never runs
 `TenancyMiddleware`. Every tool call MUST resolve its workspace from the authenticated caller and
@@ -415,6 +416,55 @@ with no scope established returns **zero rows**, never an unscoped read.
 
 **Exit gate:** an MCP client answers a natural-language question over a demo tenant, and a
 cold-context test proves a cross-tenant read returns empty.
+
+### Progress — 26/49 tasks, three slices of six
+
+Planned as `openspec/changes/quizzy-p4-mcp-server/` (proposal, four delta specs, design, tasks) and
+sliced into six stacked branches. Half the exit gate is met: **the cold-context test exists and
+passes**. The other half — an MCP client answering over a demo tenant — needs S4, because nothing has
+a process boundary yet.
+
+| slice | branch | landed | what it added |
+| ----- | ------ | ------ | ------------- |
+| S1 | `feat/quizzy-p4-s1-api-token` | `4c19f78` | `WorkspaceApiToken` + `resolve_membership` + `create_mcp_token` |
+| S2a | `feat/quizzy-p4-s2a-registry` | `75a329f`, `e9f82b9` | sync registry, typed errors, `CAPABILITY_MAP` authz, `mcp` import guard |
+| S2b | `feat/quizzy-p4-s2b-async-bridge` | `39dab82`, `732bc8f` | `dispatch_async` bridge + cold-context tenancy harness |
+| S3 | `feat/quizzy-p4-s3-read-tools` | — | the five read-only tools + `catalog_group_payload` extraction |
+| S4 | `feat/quizzy-p4-s4-stdio` | — | stdio transport + `run_mcp` — **this is what closes the gate** |
+| S5 | `feat/quizzy-p4-s5-http-arm` | — | flag-gated Streamable-HTTP mount, default off |
+
+484 tests green, migrations clean, `ruff check mcp_server/` clean.
+
+**Four decisions worth carrying forward**
+
+1. **Token auth, resolve-then-touch.** P0 finding 7 said the MCP surface has no CSRF cookie, so it
+   cannot use session auth — settled at design time as a hashed bearer token
+   (`WorkspaceApiToken.token_hash`, SHA-256, raw value printed once at mint). The revoked check lives
+   *inside* the lookup, so a revoked token is indistinguishable from an unknown one.
+   `last_used_at` is written only after a successful resolve.
+2. **`WorkspaceApiToken` is deliberately outside RLS.** It is the table that *establishes* the
+   workspace, so it cannot be scoped by one — same precedent as `WorkspaceInvitation` and
+   `WorkspaceHistory`. The docstring carries the reason so the exclusion does not read as an
+   oversight.
+3. **The async bridge sits at `dispatch()`, exactly once.** `sync_to_async(dispatch,
+   thread_sensitive=True)` — per-tool wrapping was rejected because it gives every future tool its
+   own chance to forget it. `thread_sensitive=True` is not a default worth changing: it is what keeps
+   `workspace_scope`'s contextvar and its `SET LOCAL app.workspace_id` on the same connection, the
+   same guarantee `TenancyMiddleware` relies on.
+4. **The cold thread is under test, not just used.** `asgiref.sync_to_async` copies the *caller's*
+   contextvars into the executor thread, so a fail-closed test written the obvious way passes even
+   with `workspace_scope` stripped from the tool body — nothing under pytest sets `active_workspace`,
+   so it is green warm or cold and proves nothing either way. `test_tenancy_cold_context.py` therefore
+   carries a test that holds `workspace_scope` in the calling context on purpose and asserts the rows
+   are still empty. Replace the cold-thread harness with a bare `asyncio.run` and only that one test
+   fails; every other test in the file stays green. Same class of trap as P1's unconditional green
+   `Star`: the check that looks strongest is the one that cannot fail.
+
+**Sibling, not copy.** The harness looks like `lesson_plans/test_tasks.py::_run_task_in_cold_thread`
+and must not be copied from it. That helper runs the work *on* the cold thread, so a plain
+`connections.close_all()` closes the connection that was opened; `thread_sensitive=True` hands the
+work to asgiref's own shared executor thread, so the close has to go back across the bridge or the
+session leaks through pytest-django's test-database teardown.
 
 ---
 
@@ -550,8 +600,10 @@ On demand only, because it costs real tokens: `uv run manage.py run_evals`.
 **Re-run the P0 live smoke after every phase.** It is the acceptance test M4/M5/M6 all still owe, and
 the only thing that verifies below the API boundary.
 
-**The tenancy tests are load-bearing** and must stay green throughout, extended to the MCP surface in
-P4: `lesson_plans/tests/test_tasks.py:199`, `:510`, and `workspaces/tests/test_pooling_leak.py`.
+**The tenancy tests are load-bearing** and must stay green throughout:
+`lesson_plans/tests/test_tasks.py:199`, `:510`, `workspaces/tests/test_pooling_leak.py`, and — added
+by P4 S2b — `mcp_server/tests/test_tenancy_cold_context.py`, whose last test guards the harness the
+other three in that file depend on.
 
 ---
 
@@ -561,7 +613,9 @@ P4: `lesson_plans/tests/test_tasks.py:199`, `:510`, and `workspaces/tests/test_p
    **Resolved:** a user-facing assistant inside portal_nem. The P4 MCP tools are therefore this
    chat's backend, not only an external door.
 2. **Phase cut.** P0–P1 are days. P2 is the highest-leverage single phase and unblocks trusting
-   everything after it. P4–P6 are each a week-ish. Decide the cut before starting P4.
+   everything after it. P4–P6 are each a week-ish. *Overtaken by events:* P3 was skipped and P4
+   started, so the cut is now P0 → P1 → P2 (harness only) → P4. **P3 is still a hard dependency for
+   M9** and P4 does not remove that — it defers it.
 3. **P5 scope** — which single mutation goes first.
 4. **Demo hosting posture** — P6c, local-only vs a hardened deploy flag.
 5. ~~**Which provider is the baseline.**~~ **Resolved: Claude.** P0 measured llama.cpp with the 27B
