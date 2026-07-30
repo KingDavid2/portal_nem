@@ -25,10 +25,10 @@ from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import patch
 
 import pytest
+from asgiref.sync import sync_to_async
 from django.db import connections
 from mcp_server.registry import (
     CAPABILITY_MAP,
-    ToolInputError,
     _TOOLS,
     dispatch,
     dispatch_async,
@@ -36,6 +36,7 @@ from mcp_server.registry import (
 from users.models import User
 from workspaces.context import WORKSPACE_UNSET, active_workspace
 from workspaces.models import Membership, Workspace, WorkspaceResource
+from workspaces.scope import workspace_scope
 
 
 # ---------------------------------------------------------------------------
@@ -43,14 +44,34 @@ from workspaces.models import Membership, Workspace, WorkspaceResource
 # ---------------------------------------------------------------------------
 
 
+async def _dispatch_and_release(name: str, arguments: dict, membership) -> dict:
+    """Await the bridge, then close the DB connection the tool opened.
+
+    The close has to go back through `sync_to_async` rather than being called
+    from the awaiting thread, and that differs from
+    `lesson_plans/test_tasks.py::_run_task_in_cold_thread` for a reason: that
+    helper runs the work ON the cold thread, so a plain
+    `connections.close_all()` there closes the connection that was opened.
+    `thread_sensitive=True` instead hands `dispatch` to asgiref's own shared
+    executor thread, so the connection belongs to THAT thread — closing from
+    the caller closes nothing and leaves a session open through pytest-django's
+    test-database teardown.
+
+    Every path that awaits `dispatch_async` in this module goes through here.
+    """
+    try:
+        return await dispatch_async(name, arguments, membership)
+    finally:
+        await sync_to_async(connections.close_all, thread_sensitive=True)()
+
+
 def _dispatch_in_cold_thread(name: str, arguments: dict, membership) -> dict:
     """Run `asyncio.run(dispatch_async(...))` on a fresh thread with no inherited
-    `active_workspace` contextvar, then close that thread's DB connection so
-    pytest-django's teardown doesn't race a still-open connection."""
+    `active_workspace` contextvar, releasing both threads' connections after."""
 
     def _call():
         try:
-            return asyncio.run(dispatch_async(name, arguments, membership))
+            return asyncio.run(_dispatch_and_release(name, arguments, membership))
         finally:
             connections.close_all()
 
@@ -65,7 +86,9 @@ def _dispatch_in_cold_thread(name: str, arguments: dict, membership) -> dict:
 
 def _make_membership(workspace: Workspace) -> Membership:
     user = User.objects.create_user(email=f"user@{workspace.id}.test", password="pass")
-    return Membership.objects.create(user=user, workspace=workspace, role="member")
+    return Membership.objects.create(
+        user=user, workspace=workspace, role=Membership.Role.MEMBER
+    )
 
 
 def _make_probe(use_scope: bool = True):
@@ -74,7 +97,6 @@ def _make_probe(use_scope: bool = True):
     If `use_scope` is True, the tool enters `workspace_scope` before reading
     (task 2b.3). If False, it reads without entering scope (task 2b.4).
     """
-    from workspaces.scope import workspace_scope
 
     def _probe_scoped(membership, **_kwargs):
         with workspace_scope(membership.workspace_id):
@@ -162,6 +184,43 @@ def test_probe_without_scope_fails_closed_zero_rows():
 
 
 @pytest.mark.django_db(transaction=True)
+def test_cold_thread_is_what_makes_the_fail_closed_proof_real():
+    """The harness itself is under test here, not the tool.
+
+    The test above passes for two very different reasons, and only one of them
+    is worth anything: the cold thread isolating the tool, or the calling
+    context simply never having held a scope. Under pytest nothing sets
+    `active_workspace`, so it passes either way — which means on its own it
+    does not show the cold thread is load-bearing.
+
+    This test holds `workspace_scope` in the CALLING context and dispatches the
+    unscoped probe anyway. The rows must still be empty. Swap
+    `_dispatch_in_cold_thread` for a plain `asyncio.run` and this returns
+    `["a-only"]`, because `sync_to_async` copies the caller's contextvars into
+    the executor thread — the exact leak the module docstring describes.
+
+    Without this test, replacing the harness with a bare `asyncio.run` breaks
+    the isolation and every other test in the file stays green.
+    """
+    workspace_a = Workspace.objects.create(type=Workspace.Type.GROUP)
+    workspace_b = Workspace.objects.create(type=Workspace.Type.GROUP)
+
+    membership_a = _make_membership(workspace_a)
+
+    WorkspaceResource.objects.create(workspace=workspace_a, name="a-only")
+    WorkspaceResource.objects.create(workspace=workspace_b, name="b-only")
+
+    with _probe_patch("probe_unscoped", use_scope=False) as probe_name:
+        with workspace_scope(workspace_a.id):
+            assert active_workspace.get() == workspace_a.id
+            result = _dispatch_in_cold_thread(probe_name, {}, membership_a)
+
+    assert result["rows"] == [], (
+        "The caller's workspace scope reached the tool body. The cold thread is "
+        "not isolating the dispatch — see this module's docstring."
+    )
+
+
 def test_dispatch_is_sync():
     """Assert that `dispatch` and every registered tool are plain sync callables.
 
@@ -169,12 +228,9 @@ def test_dispatch_is_sync():
     `dispatch` only. This test catches a regression where a tool or
     dispatch itself drifts to coroutine form.
     """
-    import asyncio
-    from mcp_server import registry
-
     assert not asyncio.iscoroutinefunction(dispatch)
 
-    for tool in registry._TOOLS.values():
+    for tool in _TOOLS.values():
         assert not asyncio.iscoroutinefunction(tool)
 
 
@@ -187,16 +243,26 @@ def test_async_handler_does_not_raise_synchronous_only_operation():
     `dispatch` touches the ORM synchronously. This test proves the bridge
     actually wraps `dispatch` in `sync_to_async`.
 
+    The dispatched tool MUST reach the ORM for that to be true. Routing this at
+    one of the Slice 2a placeholder stubs instead — they raise `ToolInputError`
+    on their first line — makes the test pass with the bridge deleted, because
+    no database call is ever attempted and `SynchronousOnlyOperation` is
+    unreachable. The probe is the point.
+
     `DJANGO_ALLOW_ASYNC_UNSAFE` MUST be unset; that is what makes the failure
     reachable. No `pytest-asyncio` dependency.
     """
     workspace = Workspace.objects.create(type=Workspace.Type.GROUP)
     membership = _make_membership(workspace)
+    WorkspaceResource.objects.create(workspace=workspace, name="reachable")
 
     # Assert the env var is unset — this is what makes SynchronousOnlyOperation reachable.
     assert os.environ.get("DJANGO_ALLOW_ASYNC_UNSAFE") is None
 
-    # This call should NOT raise SynchronousOnlyOperation — the bridge must handle it.
-    # The stub tools raise ToolInputError because they aren't implemented yet.
-    with pytest.raises(ToolInputError):
-        asyncio.run(dispatch_async("get_quota", {}, membership))
+    # A plain sync test driving the coroutine on the main thread: the ORM call
+    # inside the probe happens while an event loop is running, which is exactly
+    # the condition Django refuses without the bridge.
+    with _probe_patch("probe_scoped", use_scope=True) as probe_name:
+        result = asyncio.run(_dispatch_and_release(probe_name, {}, membership))
+
+    assert result["rows"] == ["reachable"]
