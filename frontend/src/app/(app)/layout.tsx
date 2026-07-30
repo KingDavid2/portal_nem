@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useActiveWorkspaceId } from "@/lib/workspace/use-active-workspace";
-import { BookOpen, GraduationCap, School, Users } from "lucide-react";
+import { BookOpen, GraduationCap, School, Sparkles, Users } from "lucide-react";
 import { LogoutButton } from "@/components/logout-button";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { NavItem } from "@/components/ui/nav-item";
@@ -15,6 +15,8 @@ import { NavItem } from "@/components/ui/nav-item";
  * authenticated session AND an active workspace before rendering any screen,
  * since every entity endpoint under here is a "data request" the fetch layer
  * refuses to send without `X-Workspace-Id` (`client.ts` `MissingWorkspaceError`).
+ *
+ * Quizzy sits after Planeaciones per `designs/quizzy.pen` (sidebar · sparkles).
  */
 
 const NAV_ITEMS = [
@@ -23,6 +25,7 @@ const NAV_ITEMS = [
   { href: "/groups", label: "Grupos", icon: Users },
   { href: "/students", label: "Alumnos", icon: GraduationCap },
   { href: "/planeaciones", label: "Planeaciones", icon: BookOpen },
+  { href: "/quizzy", label: "Quizzy", icon: Sparkles },
 ] as const;
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {

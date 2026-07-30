@@ -47,5 +47,7 @@ describe("AppLayout gates", () => {
     expect(html).toContain("Workspace switcher");
     expect(html).toContain("Screen content");
     expect(html).toContain('aria-label="Navegación principal"');
+    expect(html).toContain('href="/quizzy"');
+    expect(html).toContain("Quizzy");
   });
 });
