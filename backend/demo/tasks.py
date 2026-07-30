@@ -19,12 +19,23 @@ from celery import shared_task
 
 from demo import personas
 from demo.models import DemoSession
+from demo.reaping import reap_expired_demo_sessions
 
 logger = logging.getLogger(__name__)
 
 # Keep a verbose traceback message from blowing out the column and from being
 # echoed back to an unauthenticated caller in full.
 ERROR_MESSAGE_MAX_LENGTH = 2000
+
+
+@shared_task
+def reap_expired_demo_sessions_task() -> int:
+    """Thin Celery wrapper around ``reaping.reap_expired_demo_sessions``.
+
+    Beat schedules this hourly (see ``CELERY_BEAT_SCHEDULE``). Logic lives in
+    the pure service so tests call it without a broker.
+    """
+    return reap_expired_demo_sessions()
 
 
 @shared_task

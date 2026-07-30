@@ -50,11 +50,11 @@ Chain strategy: stacked-to-main
 
 ## Phase 3 — TTL reap (Slice 2)
 
-- [ ] 3.1 **[RED]** Create `backend/demo/tests/test_reaping.py` — failing: expired `teacher_full`-shaped tenant deleted leaf-first without `ProtectedError`; `DemoSession` row absent after reap; unexpired session untouched; two workspaces — only expired workspace rows deleted
-- [ ] 3.2 **[GREEN]** Modify `backend/config/settings.py`: add `DEMO_SESSION_TTL_HOURS = env.int("DEMO_SESSION_TTL_HOURS", default=24)`; add `CELERY_BEAT_SCHEDULE` entry `"reap-expired-demo-sessions"` with `crontab(minute=0)`
-- [ ] 3.3 **[GREEN]** Create `backend/demo/reaping.py`: `reap_expired_demo_sessions(now=None) -> int` — query `DemoSession` with `created_at < now - TTL`; per session delete in order `LessonPlan → Student → GenerationUsage → Group → SchoolYear → School` inside `workspace_scope`; then `workspace.delete()`; then `user.delete()` if no remaining memberships; direct delete for sessions with no workspace
-- [ ] 3.4 **[GREEN]** Modify `backend/demo/tasks.py`: add `reap_expired_demo_sessions_task` as thin Celery task wrapping `reaping.reap_expired_demo_sessions()`
-- [ ] 3.5 **[VERIFY]** `uv run pytest backend/demo/tests/test_reaping.py` green; `uv run pytest` full suite clean
+- [x] 3.1 **[RED]** Create `backend/demo/tests/test_reaping.py` — failing: expired `teacher_full`-shaped tenant deleted leaf-first without `ProtectedError`; `DemoSession` row absent after reap; unexpired session untouched; two workspaces — only expired workspace rows deleted
+- [x] 3.2 **[GREEN]** Modify `backend/config/settings.py`: add `DEMO_SESSION_TTL_HOURS = env.int("DEMO_SESSION_TTL_HOURS", default=24)`; add `CELERY_BEAT_SCHEDULE` entry `"reap-expired-demo-sessions"` with `crontab(minute=0)`
+- [x] 3.3 **[GREEN]** Create `backend/demo/reaping.py`: `reap_expired_demo_sessions(now=None) -> int` — query `DemoSession` with `created_at < now - TTL`; per session delete in order `LessonPlan → Student → GenerationUsage → Group → SchoolYear → School` inside `workspace_scope`; then `workspace.delete()`; then `user.delete()` if no remaining memberships; direct delete for sessions with no workspace
+- [x] 3.4 **[GREEN]** Modify `backend/demo/tasks.py`: add `reap_expired_demo_sessions_task` as thin Celery task wrapping `reaping.reap_expired_demo_sessions()`
+- [x] 3.5 **[VERIFY]** `uv run pytest backend/demo/tests/test_reaping.py` green; `uv run pytest` full suite clean
 
 ## Phase 4 — DEMO_DEPLOY hosting-posture gate + docs (Slice 3)
 

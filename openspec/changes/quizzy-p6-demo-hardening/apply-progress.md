@@ -1,8 +1,8 @@
 # Apply Progress: quizzy-p6-demo-hardening
 
 **Mode**: Strict TDD  
-**Batch**: Slice 1b (Phase 2, tasks 2.1–2.9) — cumulative with Slice 1a  
-**Branch**: `feat/quizzy-p6-s1b-generate-mcp-throttle` (stacked on `feat/quizzy-p6-s1a-demo-throttle`)  
+**Batch**: Slice 2 (Phase 3, tasks 3.1–3.5) — cumulative with Slice 1a + 1b  
+**Branch**: `feat/quizzy-p6-s2-ttl-reap` (stacked on `feat/quizzy-p6-s1b-generate-mcp-throttle` @ `f10993e`)  
 **Updated**: 2026-07-30
 
 ## Completed Tasks
@@ -15,7 +15,7 @@
 - [x] 1.4 GREEN demo views `ScopedRateThrottle` + scopes
 - [x] 1.5 VERIFY focused + full suite
 
-### Slice 1b (Phase 2) — this batch
+### Slice 1b (Phase 2)
 
 - [x] 2.1 RED `backend/lesson_plans/test_throttling.py`
 - [x] 2.2 RED `backend/mcp_server/tests/test_http_throttle.py`
@@ -27,9 +27,16 @@
 - [x] 2.8 GREEN `mcp_http_view` throttle after 401 + `Retry-After`
 - [x] 2.9 VERIFY focused + full suite
 
+### Slice 2 (Phase 3) — this batch
+
+- [x] 3.1 RED `backend/demo/tests/test_reaping.py`
+- [x] 3.2 GREEN `DEMO_SESSION_TTL_HOURS` + `CELERY_BEAT_SCHEDULE` (`crontab(minute=0)`)
+- [x] 3.3 GREEN `backend/demo/reaping.py` leaf-first delete inside `workspace_scope`
+- [x] 3.4 GREEN `reap_expired_demo_sessions_task` thin Celery wrapper
+- [x] 3.5 VERIFY focused + full suite
+
 ## Remaining (not this batch)
 
-- [ ] Phase 3 Slice 2 (3.1–3.5)
 - [ ] Phase 4 Slice 3 (4.1–4.6)
 - [ ] Phase 5 Slice 4 (5.1–5.5)
 
@@ -51,8 +58,23 @@
 | 2.7 | same | Integration | N/A (new) | ✅ Covered by 2.2 | ✅ `McpHttpTokenThrottle` sha256 key | ✅ two tokens | ➖ None needed |
 | 2.8 | same | Integration | ✅ http green | ✅ Covered by 2.2 | ✅ post-401 throttle + Retry-After | ✅ 429 without ASGI | ➖ None needed |
 | 2.9 | same | Integration | — | — | ✅ 5/5 focused; ✅ 25 related; ✅ **510 passed** full suite | — | — |
+| 3.1 | `demo/tests/test_reaping.py` | Integration | ✅ 6/6 `demo/tests/test_tasks.py` | ✅ Written (collection ImportError → then fail until impl) | ✅ Deferred to 3.2–3.4 | ✅ 5 behavior cases (teacher_full, quota_exhausted, unexpired, isolation, pending) | ➖ N/A (test-only) |
+| 3.2 | same | Integration | ✅ settings | ✅ Covered by TTL/beat assertions | ✅ `DEMO_SESSION_TTL_HOURS` + `CELERY_BEAT_SCHEDULE` | ✅ default 24 + crontab minute={0} | ➖ None needed |
+| 3.3 | same | Integration | N/A (new) | ✅ Covered by 3.1 | ✅ leaf-first inside `workspace_scope` incl. `workspace.delete()` | ✅ GenerationUsage path + pending direct delete | ➖ None needed |
+| 3.4 | same | Integration | ✅ tasks module | ✅ Covered by wrapper tests | ✅ thin `reap_expired_demo_sessions_task` | ✅ mock delegate + real pending reap | ➖ None needed |
+| 3.5 | same | Integration | — | — | ✅ 8/8 focused; ✅ **518 passed** full suite | — | — |
 
-### Work Unit Evidence (Slice 1b)
+### Work Unit Evidence (Slice 2)
+
+| Evidence | Value |
+|----------|-------|
+| Focused test command | `cd backend && uv run pytest demo/tests/test_reaping.py` → **8 passed** |
+| Related safety net | `… test_managers.py test_reaping.py` → **10 passed**; `test_reaping + test_tasks + test_throttling` → **20 passed** |
+| Full suite | `cd backend && uv run pytest` → **518 passed in 38.77s** |
+| Runtime harness | N/A — service called directly; eager Celery under pytest; no broker needed |
+| Rollback boundary | Remove `demo/reaping.py`, beat entry + `DEMO_SESSION_TTL_HOURS`, task wrapper, `test_reaping.py`; revert `test_managers.py` ScopedProbe fixture unregister |
+
+### Work Unit Evidence (Slice 1b — preserved)
 
 | Evidence | Value |
 |----------|-------|
@@ -74,14 +96,16 @@
 ### Workload / PR Boundary
 
 - Mode: stacked PR slice (`stacked-to-main`)
-- Current work unit: Slice 1b — GenerationRateThrottle + MCP HTTP throttle
-- Boundary: stops before TTL reap (Slice 2)
+- Current work unit: Slice 2 — TTL reap (beat + leaf-first delete)
+- Boundary: stops before DEMO_DEPLOY gate (Slice 3)
 - Estimated review budget: Low–Medium (under 400 authored lines)
 
 ### Deviations from Design
 
-None material — implementation matches design. `MCP_HTTP_THROTTLE_RATE` added as an explicit setting (task 2.7) in addition to `DEFAULT_THROTTLE_RATES["mcp_http"]`, so tests can override via `@override_settings`.
+None material — implementation matches design (entire reap including `workspace.delete()` inside `workspace_scope`; leaf-first order; settings crontab beat; no django-celery-beat).
+
+Companion fix: `workspaces/tests/test_managers.py` now defines/unregisters ephemeral `ScopedProbe` inside the fixture so Django's delete collector does not target a rolled-back probe table when later tests call `Workspace.delete()`. Required for full-suite green after introducing workspace reap.
 
 ### Issues Found
 
-None. Note: MCP throttle tests use `MCP_HTTP_THROTTLE_RATE="3/min"` override + patched `_asgi_response_for_django` to assert ceiling/independence without exercising Streamable-HTTP bodies.
+None. Note: sessions without workspace (pending/failed) are deleted directly as designed; user delete skips when memberships or `sent_invitations` remain (PROTECT).

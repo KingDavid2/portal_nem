@@ -292,6 +292,11 @@ LESSON_PLAN_MONTHLY_GENERATION_LIMIT = env.int(
     "LESSON_PLAN_MONTHLY_GENERATION_LIMIT", default=30
 )
 
+# Demo session TTL (Quizzy P6). Expiry is derived from DemoSession.created_at —
+# no migration. Beat runs the reap at most once per hour when DEMO_DEPLOY hosts
+# keep celery beat alive (contractual, not enforced at boot).
+DEMO_SESSION_TTL_HOURS = env.int("DEMO_SESSION_TTL_HOURS", default=24)
+
 # Celery (M4 design — "Generation Runs Asynchronously via a Celery Task").
 # Redis doubles as broker + result backend; no RabbitMQ dependency.
 CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://localhost:6379/0")
@@ -301,6 +306,18 @@ CELERY_RESULT_BACKEND = env(
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
+
+# Hourly beat entry for demo TTL reap. Uses celery.schedules.crontab (no
+# django-celery-beat app / migration). Loaded via namespace=CELERY in
+# config/celery.py.
+from celery.schedules import crontab  # noqa: E402
+
+CELERY_BEAT_SCHEDULE = {
+    "reap-expired-demo-sessions": {
+        "task": "demo.tasks.reap_expired_demo_sessions_task",
+        "schedule": crontab(minute=0),
+    },
+}
 
 # Under pytest, tasks run eagerly (synchronously, inline) so the ordinary
 # service/viewset test suite never needs a live worker/broker. The
