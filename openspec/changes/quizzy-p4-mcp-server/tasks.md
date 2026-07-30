@@ -112,11 +112,11 @@ Depends on S3.
 
 Depends on S4.
 
-- [ ] 5.1 RED `backend/mcp_server/tests/test_http.py`: with `MCP_HTTP_ENABLED` off, the MCP HTTP path returns 404 **and the route is absent from the resolved URLconf** — 404 by absence, not by rejection.
-- [ ] 5.2 RED same file: flag on + no `Authorization` header, and flag on + a `Bearer` value resolving to no membership (unknown *and* revoked), all return 401 with no tool executed.
-- [ ] 5.3 RED same file: flag on + a valid bearer for workspace A returns workspace A's groups from `list_groups`.
-- [ ] 5.4 GREEN `backend/config/settings.py`: `MCP_HTTP_ENABLED = env.bool("MCP_HTTP_ENABLED", default=False)`.
-- [ ] 5.5 GREEN `backend/mcp_server/http.py`: Streamable-HTTP ASGI mount, bearer identity via `resolve_membership`, dispatching through `dispatch_async` — no transport-local tool copy or variant.
-- [ ] 5.6 GREEN `backend/config/urls.py`: `if settings.MCP_HTTP_ENABLED:` mount block, mirroring the existing `demo_mode.enabled()` block.
-- [ ] 5.7 **Phase exit gate** (manual, recorded in the PR body): an MCP client answers a natural-language question over a demo tenant; a second token for a *different* demo tenant asking for the first tenant's plan by id comes back **empty**.
-- [ ] 5.8 `docs/quizzy_roadmap.md`: add a **Results** section under Phase 4 (`:396`) in the same voice as the P0/P1/P2 results (`:99`, `:200`, `:299`) — what shipped, the `backend/mcp/` → `backend/mcp_server/` rename and why (`sys.path` shadowing of the PyPI SDK), the sync-tools/async-bridge decision, what the stdio smoke actually proved, and **P0 finding 7 marked resolved**. Flip the P4 status row at `:21`.
+- [x] 5.1 RED `backend/mcp_server/tests/test_http.py`: with `MCP_HTTP_ENABLED` off, the MCP HTTP path returns 404 **and the route is absent from the resolved URLconf** — 404 by absence, not by rejection.
+- [x] 5.2 RED same file: flag on + no `Authorization` header, and flag on + a `Bearer` value resolving to no membership (unknown *and* revoked), all return 401 with no tool executed.
+- [x] 5.3 RED same file: flag on + a valid bearer for workspace A returns workspace A's groups from `list_groups`.
+- [x] 5.4 GREEN `backend/config/settings.py`: `MCP_HTTP_ENABLED = env.bool("MCP_HTTP_ENABLED", default=False)`.
+- [x] 5.5 GREEN `backend/mcp_server/http.py`: Streamable-HTTP ASGI mount, bearer identity via `resolve_membership`, dispatching through `dispatch_async` — no transport-local tool copy or variant.
+- [x] 5.6 GREEN `backend/config/urls.py`: `if settings.MCP_HTTP_ENABLED:` mount block, mirroring the existing `demo_mode.enabled()` block.
+- [x] 5.7 **Phase exit gate** (manual, recorded in the PR body): an MCP client answers a natural-language question over a demo tenant; a second token for a *different* demo tenant asking for the first tenant's plan by id comes back **empty**.
+- [x] 5.8 `docs/quizzy_roadmap.md`: add a **Results** section under Phase 4 (`:396`) in the same voice as the P0/P1/P2 results (`:99`, `:200`, `:299`) — what shipped, the `backend/mcp/` → `backend/mcp_server/` rename and why (`sys.path` shadowing of the PyPI SDK), the sync-tools/async-bridge decision, what the stdio smoke actually proved, and **P0 finding 7 marked resolved**. Flip the P4 status row at `:21`.

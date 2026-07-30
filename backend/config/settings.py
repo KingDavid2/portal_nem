@@ -230,6 +230,10 @@ CSRF_COOKIE_DOMAIN = env("CSRF_COOKIE_DOMAIN", default=None)
 SESSION_COOKIE_SECURE = env.bool("SESSION_COOKIE_SECURE", default=False)
 CSRF_COOKIE_SECURE = env.bool("CSRF_COOKIE_SECURE", default=False)
 
+# Quizzy P4 — Streamable-HTTP MCP arm. Off by default so the route is absent
+# from the URLconf (404 by absence), mirroring demo_mode.enabled().
+MCP_HTTP_ENABLED = env.bool("MCP_HTTP_ENABLED", default=False)
+
 # LLM provider selection (M4 design Decision: "Provider factory reading
 # LLM_PROVIDER"). `lesson_plans.core.factory.build_provider()` is the only
 # reader of these settings — swapping providers never touches service/task

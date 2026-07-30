@@ -15,6 +15,7 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
+from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
@@ -43,3 +44,11 @@ urlpatterns = [
 # rejected the caller.
 if demo_mode.enabled():
     urlpatterns += [path("api/demo/", include("demo.urls"))]
+
+# Streamable-HTTP MCP arm — same absence-means-404 discipline as demo mode.
+# Off by default (settings.MCP_HTTP_ENABLED); when off the path is not
+# registered at all.
+if settings.MCP_HTTP_ENABLED:
+    from mcp_server.http import MCP_HTTP_PATH, mcp_http_view
+
+    urlpatterns += [path(MCP_HTTP_PATH, mcp_http_view)]

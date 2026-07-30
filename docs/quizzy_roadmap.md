@@ -18,7 +18,7 @@
 | P1 | Grounding audit trail | A teacher can see *which* PDA is unofficial, and what it was checked against | ✅ |
 | P2 | Eval harness | Generation quality is a number, so prompt and model changes stop shipping blind | 🟡 harness built, first scorecard deferred |
 | P3 | Cost · latency · prompt version · failure taxonomy | A generation can be priced, timed, attributed and categorized | ⬜ |
-| P4 | MCP server over the scoped API | The workspace is reachable conversationally, without weakening tenancy | 🟡 36/49 tasks — five read tools live; no transport yet |
+| P4 | MCP server over the scoped API | The workspace is reachable conversationally, without weakening tenancy | ✅ |
 | P5 | Targeted edit | Fixing one rubric criterion stops costing a full regeneration | ⬜ |
 | P6 | Demo hardening + showcase persona | The demo link can be handed to a stranger safely | ⬜ |
 
@@ -417,13 +417,17 @@ with no scope established returns **zero rows**, never an unscoped read.
 **Exit gate:** an MCP client answers a natural-language question over a demo tenant, and a
 cold-context test proves a cross-tenant read returns empty.
 
-### Progress — 36/49 tasks, five slices of seven
+### Results — 49/49 tasks, both transports live
 
 Planned as `openspec/changes/quizzy-p4-mcp-server/` (proposal, four delta specs, design, tasks) and
 sliced into stacked branches (S3 split into S3 + S3b when the five tools threatened the 400-line
-review budget). Half the exit gate is met: **the cold-context test exists and passes**, and the five
-read tools are wired through the registry. The other half — an MCP client answering over a demo
-tenant — still needs S4, because nothing has a process boundary yet.
+review budget). Both process boundaries exist: stdio (`run_mcp` / `PORTAL_NEM_MCP_TOKEN`) and
+Streamable-HTTP behind `MCP_HTTP_ENABLED` (default off — 404 by absence). App is
+`mcp_server/` not `mcp/` (`sys.path` would shadow the PyPI SDK). Tools are sync; one
+`dispatch_async` bridge. **P0 finding 7 resolved:** hashed bearer tokens, not session/CSRF.
+Stdio smoke: valid token → scoped plans; unset ≡ garbage → denied. Live NL demo-tenant client
+**not** driven in S5 apply — harness: two demo tenants, mint tokens, ask A, ask B for A's plan
+id → empty. Automated half (cold-context + cross-tenant indistinguishability) green.
 
 | slice | branch | landed | what it added |
 | ----- | ------ | ------ | ------------- |
@@ -432,12 +436,12 @@ tenant — still needs S4, because nothing has a process boundary yet.
 | S2b | `feat/quizzy-p4-s2b-async-bridge` | `39dab82`, `732bc8f` | `dispatch_async` bridge + cold-context tenancy harness |
 | S3 | `feat/quizzy-p4-s3-read-tools` | `79e9316` | four workspace-scoped tools + `catalog_group_payload` extraction |
 | S3b | `feat/quizzy-p4-s3b-search-catalog` | `f78b616` | real `search_catalog` over the frozen curriculum catalog |
-| S4 | `feat/quizzy-p4-s4-stdio` | — | stdio transport + `run_mcp` — **this is what closes the gate** |
-| S5 | `feat/quizzy-p4-s5-http-arm` | — | flag-gated Streamable-HTTP mount, default off |
+| S4 | `feat/quizzy-p4-s4-stdio` | `b33437d`, `e51a4cb` | stdio transport + `run_mcp` |
+| S5 | `feat/quizzy-p4-s5-http-arm` | (this PR) | flag-gated Streamable-HTTP; Bearer identity |
 
-493 tests green, migrations clean, `ruff check mcp_server/` clean.
+499 tests green, migrations clean, `ruff check mcp_server/` clean.
 
-**Five decisions worth carrying forward**
+**Six decisions worth carrying forward**
 
 1. **Token auth, resolve-then-touch.** P0 finding 7 said the MCP surface has no CSRF cookie, so it
    cannot use session auth — settled at design time as a hashed bearer token
@@ -468,6 +472,8 @@ tenant — still needs S4, because nothing has a process boundary yet.
    results for the same query — and a PDA text hit still renders the parent content whole. Cross-
    workspace / nowhere / malformed `get_lesson_plan` ids share one `ToolNotFoundError("Lesson plan
    not found.")` so the error type never becomes a tenancy oracle.
+6. **stdio + HTTP share one registry.** Env token or Bearer → `resolve_membership` →
+   `dispatch_async`. HTTP flag-off leaves the route absent.
 
 **Sibling, not copy.** The harness looks like `lesson_plans/test_tasks.py::_run_task_in_cold_thread`
 and must not be copied from it. That helper runs the work *on* the cold thread, so a plain
