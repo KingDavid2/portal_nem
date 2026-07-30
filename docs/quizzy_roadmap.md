@@ -20,7 +20,7 @@
 | P3 | Cost · latency · prompt version · failure taxonomy | A generation can be priced, timed, attributed and categorized | ⬜ |
 | P4 | MCP server over the scoped API | The workspace is reachable conversationally, without weakening tenancy | ✅ |
 | P5 | Targeted edit | Fixing one rubric criterion stops costing a full regeneration | ⬜ |
-| P6 | Demo hardening + showcase persona | The demo link can be handed to a stranger safely | ⬜ |
+| P6 | Demo hardening + showcase persona | The demo link can be handed to a stranger safely | ✅ |
 
 **Design:** [`designs/quizzy.pen`](../designs/quizzy.pen) — the conversational surface. Sibling to
 [`designs/teachers.pen`](../designs/teachers.pen) and built on the same visual language.
@@ -550,7 +550,8 @@ picker endpoint, `ChoiceField(choices=personas.keys())` (`demo/serializers.py:29
 `persona.resolve_provisioner()()` all pick it up.
 
 Seed a workspace where the Quizzy work is immediately visible: one clean grounded plan, one carrying
-a real grounding warning, both with cost and latency populated. Follow `TeacherFull`'s documented
+a real grounding warning, both with provenance populated (`provider` / `model_name` / tokens /
+`generated_at`). Cost and latency wait on P3 columns. Follow `TeacherFull`'s documented
 exception (`demo/provisioning/teacher_full.py:137-141`) — seed `LessonPlan` rows **directly** rather
 than through `lesson_plans.services`, because the real create path triggers the LLM, which is exactly
 what the visitor should do themselves. Side effect: directly-seeded plans do not consume quota, which
@@ -558,6 +559,25 @@ is why `quota_exhausted` needs its own explicit `GenerationUsage` write.
 
 **Exit gate:** the demo endpoints are throttled, demo tenants expire, the hosting posture is written
 down, and the showcase persona renders grounding and provenance without a single generation.
+
+### Results — 30/30 tasks, five stacked slices
+
+Planned as `openspec/changes/quizzy-p6-demo-hardening/` (proposal, three delta specs, design, tasks).
+Slice 1 split into 1a/1b when Redis + demo scopes + generation + MCP threatened the 400-line budget.
+Exit gate met in code; full suite **542 passed**. Cost/latency on the showcase seed is **soft-deferred
+to P3** — those columns do not exist yet; grounding ✓/⚠ plus `provider` / `model_name` / tokens /
+`generated_at` are populated.
+
+| slice | branch | landed | what it added |
+| ----- | ------ | ------ | ------------- |
+| 1a | `feat/quizzy-p6-s1a-demo-throttle` | `57ad501` | Redis `CACHES` (LocMem under pytest) + `ScopedRateThrottle` on the three demo views + autouse `cache.clear()` |
+| 1b | `feat/quizzy-p6-s1b-generate-mcp-throttle` | `f10993e` | `GenerationRateThrottle` (demo 3/h · teacher 30/h) + MCP HTTP per-bearer throttle after auth |
+| 2 | `feat/quizzy-p6-s2-ttl-reap` | `e1e2160` | Leaf-first TTL reap under `workspace_scope` + hourly `CELERY_BEAT_SCHEDULE` |
+| 3 | `feat/quizzy-p6-s3-demo-deploy` | `ac66449` | `DEMO_DEPLOY` + `validate_deploy_hardening` + `.env.example` / Q4 |
+| 4 | `feat/quizzy-p6-s4-showcase` | `9b88908` | `showcase` persona — clean ✓ + warning ⚠ plans, zero LLM / zero `GenerationUsage` |
+
+**Still owed for a stranger-safe host:** run `celery beat` beside the worker (contractual — not
+boot-enforced), and keep Redis reachable; throttle counters fail closed as 500 if the cache is down.
 
 ---
 
@@ -618,7 +638,8 @@ the only thing that verifies below the API boundary.
 **The tenancy tests are load-bearing** and must stay green throughout:
 `lesson_plans/tests/test_tasks.py:199`, `:510`, `workspaces/tests/test_pooling_leak.py`, and — added
 by P4 S2b — `mcp_server/tests/test_tenancy_cold_context.py`, whose last test guards the harness the
-other three in that file depend on.
+other three in that file depend on. P6 reap tests (`demo/tests/test_reaping.py`) additionally prove
+leaf-first deletes under `workspace_scope` on a `teacher_full`-shaped tenant.
 
 ---
 
@@ -628,9 +649,10 @@ other three in that file depend on.
    **Resolved:** a user-facing assistant inside portal_nem. The P4 MCP tools are therefore this
    chat's backend, not only an external door.
 2. **Phase cut.** P0–P1 are days. P2 is the highest-leverage single phase and unblocks trusting
-   everything after it. P4–P6 are each a week-ish. *Overtaken by events:* P3 was skipped and P4
-   started, so the cut is now P0 → P1 → P2 (harness only) → P4. **P3 is still a hard dependency for
-   M9** and P4 does not remove that — it defers it.
+   everything after it. P4–P6 are each a week-ish. *Overtaken by events:* P3 was skipped, then P4 and
+   P6 landed, so the cut is now P0 → P1 → P2 (harness only) → P4 → P6. **P3 is still a hard
+   dependency for M9** (and for showcase cost/latency columns); P5 is the remaining product slice
+   before the chat surface.
 3. **P5 scope** — which single mutation goes first.
 4. ~~**Demo hosting posture** — P6c, local-only vs a hardened deploy flag.~~
    **Resolved:** `DEMO_DEPLOY` additive flag. `enabled()` is
