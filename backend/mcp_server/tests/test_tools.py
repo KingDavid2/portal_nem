@@ -1,9 +1,8 @@
-"""RED/GREEN for the four workspace-scoped MCP tools (Slice 3).
-
-`search_catalog` tests (3.7–3.8) deferred to feat/quizzy-p4-s3b-search-catalog.
-"""
+"""RED/GREEN for the five read-only MCP tools (Slice 3 / S3b)."""
 
 from __future__ import annotations
+
+from dataclasses import asdict
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -11,10 +10,22 @@ from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APIClient
 
+from lesson_plans.core.catalog import (
+    CONTENTS,
+    CROSS_CUTTING_THEMES,
+    FIELDS,
+    PDAS,
+    SUBJECTS,
+    _normalize,
+)
 from lesson_plans.models import GenerationUsage, LessonPlan
 from lesson_plans.quota import current_period, format_period
 from lesson_plans.serializers import (
+    CatalogContentSerializer,
+    CatalogFieldSerializer,
     CatalogGroupSerializer,
+    CatalogSubjectSerializer,
+    CatalogThemeSerializer,
     GenerationQuotaSerializer,
     LessonPlanSerializer,
 )
@@ -139,8 +150,123 @@ def test_get_lesson_plan_indistinguishable_misses(membership_factory, group_fact
     assert messages[0] == messages[1] == messages[2]
 
 
+def _content_payload(content):
+    pda_by_id = {pda.id: pda for pda in PDAS}
+    return {
+        "id": content.id,
+        "text": content.text,
+        "pdas": [
+            {"id": pda_id, "text": pda_by_id[pda_id].text}
+            for pda_id in content.pda_ids
+        ],
+    }
+
+
+def _whole_catalog_payload(*, field_id=None):
+    if field_id is None:
+        fields, subjects, contents = FIELDS, SUBJECTS, CONTENTS
+    else:
+        fields = tuple(f for f in FIELDS if f.id == field_id)
+        subjects = tuple(s for s in SUBJECTS if s.field_id == field_id)
+        contents = tuple(c for c in CONTENTS if c.field_id == field_id)
+    return {
+        "fields": CatalogFieldSerializer(
+            [asdict(f) for f in fields], many=True
+        ).data,
+        "subjects": CatalogSubjectSerializer(
+            [asdict(s) for s in subjects], many=True
+        ).data,
+        "cross_cutting_themes": CatalogThemeSerializer(
+            [asdict(t) for t in CROSS_CUTTING_THEMES], many=True
+        ).data,
+        "contents": CatalogContentSerializer(
+            [_content_payload(c) for c in contents], many=True
+        ).data,
+    }
+
+
+def test_search_catalog_empty_query_returns_whole_catalog(membership_factory):
+    """3.7 — empty query returns the whole catalog; bad field → ToolInputError."""
+    from mcp_server.registry import ToolInputError, dispatch
+
+    membership = membership_factory()
+    payload = dispatch("search_catalog", {"query": "", "field": None}, membership)
+    assert set(payload.keys()) == {
+        "fields",
+        "subjects",
+        "cross_cutting_themes",
+        "contents",
+    }
+    assert payload == _whole_catalog_payload()
+    assert len(payload["fields"]) == len(FIELDS)
+    assert len(payload["subjects"]) == len(SUBJECTS)
+    assert len(payload["cross_cutting_themes"]) == len(CROSS_CUTTING_THEMES)
+    assert len(payload["contents"]) == len(CONTENTS)
+
+    with pytest.raises(ToolInputError):
+        dispatch(
+            "search_catalog",
+            {"query": "", "field": "not-a-real-field"},
+            membership,
+        )
+
+
+def test_search_catalog_normalize_match_and_whole_content(membership_factory):
+    """3.7 — `_normalize` substring match; PDA hit renders the content whole."""
+    from mcp_server.registry import dispatch
+
+    membership = membership_factory()
+    # Accent-/case-insensitive field name match via catalog._normalize.
+    needle = "LENGUAJES"
+    assert _normalize(needle) in _normalize(FIELDS[0].name)
+    fields_hit = dispatch("search_catalog", {"query": needle}, membership)
+    assert fields_hit["fields"] == CatalogFieldSerializer(
+        [asdict(FIELDS[0])], many=True
+    ).data
+    assert fields_hit["subjects"] == []
+    assert fields_hit["cross_cutting_themes"] == []
+    assert fields_hit["contents"] == []
+
+    subject_hit = dispatch("search_catalog", {"query": "Matemáticas"}, membership)
+    assert [s["id"] for s in subject_hit["subjects"]] == ["mathematics"]
+    theme_hit = dispatch("search_catalog", {"query": "Inclusión"}, membership)
+    assert [t["id"] for t in theme_hit["cross_cutting_themes"]] == ["inclusion"]
+
+    # PDA text match includes the parent content with every PDA, not a partial.
+    target = next(c for c in CONTENTS if c.id == "ethics-independence")
+    pda_needle = "napoleónica"
+    assert any(_normalize(pda_needle) in _normalize(p.text) for p in PDAS)
+    assert _normalize(pda_needle) not in _normalize(target.text)
+    result = dispatch("search_catalog", {"query": pda_needle}, membership)
+    assert result["contents"] == CatalogContentSerializer(
+        [_content_payload(target)], many=True
+    ).data
+    assert len(result["contents"][0]["pdas"]) == len(target.pda_ids)
+
+
+def test_search_catalog_empty_workspace_independent_of_rows(
+    membership_factory, group_factory
+):
+    """3.8 — empty workspace still serves the frozen catalog."""
+    from mcp_server.registry import dispatch
+
+    empty = membership_factory()
+    populated = membership_factory()
+    _make_plan(populated, group_factory(populated))
+    args = {"query": "independencia"}
+    assert dispatch("search_catalog", args, empty) == dispatch(
+        "search_catalog", args, populated
+    )
+    # Result is pure frozen-catalog data — no dependence on Group/LessonPlan rows.
+    expected_content = next(c for c in CONTENTS if c.id == "ethics-independence")
+    payload = dispatch("search_catalog", args, empty)
+    assert payload["contents"] == CatalogContentSerializer(
+        [_content_payload(expected_content)], many=True
+    ).data
+
+
 def test_no_shipped_tool_writes_any_row(membership_factory, group_factory):
-    """3.9 — four shipped tools; search_catalog deferred to S3b."""
+    """3.9 — all five tools create, update, or delete no row."""
     from mcp_server.registry import ToolNotFoundError, dispatch
 
     membership = membership_factory()
@@ -150,6 +276,7 @@ def test_no_shipped_tool_writes_any_row(membership_factory, group_factory):
         ("list_lesson_plans", {}),
         ("get_lesson_plan", {"id": plan.pk}),
         ("get_quota", {}),
+        ("search_catalog", {"query": "lenguajes"}),
     ):
         with CaptureQueriesContext(connection) as ctx:
             dispatch(name, args, membership)
