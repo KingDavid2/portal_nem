@@ -1,8 +1,8 @@
 # Apply Progress: quizzy-p6-demo-hardening
 
 **Mode**: Strict TDD  
-**Batch**: Slice 3 (Phase 4, tasks 4.1–4.6) — cumulative with Slice 1a + 1b + 2  
-**Branch**: `feat/quizzy-p6-s3-demo-deploy` (stacked on `feat/quizzy-p6-s2-ttl-reap` @ `e1e2160`)  
+**Batch**: Slice 4 (Phase 5, tasks 5.1–5.5) — cumulative with Slice 1a + 1b + 2 + 3  
+**Branch**: `feat/quizzy-p6-s4-showcase` (stacked on `feat/quizzy-p6-s3-demo-deploy` @ `ac66449`)  
 **Updated**: 2026-07-30
 
 ## Completed Tasks
@@ -35,7 +35,7 @@
 - [x] 3.4 GREEN `reap_expired_demo_sessions_task` thin Celery wrapper
 - [x] 3.5 VERIFY focused + full suite
 
-### Slice 3 (Phase 4) — this batch
+### Slice 3 (Phase 4)
 
 - [x] 4.1 RED `backend/config/tests/test_demo_deploy.py`
 - [x] 4.2 GREEN `demo_mode.py`: `enabled()` formula + `validate_deploy_hardening` + two exceptions (`validate`/`ProductionNotAllowed` body untouched)
@@ -44,9 +44,17 @@
 - [x] 4.5 GREEN `docs/quizzy_roadmap.md` Q4 resolved
 - [x] 4.6 VERIFY focused + full suite
 
-## Remaining (not this batch)
+### Slice 4 (Phase 5) — this batch — ALL DONE
 
-- [ ] Phase 5 Slice 4 (5.1–5.5) showcase persona
+- [x] 5.1 RED `backend/demo/tests/test_provisioning_showcase.py`
+- [x] 5.2 RED `test_api.py` persona keys include `"showcase"`
+- [x] 5.3 GREEN `backend/demo/provisioning/showcase.py` (`Showcase`)
+- [x] 5.4 GREEN `personas.py` `_REGISTRY` entry
+- [x] 5.5 VERIFY focused + makemigrations --check + full suite
+
+## Remaining
+
+None — all implementation tasks complete. Next: `sdd-verify`.
 
 ### TDD Cycle Evidence
 
@@ -77,8 +85,24 @@
 | 4.4 | — | — | N/A | ➖ Docs | ✅ `.env.example` posture block | ➖ Structural | ➖ |
 | 4.5 | — | — | N/A | ➖ Docs | ✅ Q4 resolved in roadmap | ➖ Structural | ➖ |
 | 4.6 | same | Unit | — | — | ✅ 17/17 focused; ✅ 20/20 existing; ✅ **535 passed** full suite | — | — |
+| 5.1 | `demo/tests/test_provisioning_showcase.py` | Integration | ✅ 21/21 `test_provisioning_personas.py`; ✅ 22/22 api+personas | ✅ Written (ModuleNotFoundError on Showcase) | ✅ Deferred to 5.3 | ✅ shape + clean ✓ + warning ⚠ + zero usage + soft-defer | ➖ N/A (test-only) |
+| 5.2 | `demo/tests/test_api.py` | Integration | ✅ 22/22 api+personas | ✅ Assertion fails (showcase missing) | ✅ Deferred to 5.4 | ➖ Structural (key list) | ➖ None needed |
+| 5.3 | `demo/provisioning/showcase.py` | Integration | N/A (new) | ✅ Covered by 5.1 | ✅ Showcase seeds school/grupo/students + 2 plans | ✅ clean vs warning paths | ➖ None needed |
+| 5.4 | `demo/personas.py` | Integration | ✅ personas registry | ✅ Covered by 5.2 | ✅ `_REGISTRY` showcase entry | ➖ Structural (registry) | ➖ None needed |
+| 5.5 | same | Integration | — | — | ✅ 17 focused; ✅ 29 with personas; ✅ **542 passed** full suite; makemigrations --check clean | — | — |
 
-### Work Unit Evidence (Slice 3)
+### Work Unit Evidence (Slice 4)
+
+| Evidence | Value |
+|----------|-------|
+| Focused test command | `cd backend && uv run pytest demo/tests/test_provisioning_showcase.py demo/tests/test_api.py` → **17 passed** |
+| Related safety net | `… test_personas.py` (+ focused) → **29 passed** |
+| Full suite | `cd backend && uv run pytest` → **542 passed in 39.50s** |
+| Migrations | `uv run python manage.py makemigrations --check` → **No changes detected** |
+| Runtime harness | N/A — SQLite/Postgres test DB + fixtures; no LLM call |
+| Rollback boundary | Remove `_REGISTRY` showcase entry, `provisioning/showcase.py`, `test_provisioning_showcase.py`; revert `test_api.py` key list |
+
+### Work Unit Evidence (Slice 3 — preserved)
 
 | Evidence | Value |
 |----------|-------|
@@ -119,14 +143,14 @@
 ### Workload / PR Boundary
 
 - Mode: stacked PR slice (`stacked-to-main`)
-- Current work unit: Slice 3 — DEMO_DEPLOY hosting posture + docs
-- Boundary: stops before showcase persona (Slice 4)
-- Estimated review budget: Low–Medium (under 400 authored lines)
+- Current work unit: Slice 4 — Showcase persona (LAST apply slice)
+- Boundary: showcase provisioner + registry only; no throttle/reap/deploy changes
+- Estimated review budget: Low (under 400 authored lines)
 
 ### Deviations from Design
 
-- `validate_deploy_hardening` takes an explicit `demo_mode: bool` kwarg (design interface snippet omitted it) so `DEMO_DEPLOY ∧ ¬DEMO_MODE` stays a pure unit-testable check.
-- Early `_demo_mode_validate()` is skipped when `DEMO_DEPLOY` so `validate()` body stays untouched while `DEMO_MODE ∧ ¬DEBUG ∧ DEMO_DEPLOY` can boot; ProductionNotAllowed still fires when deploy is off.
+- Slice 3: `validate_deploy_hardening` takes explicit `demo_mode` kwarg; early `_demo_mode_validate()` skipped when `DEMO_DEPLOY`.
+- Slice 4: None — implementation matches design showcase seed shape.
 
 ### Issues Found
 

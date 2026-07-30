@@ -34,7 +34,12 @@ def test_personas_endpoint_lists_the_registry_to_an_anonymous_caller(client):
 
     assert response.status_code == 200
     keys = [row["key"] for row in response.data]
-    assert keys == ["teacher_minimal", "teacher_full", "quota_exhausted"]
+    assert keys == [
+        "teacher_minimal",
+        "teacher_full",
+        "quota_exhausted",
+        "showcase",
+    ]
     first = response.data[0]
     assert first["label"]
     assert first["description"]

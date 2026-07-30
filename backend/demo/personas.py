@@ -2,7 +2,8 @@
 
 Each persona is a seedable demo profile: a ``teacher_minimal`` account with
 one school and one grupo, a ``teacher_full`` account with a cycle in progress,
-and a ``quota_exhausted`` account to demonstrate the generation-limit UI.
+a ``quota_exhausted`` account to demonstrate the generation-limit UI, and a
+``showcase`` account that renders grounding ✓/⚠ with P1 provenance and no LLM.
 
 The ``provisioner`` field is a **dotted import path string** — resolved
 lazily via ``django.utils.module_loading.import_string``. This avoids any
@@ -84,6 +85,18 @@ _REGISTRY = (
             "Cuota mensual agotada",
         ),
         provisioner="demo.provisioning.quota_exhausted.QuotaExhausted",
+    ),
+    Persona(
+        key="showcase",
+        label="Escaparate de planeaciones",
+        description="Un docente con una planeación limpia (anclaje ✓) y otra con PDA inventada (anclaje ⚠), ambas con proveniencia P1 y sin llamar al LLM.",
+        features=(
+            "Una escuela",
+            "Un ciclo escolar",
+            "Un grupo con alumnos",
+            "Dos planeaciones con anclaje y proveniencia",
+        ),
+        provisioner="demo.provisioning.showcase.Showcase",
     ),
 )
 

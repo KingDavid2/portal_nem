@@ -65,10 +65,10 @@ Chain strategy: stacked-to-main
 - [x] 4.5 **[GREEN]** Modify `docs/quizzy_roadmap.md`: resolve open Q4 with `DEMO_DEPLOY` contract summary
 - [x] 4.6 **[VERIFY]** `uv run pytest backend/config/tests/test_demo_deploy.py` green; existing `test_demo_mode.py` still green; `uv run pytest` full suite clean
 
-## Phase 5 — Showcase persona provisioner (Slice 4)
+## Phase 5 — Showcase persona provisioner (Slice 4) — COMPLETE
 
-- [ ] 5.1 **[RED]** Create `backend/demo/tests/test_provisioning_showcase.py` — failing: showcase renders grounding ✓ for clean plan (⚠ for warning plan); provenance fields present (`provider`, `model_name`, `generated_at`, tokens); zero `GenerationUsage` rows; both plans `status=ready`; `cost_micros`/`duration_ms` absent or null
-- [ ] 5.2 **[RED]** Modify `backend/demo/tests/test_api.py` line 37: add `"showcase"` to persona-key assertion set (expected to fail until registry entry added)
-- [ ] 5.3 **[GREEN]** Create `backend/demo/provisioning/showcase.py`: `Showcase(DemoProvisioner)` with `persona_key = "showcase"`; seeds school + ciclo + `1°A` group + 10 students via services layer; writes two `LessonPlan` rows directly from `proyecto_demo.json` (clean) and `proyecto_lenguajes.json` (warning) with P1 provenance fields populated
-- [ ] 5.4 **[GREEN]** Modify `backend/demo/personas.py`: add `"showcase": Showcase` to `_REGISTRY`
-- [ ] 5.5 **[VERIFY]** `uv run pytest backend/demo/tests/test_provisioning_showcase.py backend/demo/tests/test_api.py` green; `uv run makemigrations --check` clean; `uv run pytest` full suite green
+- [x] 5.1 **[RED]** Create `backend/demo/tests/test_provisioning_showcase.py` — failing: showcase renders grounding ✓ for clean plan (⚠ for warning plan); provenance fields present (`provider`, `model_name`, `generated_at`, tokens); zero `GenerationUsage` rows; both plans `status=ready`; `cost_micros`/`duration_ms` absent or null
+- [x] 5.2 **[RED]** Modify `backend/demo/tests/test_api.py` line 37: add `"showcase"` to persona-key assertion set (expected to fail until registry entry added)
+- [x] 5.3 **[GREEN]** Create `backend/demo/provisioning/showcase.py`: `Showcase(DemoProvisioner)` with `persona_key = "showcase"`; seeds school + ciclo + `1°A` group + 10 students via services layer; writes two `LessonPlan` rows directly from `proyecto_demo.json` (clean) and `proyecto_lenguajes.json` (warning) with P1 provenance fields populated
+- [x] 5.4 **[GREEN]** Modify `backend/demo/personas.py`: add `"showcase": Showcase` to `_REGISTRY`
+- [x] 5.5 **[VERIFY]** `uv run pytest backend/demo/tests/test_provisioning_showcase.py backend/demo/tests/test_api.py` green; `uv run makemigrations --check` clean; `uv run pytest` full suite green
