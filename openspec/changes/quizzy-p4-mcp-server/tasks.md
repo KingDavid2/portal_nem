@@ -102,11 +102,11 @@ Depends on S2a + S2b.
 
 Depends on S3.
 
-- [ ] 4.1 `backend/pyproject.toml`: add `mcp>=1.9,<2`. **Verify the exact minor against the installed wheel at apply time** — Streamable-HTTP needs ≥1.8; if the resolved wheel differs, adjust the lower bound and say so in the PR body.
-- [ ] 4.2 RED `backend/mcp_server/tests/test_server_stdio.py`: with `PORTAL_NEM_MCP_TOKEN` holding a raw token for a membership in workspace A, `list_lesson_plans` over the stdio handler returns workspace A's plans.
-- [ ] 4.3 RED same file: with `PORTAL_NEM_MCP_TOKEN` unset, and separately holding garbage, the call is denied and **no workspace rows** are returned — identical outcomes for both.
-- [ ] 4.4 GREEN `backend/mcp_server/server.py`: MCP `Server`, `list_tools`/`call_tool` async handlers awaiting `dispatch_async`, identity from `PORTAL_NEM_MCP_TOKEN` via `resolve_membership`, and the stdio run loop. Render `ToolError` subclasses as MCP tool errors (`isError`) — `ToolNotFoundError` always with its fixed message, never a varying status or error type.
-- [ ] 4.5 GREEN `backend/mcp_server/management/commands/run_mcp.py`: runs the stdio server.
+- [x] 4.1 `backend/pyproject.toml`: add `mcp>=1.9,<2`. **Verify the exact minor against the installed wheel at apply time** — Streamable-HTTP needs ≥1.8; if the resolved wheel differs, adjust the lower bound and say so in the PR body. *(Verified: already declared + locked at apply time; installed wheel `mcp==1.29.0`; lower bound `>=1.9` unchanged.)*
+- [x] 4.2 RED `backend/mcp_server/tests/test_server_stdio.py`: with `PORTAL_NEM_MCP_TOKEN` holding a raw token for a membership in workspace A, `list_lesson_plans` over the stdio handler returns workspace A's plans.
+- [x] 4.3 RED same file: with `PORTAL_NEM_MCP_TOKEN` unset, and separately holding garbage, the call is denied and **no workspace rows** are returned — identical outcomes for both.
+- [x] 4.4 GREEN `backend/mcp_server/server.py`: MCP `Server`, `list_tools`/`call_tool` async handlers awaiting `dispatch_async`, identity from `PORTAL_NEM_MCP_TOKEN` via `resolve_membership`, and the stdio run loop. Render `ToolError` subclasses as MCP tool errors (`isError`) — `ToolNotFoundError` always with its fixed message, never a varying status or error type.
+- [x] 4.5 GREEN `backend/mcp_server/management/commands/run_mcp.py`: runs the stdio server.
 
 ## Slice 5 — Flag-gated Streamable-HTTP arm (`feat/quizzy-p4-s5-http-arm`, ~215)
 
