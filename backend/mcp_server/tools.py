@@ -17,7 +17,6 @@ from lesson_plans.serializers import (
     LessonPlanSerializer,
     catalog_group_payload,
 )
-from mcp_server.errors import ToolInputError, ToolNotFoundError
 from schools.models import Group
 from workspaces.scope import workspace_scope
 
@@ -40,6 +39,8 @@ def list_lesson_plans(membership, **_kwargs) -> dict:
 
 def get_lesson_plan(membership, *, id, **_kwargs) -> dict:
     """Indistinguishable not-found for cross-workspace, nowhere, and malformed ids."""
+    from mcp_server.registry import ToolNotFoundError
+
     with workspace_scope(membership.workspace_id):
         try:
             plan = LessonPlan.objects.get(pk=int(id))
@@ -62,6 +63,8 @@ def get_quota(membership, **_kwargs) -> dict:
 
 def search_catalog(membership, **_kwargs) -> dict:
     """Deferred to feat/quizzy-p4-s3b-search-catalog (400-line headroom)."""
+    from mcp_server.registry import ToolInputError
+
     raise ToolInputError(
         "search_catalog deferred to feat/quizzy-p4-s3b-search-catalog"
     )

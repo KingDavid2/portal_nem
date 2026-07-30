@@ -15,37 +15,7 @@ from collections.abc import Callable
 from asgiref.sync import sync_to_async
 from workspaces.permissions import has_permission
 
-from mcp_server.errors import (
-    ToolDenied,
-    ToolError,
-    ToolInputError,
-    ToolNotFoundError,
-    UnknownToolError,
-)
-from mcp_server.tools import (
-    get_lesson_plan,
-    get_quota,
-    list_groups,
-    list_lesson_plans,
-    search_catalog,
-)
-
 Tool = Callable[..., dict]
-
-# Re-export error types so existing `from mcp_server.registry import …` keeps
-# working; definitions live in `errors.py` to avoid a tools↔registry cycle.
-__all__ = [
-    "CAPABILITY_MAP",
-    "Tool",
-    "ToolDenied",
-    "ToolError",
-    "ToolInputError",
-    "ToolNotFoundError",
-    "UnknownToolError",
-    "dispatch",
-    "dispatch_async",
-    "register",
-]
 
 # Tool name → capability mapping. Mirrors `lesson_plans/viewsets.py:64` for the
 # same `view_workspace` / `edit_content` discipline: raw action verbs are never
@@ -57,6 +27,54 @@ CAPABILITY_MAP: dict[str, str] = {
     "get_quota": "view_workspace",
     "search_catalog": "view_workspace",
 }
+
+
+class ToolError(Exception):
+    """Base class for MCP tool dispatch errors."""
+
+
+class UnknownToolError(ToolError):
+    """Tool name is not in the registry."""
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+        super().__init__(f"Unknown tool: {name}")
+
+
+class ToolNotFoundError(ToolError):
+    """A requested resource was not found.
+
+    Indistinguishable by payload from a malformed id or a cross-workspace miss:
+    one message, one shape. Callers pass the fixed message explicitly; this
+    class holds no default, so a per-resource message can never drift into a
+    distinguishing signal.
+    """
+
+
+class ToolInputError(ToolError):
+    """Tool input validation failed."""
+
+
+class ToolDenied(ToolError):
+    """Access denied.
+
+    Covers both unresolved identity and authorization failure — one shape,
+    no distinguishable outcome between "unknown token" and "token valid but
+    role insufficient".
+    """
+
+
+# ---------------------------------------------------------------------------
+# Tool callables — bodies live in tools.py (Slice 3).
+# ---------------------------------------------------------------------------
+
+from mcp_server.tools import (  # noqa: E402
+    get_lesson_plan,
+    get_quota,
+    list_groups,
+    list_lesson_plans,
+    search_catalog,
+)
 
 # Single registry mapping name → tool callable.
 _TOOLS: dict[str, Tool] = {
