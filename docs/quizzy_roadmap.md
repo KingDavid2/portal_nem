@@ -18,7 +18,7 @@
 | P1 | Grounding audit trail | A teacher can see *which* PDA is unofficial, and what it was checked against | ✅ |
 | P2 | Eval harness | Generation quality is a number, so prompt and model changes stop shipping blind | 🟡 harness built, first scorecard deferred |
 | P3 | Cost · latency · prompt version · failure taxonomy | A generation can be priced, timed, attributed and categorized | ⬜ |
-| P4 | MCP server over the scoped API | The workspace is reachable conversationally, without weakening tenancy | 🟡 26/49 tasks — auth, registry and the async bridge landed; no transport yet |
+| P4 | MCP server over the scoped API | The workspace is reachable conversationally, without weakening tenancy | 🟡 36/49 tasks — five read tools live; no transport yet |
 | P5 | Targeted edit | Fixing one rubric criterion stops costing a full regeneration | ⬜ |
 | P6 | Demo hardening + showcase persona | The demo link can be handed to a stranger safely | ⬜ |
 
@@ -417,25 +417,27 @@ with no scope established returns **zero rows**, never an unscoped read.
 **Exit gate:** an MCP client answers a natural-language question over a demo tenant, and a
 cold-context test proves a cross-tenant read returns empty.
 
-### Progress — 26/49 tasks, three slices of six
+### Progress — 36/49 tasks, five slices of seven
 
 Planned as `openspec/changes/quizzy-p4-mcp-server/` (proposal, four delta specs, design, tasks) and
-sliced into six stacked branches. Half the exit gate is met: **the cold-context test exists and
-passes**. The other half — an MCP client answering over a demo tenant — needs S4, because nothing has
-a process boundary yet.
+sliced into stacked branches (S3 split into S3 + S3b when the five tools threatened the 400-line
+review budget). Half the exit gate is met: **the cold-context test exists and passes**, and the five
+read tools are wired through the registry. The other half — an MCP client answering over a demo
+tenant — still needs S4, because nothing has a process boundary yet.
 
 | slice | branch | landed | what it added |
 | ----- | ------ | ------ | ------------- |
 | S1 | `feat/quizzy-p4-s1-api-token` | `4c19f78` | `WorkspaceApiToken` + `resolve_membership` + `create_mcp_token` |
 | S2a | `feat/quizzy-p4-s2a-registry` | `75a329f`, `e9f82b9` | sync registry, typed errors, `CAPABILITY_MAP` authz, `mcp` import guard |
 | S2b | `feat/quizzy-p4-s2b-async-bridge` | `39dab82`, `732bc8f` | `dispatch_async` bridge + cold-context tenancy harness |
-| S3 | `feat/quizzy-p4-s3-read-tools` | — | the five read-only tools + `catalog_group_payload` extraction |
+| S3 | `feat/quizzy-p4-s3-read-tools` | `79e9316` | four workspace-scoped tools + `catalog_group_payload` extraction |
+| S3b | `feat/quizzy-p4-s3b-search-catalog` | `f78b616` | real `search_catalog` over the frozen curriculum catalog |
 | S4 | `feat/quizzy-p4-s4-stdio` | — | stdio transport + `run_mcp` — **this is what closes the gate** |
 | S5 | `feat/quizzy-p4-s5-http-arm` | — | flag-gated Streamable-HTTP mount, default off |
 
-484 tests green, migrations clean, `ruff check mcp_server/` clean.
+493 tests green, migrations clean, `ruff check mcp_server/` clean.
 
-**Four decisions worth carrying forward**
+**Five decisions worth carrying forward**
 
 1. **Token auth, resolve-then-touch.** P0 finding 7 said the MCP surface has no CSRF cookie, so it
    cannot use session auth — settled at design time as a hashed bearer token
@@ -459,6 +461,13 @@ a process boundary yet.
    are still empty. Replace the cold-thread harness with a bare `asyncio.run` and only that one test
    fails; every other test in the file stays green. Same class of trap as P1's unconditional green
    `Star`: the check that looks strongest is the one that cannot fail.
+5. **One payload shape, no conversational drift.** `catalog_group_payload` was extracted from the
+   catalog action so HTTP and MCP cannot invent different group dicts; lesson-plan and quota tools
+   reuse `LessonPlanSerializer` / `GenerationQuotaSerializer` verbatim. `search_catalog` reads only
+   the frozen curriculum catalog — an empty workspace and a populated one return byte-identical
+   results for the same query — and a PDA text hit still renders the parent content whole. Cross-
+   workspace / nowhere / malformed `get_lesson_plan` ids share one `ToolNotFoundError("Lesson plan
+   not found.")` so the error type never becomes a tenancy oracle.
 
 **Sibling, not copy.** The harness looks like `lesson_plans/test_tasks.py::_run_task_in_cold_thread`
 and must not be copied from it. That helper runs the work *on* the cold thread, so a plain
