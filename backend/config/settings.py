@@ -188,11 +188,14 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     # Per-view ScopedRateThrottle rates (no DEFAULT_THROTTLE_CLASSES — zero
-    # blast radius on untouched endpoints). Quizzy P6 Slice 1a demo scopes.
+    # blast radius on untouched endpoints). Quizzy P6 Slice 1a/1b scopes.
     "DEFAULT_THROTTLE_RATES": {
         "demo_personas": "60/hour",
         "demo_session_create": "5/hour",
         "demo_session_poll": "120/hour",
+        "lesson_plan_generate_demo": "3/hour",
+        "lesson_plan_generate": "30/hour",
+        "mcp_http": "60/min",
     },
 }
 
@@ -259,6 +262,9 @@ CSRF_COOKIE_SECURE = env.bool("CSRF_COOKIE_SECURE", default=False)
 # Quizzy P4 — Streamable-HTTP MCP arm. Off by default so the route is absent
 # from the URLconf (404 by absence), mirroring demo_mode.enabled().
 MCP_HTTP_ENABLED = env.bool("MCP_HTTP_ENABLED", default=False)
+# Per-token ceiling once the arm is on (Quizzy P6 Slice 1b). Also mirrored
+# under REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["mcp_http"].
+MCP_HTTP_THROTTLE_RATE = env("MCP_HTTP_THROTTLE_RATE", default="60/min")
 
 # LLM provider selection (M4 design Decision: "Provider factory reading
 # LLM_PROVIDER"). `lesson_plans.core.factory.build_provider()` is the only

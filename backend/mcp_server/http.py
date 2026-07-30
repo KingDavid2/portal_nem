@@ -6,6 +6,7 @@ Identity from ``Authorization: Bearer`` → ``resolve_membership`` →
 
 from __future__ import annotations
 
+import math
 from contextvars import ContextVar
 
 from asgiref.sync import async_to_sync, sync_to_async
@@ -19,6 +20,7 @@ from workspaces.models import Membership
 from mcp_server.auth import resolve_membership
 from mcp_server.registry import ToolError, dispatch_async
 from mcp_server.server import _error_result, _success_result, handle_list_tools
+from mcp_server.throttling import McpHttpTokenThrottle
 
 MCP_HTTP_PATH = "mcp/"
 
@@ -152,8 +154,17 @@ async def _asgi_response_for_django(
 @csrf_exempt
 @require_http_methods(["GET", "POST", "DELETE"])
 def mcp_http_view(request: HttpRequest) -> HttpResponse:
-    """Django mount: Bearer gate first (401, no tool), then Streamable-HTTP ASGI."""
+    """Django mount: Bearer gate first (401, no tool), then rate limit, then ASGI."""
     membership = resolve_bearer_membership(request.headers.get("Authorization"))
     if membership is None:
         return HttpResponse(status=401)
+
+    throttle = McpHttpTokenThrottle()
+    if not throttle.allow_request(request, view=None):
+        response = HttpResponse(status=429)
+        wait = throttle.wait()
+        if wait is not None:
+            response["Retry-After"] = str(max(1, math.ceil(wait)))
+        return response
+
     return async_to_sync(_asgi_response_for_django)(request, membership)

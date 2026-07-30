@@ -27,6 +27,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.renderers import BaseRenderer
 from rest_framework.response import Response
 
+from core.throttling import GenerationRateThrottle
 from lesson_plans.core.grounding import GroundingReport
 from lesson_plans.core.render.docx import render_docx
 from lesson_plans.core.render.markdown import render_md
@@ -136,6 +137,12 @@ class LessonPlanViewSet(viewsets.ModelViewSet):
     serializer_class = LessonPlanSerializer
     permission_classes = [IsAuthenticated, WorkspacePermission]
     capability_map = CAPABILITY_MAP
+
+    def get_throttles(self):
+        # Rate-limit only the GPU door (`create`). List/quota/export stay free.
+        if self.action == "create":
+            return [GenerationRateThrottle()]
+        return []
 
     def get_queryset(self):
         queryset = LessonPlan.objects.all()

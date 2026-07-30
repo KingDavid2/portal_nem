@@ -38,15 +38,15 @@ Chain strategy: stacked-to-main
 
 ## Phase 2 — `GenerationRateThrottle` + MCP HTTP throttle (Slice 1b)
 
-- [ ] 2.1 **[RED]** Create `backend/lesson_plans/test_throttling.py` — failing: demo guest 429 at request 4, no new `LessonPlan` created, quota `used` unchanged; teacher up to 30 unaffected; counters independent
-- [ ] 2.2 **[RED]** Create `backend/mcp_server/tests/test_http_throttle.py` — failing: per-token 429 after rate ceiling; two distinct bearer tokens have independent counters; no tool executed on 429
-- [ ] 2.3 **[GREEN]** Modify `backend/config/settings.py`: add `lesson_plan_generate_demo` (3/hour), `lesson_plan_generate` (30/hour), `mcp_http` (60/min) to `DEFAULT_THROTTLE_RATES`
-- [ ] 2.4 **[GREEN]** Create `backend/demo/identity.py`: `is_demo_guest(user) -> bool` via `DemoSession.objects.filter(user_id=…, status=READY).exists()`
-- [ ] 2.5 **[GREEN]** Create `backend/core/throttling.py`: `GenerationRateThrottle(SimpleRateThrottle)` — `get_cache_key()` sets `self.scope` to demo or teacher scope based on `is_demo_guest(request.user)`; deferred import of `is_demo_guest`
-- [ ] 2.6 **[GREEN]** Modify `backend/lesson_plans/viewsets.py`: add `get_throttles()` returning `[GenerationRateThrottle()]` when `self.action == "create"` else `[]`
-- [ ] 2.7 **[GREEN]** Create `backend/mcp_server/throttling.py`: `McpHttpTokenThrottle(SimpleRateThrottle)` keyed on `sha256(bearer)`, rate from `settings.MCP_HTTP_THROTTLE_RATE`
-- [ ] 2.8 **[GREEN]** Modify `backend/mcp_server/http.py`: insert `McpHttpTokenThrottle` check after 401 gate; return 429 + `Retry-After` header on limit
-- [ ] 2.9 **[VERIFY]** `uv run pytest backend/lesson_plans/test_throttling.py backend/mcp_server/tests/test_http_throttle.py` green; full suite clean
+- [x] 2.1 **[RED]** Create `backend/lesson_plans/test_throttling.py` — failing: demo guest 429 at request 4, no new `LessonPlan` created, quota `used` unchanged; teacher up to 30 unaffected; counters independent
+- [x] 2.2 **[RED]** Create `backend/mcp_server/tests/test_http_throttle.py` — failing: per-token 429 after rate ceiling; two distinct bearer tokens have independent counters; no tool executed on 429
+- [x] 2.3 **[GREEN]** Modify `backend/config/settings.py`: add `lesson_plan_generate_demo` (3/hour), `lesson_plan_generate` (30/hour), `mcp_http` (60/min) to `DEFAULT_THROTTLE_RATES`
+- [x] 2.4 **[GREEN]** Create `backend/demo/identity.py`: `is_demo_guest(user) -> bool` via `DemoSession.objects.filter(user_id=…, status=READY).exists()`
+- [x] 2.5 **[GREEN]** Create `backend/core/throttling.py`: `GenerationRateThrottle(SimpleRateThrottle)` — `get_cache_key()` sets `self.scope` to demo or teacher scope based on `is_demo_guest(request.user)`; deferred import of `is_demo_guest`
+- [x] 2.6 **[GREEN]** Modify `backend/lesson_plans/viewsets.py`: add `get_throttles()` returning `[GenerationRateThrottle()]` when `self.action == "create"` else `[]`
+- [x] 2.7 **[GREEN]** Create `backend/mcp_server/throttling.py`: `McpHttpTokenThrottle(SimpleRateThrottle)` keyed on `sha256(bearer)`, rate from `settings.MCP_HTTP_THROTTLE_RATE`
+- [x] 2.8 **[GREEN]** Modify `backend/mcp_server/http.py`: insert `McpHttpTokenThrottle` check after 401 gate; return 429 + `Retry-After` header on limit
+- [x] 2.9 **[VERIFY]** `uv run pytest backend/lesson_plans/test_throttling.py backend/mcp_server/tests/test_http_throttle.py` green; full suite clean
 
 ## Phase 3 — TTL reap (Slice 2)
 
