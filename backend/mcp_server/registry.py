@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from asgiref.sync import sync_to_async
 from workspaces.permissions import has_permission
 
 Tool = Callable[..., dict]
@@ -148,3 +149,20 @@ def dispatch(name: str, arguments: dict, membership) -> dict:
     # Step 4: call the tool body. Registry and capability map are populated
     # together, so a name past step 2 always resolves here.
     return _TOOLS[name](membership, **arguments)
+
+
+async def dispatch_async(name: str, arguments: dict, membership) -> dict:
+    """Async bridge to the sync dispatch path.
+
+    The bridge sits **at dispatch only**, never per tool. Per-tool wrapping
+    gives every future tool its own chance to forget it. All transports
+    (stdio, Streamable-HTTP) call this function; the sync `dispatch` path is
+    never exposed to async callers directly.
+
+    `thread_sensitive=True` keeps the call on the same thread end-to-end so
+    `workspace_scope`'s `transaction.atomic()` + `SET LOCAL app.workspace_id`
+    are coherent — the same guarantee `TenancyMiddleware` relies on.
+    """
+    return await sync_to_async(dispatch, thread_sensitive=True)(
+        name, arguments, membership
+    )
