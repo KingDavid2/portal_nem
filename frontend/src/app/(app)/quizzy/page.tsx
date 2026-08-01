@@ -22,6 +22,7 @@ import {
   Trash2,
   type LucideIcon,
 } from "lucide-react";
+import { MagicWandIcon } from "@/components/quizzy/magic-wand-icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { extractErrorMessage } from "@/lib/api/errors";
@@ -137,6 +138,15 @@ export default function QuizzyPage() {
   async function handleDelete(id: string, event: MouseEvent<HTMLButtonElement>) {
     event.stopPropagation();
     if (pending || renamingId) return;
+    const title =
+      conversations.find((c) => c.id === id)?.title?.trim() || "esta conversación";
+    if (
+      !window.confirm(
+        `¿Estás seguro de que deseas eliminar "${title}"? Esta acción no se puede deshacer.`,
+      )
+    ) {
+      return;
+    }
     try {
       await deleteQuizzyConversation(id);
       if (conversationId === id) {
@@ -362,8 +372,15 @@ export default function QuizzyPage() {
         </header>
 
         {loadingThread ? (
-          <div className="flex flex-1 items-center justify-center bg-muted/40 text-sm text-muted-foreground">
-            Cargando conversación…
+          <div
+            className="flex flex-1 flex-col items-center justify-center gap-4 bg-muted/40"
+            role="status"
+            aria-live="polite"
+          >
+            <MagicWandIcon size={180} />
+            <p className="text-sm text-muted-foreground">
+              Cargando conversación…
+            </p>
           </div>
         ) : empty ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-6 overflow-y-auto bg-muted/40 px-5 py-10">
@@ -412,9 +429,14 @@ export default function QuizzyPage() {
               </div>
             ))}
             {pending ? (
-              <p className="mr-auto text-xs text-muted-foreground">
-                Composer está pensando…
-              </p>
+              <div
+                className="mx-auto flex items-center justify-center"
+                role="status"
+                aria-live="polite"
+              >
+                <MagicWandIcon size={84} />
+                <span className="sr-only">Composer está pensando…</span>
+              </div>
             ) : null}
             <div ref={threadEndRef} />
           </div>
