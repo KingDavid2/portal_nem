@@ -12,7 +12,6 @@ test_output_hash: sha256:d77d4e81f229bad23571dd9a7b18731b58fc93cae33bbe9977a5ee8
 build_command: cd frontend && npm run build
 build_exit_code: 0
 build_output_hash: sha256:00ed88fb92cd68c871a503eba72135a6e663e207e4420b824742fc63481cedde
-strict_tdd: true
 ```
 
 ## Verification Report

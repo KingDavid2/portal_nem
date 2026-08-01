@@ -1,100 +1,16 @@
 {
-  "schema": "gentle-ai.review-state-record/v2",
-  "revision": "sha256:a18ffef138bdac09177755934dd06538d65a0ad5d07fd26b9ccef43618e53cc1",
-  "state": {
-    "schema": "gentle-ai.review-state/v2",
-    "lineage_id": "review-m7-attendance-remediation-78fd994",
-    "generation": 2,
-    "state": "approved",
-    "initial_snapshot": {
-      "kind": "base-diff",
-      "base_tree": "dc34e2b359af3de87ca08931e74dddb4e4733680",
-      "candidate_tree": "5fc30efc717b96fb7d5ea59701937696d39f281a",
-      "paths_digest": "sha256:70d28a36702a169363346192616f1376e0ba7a2e0b5d87fee2f66daafdfb283a",
-      "intended_untracked": [],
-      "intended_untracked_proof": "sha256:b97229718d4c7fe50a8892eb474ae5aa6491697bccb400e3e31dbaca4894d2f3",
-      "paths": [
-        "backend/attendance/apps.py",
-        "backend/attendance/migrations/0001_initial.py",
-        "backend/attendance/migrations/0002_rls.py",
-        "backend/attendance/migrations/__init__.py",
-        "backend/attendance/models.py",
-        "backend/attendance/serializers.py",
-        "backend/attendance/services.py",
-        "backend/attendance/tests/test_api.py",
-        "backend/attendance/tests/test_models.py",
-        "backend/attendance/tests/test_rls.py",
-        "backend/attendance/tests/test_services.py",
-        "backend/attendance/urls.py",
-        "backend/attendance/views.py",
-        "backend/config/settings.py",
-        "backend/config/urls.py",
-        "backend/schema.yaml",
-        "frontend/src/app/(app)/asistencia/page.test.tsx",
-        "frontend/src/app/(app)/asistencia/page.tsx",
-        "frontend/src/app/(app)/layout.tsx",
-        "frontend/src/components/ui/attendance-tones.test.tsx",
-        "frontend/src/components/ui/attendance-tones.ts",
-        "frontend/src/components/ui/estado-button.tsx",
-        "frontend/src/components/ui/stat-card.tsx",
-        "frontend/src/lib/api/attendance.ts",
-        "frontend/src/lib/api/schema.d.ts",
-        "openspec/changes/m7-attendance/apply-progress.md",
-        "openspec/changes/m7-attendance/design.md",
-        "openspec/changes/m7-attendance/exploration.md",
-        "openspec/changes/m7-attendance/proposal.md",
-        "openspec/changes/m7-attendance/specs/attendance/spec.md",
-        "openspec/changes/m7-attendance/specs/authorization/spec.md",
-        "openspec/changes/m7-attendance/specs/tenancy-isolation/spec.md",
-        "openspec/changes/m7-attendance/tasks.md"
-      ],
-      "identity": "sha256:b341c874fa4b1788651c64f541dcc2413f53a72c87acc4ba2a8005f425220fa6"
-    },
-    "current_snapshot": {
-      "kind": "base-diff",
-      "base_tree": "dc34e2b359af3de87ca08931e74dddb4e4733680",
-      "candidate_tree": "5fc30efc717b96fb7d5ea59701937696d39f281a",
-      "paths_digest": "sha256:70d28a36702a169363346192616f1376e0ba7a2e0b5d87fee2f66daafdfb283a",
-      "intended_untracked": [],
-      "intended_untracked_proof": "sha256:b97229718d4c7fe50a8892eb474ae5aa6491697bccb400e3e31dbaca4894d2f3",
-      "paths": [
-        "backend/attendance/apps.py",
-        "backend/attendance/migrations/0001_initial.py",
-        "backend/attendance/migrations/0002_rls.py",
-        "backend/attendance/migrations/__init__.py",
-        "backend/attendance/models.py",
-        "backend/attendance/serializers.py",
-        "backend/attendance/services.py",
-        "backend/attendance/tests/test_api.py",
-        "backend/attendance/tests/test_models.py",
-        "backend/attendance/tests/test_rls.py",
-        "backend/attendance/tests/test_services.py",
-        "backend/attendance/urls.py",
-        "backend/attendance/views.py",
-        "backend/config/settings.py",
-        "backend/config/urls.py",
-        "backend/schema.yaml",
-        "frontend/src/app/(app)/asistencia/page.test.tsx",
-        "frontend/src/app/(app)/asistencia/page.tsx",
-        "frontend/src/app/(app)/layout.tsx",
-        "frontend/src/components/ui/attendance-tones.test.tsx",
-        "frontend/src/components/ui/attendance-tones.ts",
-        "frontend/src/components/ui/estado-button.tsx",
-        "frontend/src/components/ui/stat-card.tsx",
-        "frontend/src/lib/api/attendance.ts",
-        "frontend/src/lib/api/schema.d.ts",
-        "openspec/changes/m7-attendance/apply-progress.md",
-        "openspec/changes/m7-attendance/design.md",
-        "openspec/changes/m7-attendance/exploration.md",
-        "openspec/changes/m7-attendance/proposal.md",
-        "openspec/changes/m7-attendance/specs/attendance/spec.md",
-        "openspec/changes/m7-attendance/specs/authorization/spec.md",
-        "openspec/changes/m7-attendance/specs/tenancy-isolation/spec.md",
-        "openspec/changes/m7-attendance/tasks.md"
-      ],
-      "identity": "sha256:b341c874fa4b1788651c64f541dcc2413f53a72c87acc4ba2a8005f425220fa6"
-    },
-    "genesis_paths": [
+  "schema": "gentle-ai.review-state/v2",
+  "lineage_id": "review-m7-attendance-verify-artifacts",
+  "generation": 3,
+  "state": "approved",
+  "initial_snapshot": {
+    "kind": "base-diff",
+    "base_tree": "dc34e2b359af3de87ca08931e74dddb4e4733680",
+    "candidate_tree": "facd1403252a9153e3afc6c6f3a90d7a144e0c46",
+    "paths_digest": "sha256:139eae965a9c281f16ee07157673c83748f955c7153a3cbf831dcb2bc304ed19",
+    "intended_untracked": [],
+    "intended_untracked_proof": "sha256:b97229718d4c7fe50a8892eb474ae5aa6491697bccb400e3e31dbaca4894d2f3",
+    "paths": [
       "backend/attendance/apps.py",
       "backend/attendance/migrations/0001_initial.py",
       "backend/attendance/migrations/0002_rls.py",
@@ -124,146 +40,173 @@
       "openspec/changes/m7-attendance/design.md",
       "openspec/changes/m7-attendance/exploration.md",
       "openspec/changes/m7-attendance/proposal.md",
+      "openspec/changes/m7-attendance/reviews/chain-bundle.json",
+      "openspec/changes/m7-attendance/reviews/gate-context.json",
+      "openspec/changes/m7-attendance/reviews/receipt.json",
+      "openspec/changes/m7-attendance/reviews/transaction.json",
       "openspec/changes/m7-attendance/specs/attendance/spec.md",
       "openspec/changes/m7-attendance/specs/authorization/spec.md",
       "openspec/changes/m7-attendance/specs/tenancy-isolation/spec.md",
-      "openspec/changes/m7-attendance/tasks.md"
+      "openspec/changes/m7-attendance/tasks.md",
+      "openspec/changes/m7-attendance/verify-report.md"
     ],
-    "policy_hash": "sha256:34fb63d7f29f8613cd4431382b1057398a4816f8a4c20fc34677fffc80a184f6",
-    "risk_level": "high",
-    "selected_lenses": [
-      "review-risk",
-      "review-resilience",
-      "review-readability",
-      "review-reliability"
+    "identity": "sha256:a813edf85e1bc2cd4360193cb9a36024a6079c8fb84be921155da7f6a46a8a6e"
+  },
+  "current_snapshot": {
+    "kind": "base-diff",
+    "base_tree": "dc34e2b359af3de87ca08931e74dddb4e4733680",
+    "candidate_tree": "facd1403252a9153e3afc6c6f3a90d7a144e0c46",
+    "paths_digest": "sha256:139eae965a9c281f16ee07157673c83748f955c7153a3cbf831dcb2bc304ed19",
+    "intended_untracked": [],
+    "intended_untracked_proof": "sha256:b97229718d4c7fe50a8892eb474ae5aa6491697bccb400e3e31dbaca4894d2f3",
+    "paths": [
+      "backend/attendance/apps.py",
+      "backend/attendance/migrations/0001_initial.py",
+      "backend/attendance/migrations/0002_rls.py",
+      "backend/attendance/migrations/__init__.py",
+      "backend/attendance/models.py",
+      "backend/attendance/serializers.py",
+      "backend/attendance/services.py",
+      "backend/attendance/tests/test_api.py",
+      "backend/attendance/tests/test_models.py",
+      "backend/attendance/tests/test_rls.py",
+      "backend/attendance/tests/test_services.py",
+      "backend/attendance/urls.py",
+      "backend/attendance/views.py",
+      "backend/config/settings.py",
+      "backend/config/urls.py",
+      "backend/schema.yaml",
+      "frontend/src/app/(app)/asistencia/page.test.tsx",
+      "frontend/src/app/(app)/asistencia/page.tsx",
+      "frontend/src/app/(app)/layout.tsx",
+      "frontend/src/components/ui/attendance-tones.test.tsx",
+      "frontend/src/components/ui/attendance-tones.ts",
+      "frontend/src/components/ui/estado-button.tsx",
+      "frontend/src/components/ui/stat-card.tsx",
+      "frontend/src/lib/api/attendance.ts",
+      "frontend/src/lib/api/schema.d.ts",
+      "openspec/changes/m7-attendance/apply-progress.md",
+      "openspec/changes/m7-attendance/design.md",
+      "openspec/changes/m7-attendance/exploration.md",
+      "openspec/changes/m7-attendance/proposal.md",
+      "openspec/changes/m7-attendance/reviews/chain-bundle.json",
+      "openspec/changes/m7-attendance/reviews/gate-context.json",
+      "openspec/changes/m7-attendance/reviews/receipt.json",
+      "openspec/changes/m7-attendance/reviews/transaction.json",
+      "openspec/changes/m7-attendance/specs/attendance/spec.md",
+      "openspec/changes/m7-attendance/specs/authorization/spec.md",
+      "openspec/changes/m7-attendance/specs/tenancy-isolation/spec.md",
+      "openspec/changes/m7-attendance/tasks.md",
+      "openspec/changes/m7-attendance/verify-report.md"
     ],
-    "original_changed_lines": 3511,
-    "correction_budget": 200,
-    "lens_results": [
-      {
-        "lens": "review-risk",
-        "findings": [
-          {
-            "id": "M7-RISK-001",
-            "lens": "risk",
-            "location": "backend/attendance/views.py:75",
-            "severity": "WARNING",
-            "claim": "Bulk entries array still unbounded / duplicate student IDs not rejected (carry-forward follow-up).",
-            "proof_refs": [
-              "serializers.py entries lacks max_length",
-              "views unique-id count check only"
-            ]
-          }
-        ],
-        "evidence": [
-          "Re-reviewed successor scope after 78fd994 remediation",
-          "Tenancy/RLS/capability maps unchanged and still sound"
-        ],
-        "result_hash": "sha256:80c2ba3b857b7f4a6e0e906da75b50f2be7dfa96885a22f1d03f26145f58533b"
-      },
-      {
-        "lens": "review-resilience",
-        "findings": [],
-        "evidence": [
-          "Remediation 78fd994 adds draftDirty guard so roster refetch no longer clobbers unsaved edits",
-          "Controls disabled while bulkMutation.isPending",
-          "Prior M7-RES-001/002 addressed in page.tsx"
-        ],
-        "result_hash": "sha256:595302af348a12f4a1d950a332c71e250eb83bf0e2a86e8b75464925757a8e6e"
-      },
-      {
-        "lens": "review-readability",
-        "findings": [
-          {
-            "id": "M7-READ-002",
-            "lens": "readability",
-            "location": "backend/attendance/views.py:80",
-            "severity": "WARNING",
-            "claim": "Missing student PK still shares group-membership 400 message (follow-up).",
-            "proof_refs": [
-              "views.py students_by_id length check"
-            ]
-          }
-        ],
-        "evidence": [
-          "Removed unused ValidationError import in services.py",
-          "eslint-disable removed from asistencia columns useMemo"
-        ],
-        "result_hash": "sha256:17fa2ce83c4176d8eacf9af1179b1ecfa75b86a514cccfc9bed921a8319c2e1e"
-      },
-      {
-        "lens": "review-reliability",
-        "findings": [
-          {
-            "id": "M7-REL-002",
-            "lens": "reliability",
-            "location": "backend/attendance/tests/test_api.py:169",
-            "severity": "WARNING",
-            "claim": "Bulk update-path and notes round-trip still lack dedicated assertions (follow-up).",
-            "proof_refs": [
-              "tests create-then-read status only"
-            ]
-          }
-        ],
-        "evidence": [
-          "asistencia vitest 9 passed after remediation",
-          "attendance pytest 30 passed",
-          "draftDirty onSuccess clears dirty for intentional post-save sync"
-        ],
-        "result_hash": "sha256:51dc5e1922496f97311fd455feb59f8764332b68c882f40f6fb93ce78da71ed5"
-      }
-    ],
-    "findings": [
-      {
-        "id": "M7-RISK-001",
-        "lens": "risk",
-        "location": "backend/attendance/views.py:75",
-        "severity": "WARNING",
-        "claim": "Bulk entries array still unbounded / duplicate student IDs not rejected (carry-forward follow-up).",
-        "proof_refs": [
-          "serializers.py entries lacks max_length",
-          "views unique-id count check only"
-        ]
-      },
-      {
-        "id": "M7-READ-002",
-        "lens": "readability",
-        "location": "backend/attendance/views.py:80",
-        "severity": "WARNING",
-        "claim": "Missing student PK still shares group-membership 400 message (follow-up).",
-        "proof_refs": [
-          "views.py students_by_id length check"
-        ]
-      },
-      {
-        "id": "M7-REL-002",
-        "lens": "reliability",
-        "location": "backend/attendance/tests/test_api.py:169",
-        "severity": "WARNING",
-        "claim": "Bulk update-path and notes round-trip still lack dedicated assertions (follow-up).",
-        "proof_refs": [
-          "tests create-then-read status only"
-        ]
-      }
-    ],
-    "classifications": {},
-    "outcomes": {
-      "M7-READ-002": "info",
-      "M7-REL-002": "info",
-      "M7-RISK-001": "info"
+    "identity": "sha256:a813edf85e1bc2cd4360193cb9a36024a6079c8fb84be921155da7f6a46a8a6e"
+  },
+  "genesis_paths": [
+    "backend/attendance/apps.py",
+    "backend/attendance/migrations/0001_initial.py",
+    "backend/attendance/migrations/0002_rls.py",
+    "backend/attendance/migrations/__init__.py",
+    "backend/attendance/models.py",
+    "backend/attendance/serializers.py",
+    "backend/attendance/services.py",
+    "backend/attendance/tests/test_api.py",
+    "backend/attendance/tests/test_models.py",
+    "backend/attendance/tests/test_rls.py",
+    "backend/attendance/tests/test_services.py",
+    "backend/attendance/urls.py",
+    "backend/attendance/views.py",
+    "backend/config/settings.py",
+    "backend/config/urls.py",
+    "backend/schema.yaml",
+    "frontend/src/app/(app)/asistencia/page.test.tsx",
+    "frontend/src/app/(app)/asistencia/page.tsx",
+    "frontend/src/app/(app)/layout.tsx",
+    "frontend/src/components/ui/attendance-tones.test.tsx",
+    "frontend/src/components/ui/attendance-tones.ts",
+    "frontend/src/components/ui/estado-button.tsx",
+    "frontend/src/components/ui/stat-card.tsx",
+    "frontend/src/lib/api/attendance.ts",
+    "frontend/src/lib/api/schema.d.ts",
+    "openspec/changes/m7-attendance/apply-progress.md",
+    "openspec/changes/m7-attendance/design.md",
+    "openspec/changes/m7-attendance/exploration.md",
+    "openspec/changes/m7-attendance/proposal.md",
+    "openspec/changes/m7-attendance/reviews/chain-bundle.json",
+    "openspec/changes/m7-attendance/reviews/gate-context.json",
+    "openspec/changes/m7-attendance/reviews/receipt.json",
+    "openspec/changes/m7-attendance/reviews/transaction.json",
+    "openspec/changes/m7-attendance/specs/attendance/spec.md",
+    "openspec/changes/m7-attendance/specs/authorization/spec.md",
+    "openspec/changes/m7-attendance/specs/tenancy-isolation/spec.md",
+    "openspec/changes/m7-attendance/tasks.md",
+    "openspec/changes/m7-attendance/verify-report.md"
+  ],
+  "policy_hash": "sha256:34fb63d7f29f8613cd4431382b1057398a4816f8a4c20fc34677fffc80a184f6",
+  "risk_level": "high",
+  "selected_lenses": [
+    "review-risk",
+    "review-resilience",
+    "review-readability",
+    "review-reliability"
+  ],
+  "original_changed_lines": 4305,
+  "correction_budget": 200,
+  "lens_results": [
+    {
+      "lens": "review-risk",
+      "findings": [],
+      "evidence": [
+        "Successor scope after committing verify-report.md and openspec reviews/ artifacts only",
+        "No application code changed in this recovery generation",
+        "Prior remediation 78fd994 already approved draftDirty guard; this delta is docs/review bookkeeping"
+      ],
+      "result_hash": "sha256:2646a10ae913b41a08bd89c4e56248cb29cedef9760c6227da96fc033dfaaea7"
     },
-    "fix_finding_ids": [],
-    "follow_ups": [],
-    "fix_delta_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "evidence_hash": "sha256:0009f06447fd09f1c65c9cf27a4953fa6601121a30475035d326f36e75bce822",
-    "recovery": {
-      "predecessor_lineage_id": "review-2414df28c94fc918",
-      "predecessor_revision": "sha256:5255df6adec72577d6a90cce759bc7001884a028063588a9956d94f340689fe1",
-      "disposition": "scope_changed",
-      "reason": "Remediation commit 78fd994: draftDirty guard + disable controls while saving; remove unused ValidationError import",
-      "actor": "orchestrator",
-      "recovered_at": "2026-08-01T20:00:21.542033Z",
-      "maintainer_authorization": "/tmp/m7-recovery-auth.txt"
+    {
+      "lens": "review-resilience",
+      "findings": [],
+      "evidence": [
+        "Successor scope after committing verify-report.md and openspec reviews/ artifacts only",
+        "No application code changed in this recovery generation",
+        "Prior remediation 78fd994 already approved draftDirty guard; this delta is docs/review bookkeeping"
+      ],
+      "result_hash": "sha256:d0bc4f56498c1f85f83897ad0fbfc9b7688ac89b0c7f309865664dc23042362a"
+    },
+    {
+      "lens": "review-readability",
+      "findings": [],
+      "evidence": [
+        "Successor scope after committing verify-report.md and openspec reviews/ artifacts only",
+        "No application code changed in this recovery generation",
+        "Prior remediation 78fd994 already approved draftDirty guard; this delta is docs/review bookkeeping"
+      ],
+      "result_hash": "sha256:eaca569f4ffe486ab7f845dc0cf7d22f40d84b3e2e9d3970df084f43117810a2"
+    },
+    {
+      "lens": "review-reliability",
+      "findings": [],
+      "evidence": [
+        "Successor scope after committing verify-report.md and openspec reviews/ artifacts only",
+        "No application code changed in this recovery generation",
+        "Prior remediation 78fd994 already approved draftDirty guard; this delta is docs/review bookkeeping"
+      ],
+      "result_hash": "sha256:d59085ea9273b30a5c1a9986202ecff72050ac23cd7e53c113888242f035de3f"
     }
+  ],
+  "findings": [],
+  "classifications": {},
+  "outcomes": {},
+  "fix_finding_ids": [],
+  "follow_ups": [],
+  "fix_delta_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "evidence_hash": "sha256:8c0c96e4405dbc2cdd807706be05ee20e13b4b70847caf8d3423538548af82bb",
+  "recovery": {
+    "predecessor_lineage_id": "review-m7-attendance-remediation-78fd994",
+    "predecessor_revision": "sha256:a18ffef138bdac09177755934dd06538d65a0ad5d07fd26b9ccef43618e53cc1",
+    "disposition": "scope_changed",
+    "reason": "Committed verify-report.md and openspec reviews/ bundle artifacts after sdd-verify",
+    "actor": "orchestrator",
+    "recovered_at": "2026-08-01T20:45:13.638267Z",
+    "maintainer_authorization": "/tmp/m7-recovery-auth2.txt"
   }
 }
