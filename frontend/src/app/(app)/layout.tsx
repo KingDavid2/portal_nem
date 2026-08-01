@@ -4,7 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useActiveWorkspaceId } from "@/lib/workspace/use-active-workspace";
-import { BookOpen, GraduationCap, School, Sparkles, Users } from "lucide-react";
+import {
+  BookOpen,
+  ClipboardCheck,
+  GraduationCap,
+  School,
+  Sparkles,
+  Users,
+} from "lucide-react";
 import { LogoutButton } from "@/components/logout-button";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { NavItem } from "@/components/ui/nav-item";
@@ -25,6 +32,7 @@ const NAV_ITEMS = [
   { href: "/school-years", label: "Ciclos escolares", icon: BookOpen },
   { href: "/groups", label: "Grupos", icon: Users },
   { href: "/students", label: "Alumnos", icon: GraduationCap },
+  { href: "/asistencia", label: "Asistencia", icon: ClipboardCheck },
   { href: "/planeaciones", label: "Planeaciones", icon: BookOpen },
   { href: "/quizzy", label: "Quizzy", icon: Sparkles },
 ] as const;

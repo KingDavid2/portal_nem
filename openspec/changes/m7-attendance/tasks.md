@@ -77,13 +77,13 @@ Satisfies: attendance §Daily Attendance Screen, §No Persisted Row Until Explic
 
 Sequential, depends on D2. Est. ~320–400 lines. PR3 base = `main` (after PR2 merged).
 
-- [ ] D3.1 RED: failing vitest in `frontend/src/app/(app)/asistencia/page.test.tsx` — draft defaults `present`; toggle without Guardar does not call bulk API; Marcar todos presentes client-only; Guardar sends full roster entries; stat cards match draft; Periodo absent/disabled; Exportar absent; group from `SchoolTeachingContext` + local date `YYYY-MM-DD`.
-- [ ] D3.2 RED: failing component tests for P/A/R/J tone tokens on `EstadoButton`/`StatCard` — Presente `#72E128`, Ausente `#FF4D49`, Retardo `#FDB528`, Justificado `#26C6F9`.
-- [ ] D3.3 GREEN: extend `frontend/src/components/ui/estado-button.tsx` and `stat-card.tsx` with attendance tone variants per `LXprh`.
-- [ ] D3.4 GREEN: create `frontend/src/lib/api/attendance.ts` — typed hooks for roster GET and bulk PUT from generated schema.
-- [ ] D3.5 GREEN: create `frontend/src/app/(app)/asistencia/page.tsx` — header + Guardar asistencia, Grupo/Fecha filters, four StatCards, DataTable (#, alumno, CURP, P/A/R/J `EstadoButton`, observación), range footer; full roster client-side (no pagination).
-- [ ] D3.6 GREEN: add nav entry in `frontend/src/app/(app)/layout.tsx` — `ClipboardCheck` → `/asistencia`.
-- [ ] D3.7 Verify: `npm run test -- --run src/app/\(app\)/asistencia/` green; manual smoke on `/asistencia` Guardar + reload. Commit `[M7] add asistencia page and attendance hooks`.
+- [x] D3.1 RED: failing vitest in `frontend/src/app/(app)/asistencia/page.test.tsx` — draft defaults `present`; toggle without Guardar does not call bulk API; Marcar todos presentes client-only; Guardar sends full roster entries; stat cards match draft; Periodo absent/disabled; Exportar absent; group from `SchoolTeachingContext` + local date `YYYY-MM-DD`.
+- [x] D3.2 RED: failing component tests for P/A/R/J tone tokens on `EstadoButton`/`StatCard` — Presente `#72E128`, Ausente `#FF4D49`, Retardo `#FDB528`, Justificado `#26C6F9`.
+- [x] D3.3 GREEN: extend `frontend/src/components/ui/estado-button.tsx` and `stat-card.tsx` with attendance tone variants per `LXprh`.
+- [x] D3.4 GREEN: create `frontend/src/lib/api/attendance.ts` — typed hooks for roster GET and bulk PUT from generated schema.
+- [x] D3.5 GREEN: create `frontend/src/app/(app)/asistencia/page.tsx` — header + Guardar asistencia, Grupo/Fecha filters, four StatCards, DataTable (#, alumno, CURP, P/A/R/J `EstadoButton`, observación), range footer; full roster client-side (no pagination).
+- [x] D3.6 GREEN: add nav entry in `frontend/src/app/(app)/layout.tsx` — `ClipboardCheck` → `/asistencia`.
+- [x] D3.7 Verify: `npm run test -- --run src/app/\(app\)/asistencia/` green; manual smoke on `/asistencia` Guardar + reload. Commit `[M7] add asistencia page and attendance hooks`.
 
 ---
 
