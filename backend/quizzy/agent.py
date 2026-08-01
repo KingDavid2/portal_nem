@@ -63,12 +63,24 @@ def _model() -> str:
     return settings.QUIZZY_CURSOR_MODEL
 
 
-def _teaching_context_block(membership) -> str:
+def _teaching_context_block(membership, *, selected_group_id: int | None = None) -> str:
     with workspace_scope(membership.workspace_id):
         payload = teaching_context_payload()
+    if selected_group_id is not None:
+        payload = {
+            **payload,
+            "selected_group_id": selected_group_id,
+        }
+    preference = ""
+    if selected_group_id is not None:
+        preference = (
+            f"El docente eligió el grupo selected_group_id={selected_group_id} "
+            "en la UI. Prefiere ese grupo salvo que nombre otro explícitamente.\n\n"
+        )
     return (
         "Contexto del workspace (fuente de verdad; no inventes otro):\n"
         f"{json.dumps(payload, ensure_ascii=False, cls=DjangoJSONEncoder)}\n\n"
+        f"{preference}"
     )
 
 
@@ -87,21 +99,28 @@ def build_agent_options(*, api_key: str, model: str, membership=None) -> AgentOp
     )
 
 
-def build_first_turn_prompt(*, message: str, membership=None) -> str:
+def build_first_turn_prompt(
+    *, message: str, membership=None, selected_group_id: int | None = None
+) -> str:
     prefix = FIRST_TURN_PREFIX
     if membership is not None:
-        prefix = f"{FIRST_TURN_PREFIX}{_teaching_context_block(membership)}"
+        prefix = (
+            f"{FIRST_TURN_PREFIX}"
+            f"{_teaching_context_block(membership, selected_group_id=selected_group_id)}"
+        )
     return f"{prefix}Pregunta del docente:\n{message}"
 
 
-def build_follow_up_prompt(*, message: str, membership=None) -> str:
+def build_follow_up_prompt(
+    *, message: str, membership=None, selected_group_id: int | None = None
+) -> str:
     """Resume turns still get live context so the model cannot reuse invented state."""
     if membership is None:
         return message
     return (
-        f"{_teaching_context_block(membership)}"
+        f"{_teaching_context_block(membership, selected_group_id=selected_group_id)}"
         "Recuerda: solo confirma altas si create_student devolvió ok=true. "
-        "Si hay varios grupos, pregunta cuál.\n\n"
+        "Si hay varios grupos y no hay selected_group_id, pregunta cuál.\n\n"
         f"Mensaje del docente:\n{message}"
     )
 
@@ -112,13 +131,22 @@ def run_chat(
     agent_id: str | None,
     api_key: str,
     membership=None,
+    selected_group_id: int | None = None,
 ) -> ChatReply:
     """Create or resume a local Composer agent and return its text reply."""
     model = _model()
     if agent_id:
-        prompt = build_follow_up_prompt(message=message, membership=membership)
+        prompt = build_follow_up_prompt(
+            message=message,
+            membership=membership,
+            selected_group_id=selected_group_id,
+        )
     else:
-        prompt = build_first_turn_prompt(message=message, membership=membership)
+        prompt = build_first_turn_prompt(
+            message=message,
+            membership=membership,
+            selected_group_id=selected_group_id,
+        )
 
     options = build_agent_options(
         api_key=api_key, model=model, membership=membership

@@ -83,6 +83,7 @@ def create_conversation_turn(
     message: str,
     api_key: str,
     conversation_id=None,
+    selected_group_id: int | None = None,
 ) -> tuple[Conversation, ChatReply]:
     """Call Composer, then persist the user + assistant turn.
 
@@ -105,6 +106,7 @@ def create_conversation_turn(
         agent_id=agent_id,
         api_key=api_key,
         membership=membership,
+        selected_group_id=selected_group_id,
     )
 
     with transaction.atomic():

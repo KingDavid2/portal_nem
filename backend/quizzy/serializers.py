@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from quizzy.models import Conversation, Message
+from schools.models import Group
 
 
 class QuizzyChatRequestSerializer(serializers.Serializer):
@@ -9,6 +10,7 @@ class QuizzyChatRequestSerializer(serializers.Serializer):
         required=False, allow_null=True, allow_blank=True, max_length=200
     )
     conversation_id = serializers.UUIDField(required=False, allow_null=True)
+    group_id = serializers.IntegerField(required=False, allow_null=True)
 
     def validate_message(self, value: str) -> str:
         cleaned = value.strip()
@@ -21,6 +23,16 @@ class QuizzyChatRequestSerializer(serializers.Serializer):
             return None
         cleaned = value.strip()
         return cleaned or None
+
+    def validate_group_id(self, value: int | None) -> int | None:
+        if value is None:
+            return None
+        # ScopedManager limits to the active workspace on data requests.
+        if not Group.objects.filter(pk=value).exists():
+            raise serializers.ValidationError(
+                "group_id must belong to the active workspace."
+            )
+        return value
 
 
 class QuizzyChatResponseSerializer(serializers.Serializer):

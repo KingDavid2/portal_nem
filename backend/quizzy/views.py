@@ -68,6 +68,7 @@ class QuizzyChatView(APIView):
                 message=message,
                 api_key=api_key,
                 conversation_id=serializer.validated_data.get("conversation_id"),
+                selected_group_id=serializer.validated_data.get("group_id"),
             )
         except QuizzyAgentError as exc:
             return Response(

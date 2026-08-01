@@ -104,7 +104,51 @@ def test_chat_returns_composer_reply_and_persists(mock_run, membership, client_f
         agent_id=None,
         api_key="test-key",
         membership=membership,
+        selected_group_id=None,
     )
+
+
+@override_settings(CURSOR_API_KEY="test-key", QUIZZY_CURSOR_MODEL="composer-2.5")
+@patch("quizzy.services.run_chat")
+def test_chat_passes_group_id_to_run_chat(mock_run, membership, client_for):
+    from schools.models import Group, School, SchoolYear
+
+    mock_run.return_value = ChatReply(
+        reply="ok",
+        agent_id="agent-g",
+        model="composer-2.5",
+    )
+    with workspace_scope(membership.workspace_id):
+        school = School.objects.create(
+            workspace=membership.workspace,
+            name="E",
+            level=School.Level.SECUNDARIA,
+        )
+        year = SchoolYear.objects.create(
+            workspace=membership.workspace, school=school, label="2025-2026"
+        )
+        group = Group.objects.create(
+            workspace=membership.workspace, school_year=year, grado=1, grupo="A"
+        )
+
+    response = client_for(membership).post(
+        CHAT_URL,
+        {"message": "hola", "group_id": group.pk},
+        format="json",
+    )
+    assert response.status_code == 200
+    assert mock_run.call_args.kwargs["selected_group_id"] == group.pk
+
+
+@override_settings(CURSOR_API_KEY="test-key")
+def test_chat_rejects_foreign_group_id(membership, client_for):
+    response = client_for(membership).post(
+        CHAT_URL,
+        {"message": "hola", "group_id": 999999},
+        format="json",
+    )
+    assert response.status_code == 400
+    assert "group_id" in response.data
 
 
 @override_settings(CURSOR_API_KEY="test-key")
@@ -138,6 +182,7 @@ def test_chat_follow_up_uses_stored_agent_id(mock_run, membership, client_for):
         agent_id="agent-abc",
         api_key="test-key",
         membership=membership,
+        selected_group_id=None,
     )
     assert conversation.messages.count() == 2
 

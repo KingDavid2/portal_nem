@@ -232,3 +232,32 @@ def test_first_turn_prompt_injects_last_cycle_context():
     follow = build_follow_up_prompt(message="¿ya está?", membership=membership)
     assert "2025-2026" in follow
     assert "create_student" in follow
+
+
+@pytest.mark.django_db(transaction=True)
+def test_first_turn_prompt_prefers_selected_group_id():
+    from schools.models import Group, School, SchoolYear
+
+    workspace = Workspace.objects.create(type=Workspace.Type.PERSONAL)
+    user = User.objects.create_user(email="sel@example.com", password="x")
+    membership = Membership.objects.create(
+        user=user, workspace=workspace, role=Membership.Role.OWNER
+    )
+    school = School.objects.create(
+        workspace=workspace, name="E", level=School.Level.SECUNDARIA
+    )
+    year = SchoolYear.objects.create(
+        workspace=workspace, school=school, label="2025-2026"
+    )
+    group_a = Group.objects.create(
+        workspace=workspace, school_year=year, grado=1, grupo="A"
+    )
+    Group.objects.create(workspace=workspace, school_year=year, grado=1, grupo="B")
+
+    prompt = build_first_turn_prompt(
+        message="Lista alumnos",
+        membership=membership,
+        selected_group_id=group_a.pk,
+    )
+    assert f"selected_group_id={group_a.pk}" in prompt
+    assert '"selected_group_id"' in prompt
