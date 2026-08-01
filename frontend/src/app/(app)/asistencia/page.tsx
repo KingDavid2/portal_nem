@@ -46,15 +46,23 @@ export default function AsistenciaPage() {
   const { groupId, setGroupId, visibleGroups } = useSchoolTeachingContext();
   const [date, setDate] = useState(localTodayISO);
   const [draft, setDraft] = useState<Map<number, DraftEntry>>(new Map());
+  const [draftDirty, setDraftDirty] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const rosterQuery = useAttendanceRosterQuery(groupId, date);
   const bulkMutation = useAttendanceBulkMutation();
+  const saving = bulkMutation.isPending;
 
+  // Reset dirty when the teacher changes group/date context.
   useEffect(() => {
-    if (!rosterQuery.isSuccess) return;
+    setDraftDirty(false);
+  }, [groupId, date]);
+
+  // Hydrate draft from server only while clean — never clobber unsaved edits on refetch.
+  useEffect(() => {
+    if (!rosterQuery.isSuccess || draftDirty) return;
     setDraft(rosterToDraft(rosterQuery.data ?? []));
-  }, [rosterQuery.data, rosterQuery.isSuccess, groupId, date]);
+  }, [rosterQuery.data, rosterQuery.isSuccess, draftDirty]);
 
   const rows = useMemo<DraftRow[]>(() => {
     const roster = rosterQuery.data ?? [];
@@ -75,6 +83,8 @@ export default function AsistenciaPage() {
     studentId: number,
     patch: Partial<DraftEntry>,
   ) {
+    if (saving) return;
+    setDraftDirty(true);
     setDraft((prev) => {
       const next = new Map(prev);
       const current = next.get(studentId) ?? { status: "present" as AttendanceStatus, notes: "" };
@@ -84,6 +94,8 @@ export default function AsistenciaPage() {
   }
 
   function markAllPresent() {
+    if (saving) return;
+    setDraftDirty(true);
     setDraft((prev) => {
       const next = new Map(prev);
       for (const studentId of next.keys()) {
@@ -95,7 +107,7 @@ export default function AsistenciaPage() {
   }
 
   function handleSave() {
-    if (groupId === null) return;
+    if (groupId === null || saving) return;
     setSaveError(null);
     bulkMutation.mutate(
       {
@@ -107,7 +119,10 @@ export default function AsistenciaPage() {
           notes: row.notes,
         })),
       },
-      { onError: (error) => setSaveError(error.message) },
+      {
+        onSuccess: () => setDraftDirty(false),
+        onError: (error) => setSaveError(error.message),
+      },
     );
   }
 
@@ -144,6 +159,7 @@ export default function AsistenciaPage() {
                 }
                 attendanceTone={tone}
                 selected={row.original.status === status}
+                disabled={saving}
                 onClick={() => updateStudent(row.original.student, { status })}
               >
                 {label}
@@ -159,6 +175,7 @@ export default function AsistenciaPage() {
             aria-label="Observación"
             className="w-full rounded-md border border-input bg-background px-2 py-1 text-sm"
             value={row.original.notes}
+            disabled={saving}
             onChange={(event) =>
               updateStudent(row.original.student, { notes: event.target.value })
             }
@@ -166,8 +183,7 @@ export default function AsistenciaPage() {
         ),
       },
     ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [rows],
+    [rows, saving],
   );
 
   const groupOptions = visibleGroups.map((group) => ({
@@ -184,7 +200,7 @@ export default function AsistenciaPage() {
         </div>
         <Button
           onClick={handleSave}
-          disabled={groupId === null || bulkMutation.isPending || rows.length === 0}
+          disabled={groupId === null || saving || rows.length === 0}
         >
           Guardar asistencia
         </Button>
@@ -194,6 +210,7 @@ export default function AsistenciaPage() {
         <FormField label="Grupo">
           <Select
             value={groupId ?? ""}
+            disabled={saving}
             onChange={(event) =>
               setGroupId(event.target.value ? Number(event.target.value) : null)
             }
@@ -211,11 +228,12 @@ export default function AsistenciaPage() {
             type="date"
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             value={date}
+            disabled={saving}
             onChange={(event) => setDate(event.target.value)}
           />
         </FormField>
         <div className="flex items-end">
-          <Button type="button" variant="outline" onClick={markAllPresent}>
+          <Button type="button" variant="outline" disabled={saving} onClick={markAllPresent}>
             Marcar todos presentes
           </Button>
         </div>
