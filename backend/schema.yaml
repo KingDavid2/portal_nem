@@ -4,6 +4,63 @@ info:
   version: 0.1.0
   description: Administrative school platform for Mexico (NEM).
 paths:
+  /api/attendance/bulk/:
+    put:
+      operationId: attendance_bulk_update
+      description: PUT /api/attendance/bulk/ — atomic upsert for one group+date.
+      tags:
+      - attendance
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttendanceBulkRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AttendanceBulkRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AttendanceBulkRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttendanceBulkResponse'
+          description: ''
+  /api/attendance/roster/:
+    get:
+      operationId: attendance_roster_list
+      description: GET /api/attendance/roster/ — full group roster merged with saved
+        rows.
+      parameters:
+      - in: query
+        name: date
+        schema:
+          type: string
+          format: date
+        required: true
+      - in: query
+        name: group
+        schema:
+          type: integer
+        required: true
+      tags:
+      - attendance
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AttendanceRosterEntry'
+          description: ''
   /api/auth/csrf/:
     get:
       operationId: auth_csrf_retrieve
@@ -501,6 +558,121 @@ paths:
               schema:
                 $ref: '#/components/schemas/GenerationQuota'
           description: ''
+  /api/quizzy/chat/:
+    post:
+      operationId: quizzy_chat_create
+      description: POST /api/quizzy/chat/ — Composer turn + persist conversation.
+      tags:
+      - quizzy
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuizzyChatRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/QuizzyChatRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/QuizzyChatRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuizzyChatResponse'
+          description: ''
+  /api/quizzy/conversations/:
+    get:
+      operationId: quizzy_conversations_list
+      description: GET /api/quizzy/conversations/ — owner's threads in active workspace.
+      tags:
+      - quizzy
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ConversationList'
+          description: ''
+  /api/quizzy/conversations/{conversation_id}/:
+    get:
+      operationId: quizzy_conversations_retrieve
+      description: GET/PATCH/DELETE /api/quizzy/conversations/<id>/.
+      parameters:
+      - in: path
+        name: conversation_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - quizzy
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationDetail'
+          description: ''
+    patch:
+      operationId: quizzy_conversations_partial_update
+      description: GET/PATCH/DELETE /api/quizzy/conversations/<id>/.
+      parameters:
+      - in: path
+        name: conversation_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - quizzy
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedConversationRename'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedConversationRename'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedConversationRename'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationList'
+          description: ''
+    delete:
+      operationId: quizzy_conversations_destroy
+      description: GET/PATCH/DELETE /api/quizzy/conversations/<id>/.
+      parameters:
+      - in: path
+        name: conversation_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - quizzy
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/school-years/:
     get:
       operationId: school_years_list
@@ -942,6 +1114,65 @@ paths:
           description: ''
 components:
   schemas:
+    AttendanceBulkEntry:
+      type: object
+      properties:
+        student:
+          type: integer
+        status:
+          $ref: '#/components/schemas/Status148Enum'
+        notes:
+          type: string
+          default: ''
+          maxLength: 500
+      required:
+      - status
+      - student
+    AttendanceBulkRequest:
+      type: object
+      properties:
+        group:
+          type: integer
+        date:
+          type: string
+          format: date
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttendanceBulkEntry'
+      required:
+      - date
+      - entries
+      - group
+    AttendanceBulkResponse:
+      type: object
+      properties:
+        saved:
+          type: integer
+      required:
+      - saved
+    AttendanceRosterEntry:
+      type: object
+      properties:
+        student:
+          type: integer
+        first_name:
+          type: string
+        last_name_paternal:
+          type: string
+        curp:
+          type: string
+        status:
+          $ref: '#/components/schemas/Status148Enum'
+        notes:
+          type: string
+      required:
+      - curp
+      - first_name
+      - last_name_paternal
+      - notes
+      - status
+      - student
     CatalogContent:
       type: object
       description: An official content with its verified learning processes.
@@ -1095,6 +1326,66 @@ components:
       required:
       - content_id
       - pda_ids
+    ConversationDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        agent_id:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Message'
+          readOnly: true
+      required:
+      - agent_id
+      - created_at
+      - id
+      - messages
+      - title
+      - updated_at
+    ConversationList:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        agent_id:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - agent_id
+      - created_at
+      - id
+      - title
+      - updated_at
     DemoSession:
       type: object
       description: |-
@@ -1112,7 +1403,7 @@ components:
           readOnly: true
         status:
           allOf:
-          - $ref: '#/components/schemas/StatusEnum'
+          - $ref: '#/components/schemas/Status95aEnum'
           readOnly: true
         workspace:
           type: string
@@ -1266,7 +1557,7 @@ components:
           nullable: true
         status:
           allOf:
-          - $ref: '#/components/schemas/StatusEnum'
+          - $ref: '#/components/schemas/Status95aEnum'
           readOnly: true
         failure_reason:
           type: string
@@ -1483,12 +1774,59 @@ components:
         type:
           type: string
         role:
-          $ref: '#/components/schemas/RoleEnum'
+          $ref: '#/components/schemas/MembershipListRoleEnum'
       required:
       - id
       - name
       - role
       - type
+    MembershipListRoleEnum:
+      enum:
+      - owner
+      - admin
+      - member
+      type: string
+      description: |-
+        * `owner` - Owner
+        * `admin` - Admin
+        * `member` - Member
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        role:
+          allOf:
+          - $ref: '#/components/schemas/MessageRoleEnum'
+          readOnly: true
+        content:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - content
+      - created_at
+      - id
+      - role
+    MessageRoleEnum:
+      enum:
+      - user
+      - assistant
+      type: string
+      description: |-
+        * `user` - User
+        * `assistant` - Assistant
+    PatchedConversationRename:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 80
     PatchedGroup:
       type: object
       properties:
@@ -1593,21 +1931,49 @@ components:
       - teacher_minimal
       - teacher_full
       - quota_exhausted
+      - showcase
       type: string
       description: |-
         * `teacher_minimal` - teacher_minimal
         * `teacher_full` - teacher_full
         * `quota_exhausted` - quota_exhausted
-    RoleEnum:
-      enum:
-      - owner
-      - admin
-      - member
-      type: string
-      description: |-
-        * `owner` - Owner
-        * `admin` - Admin
-        * `member` - Member
+        * `showcase` - showcase
+    QuizzyChatRequest:
+      type: object
+      properties:
+        message:
+          type: string
+          maxLength: 8000
+        agent_id:
+          type: string
+          nullable: true
+          maxLength: 200
+        conversation_id:
+          type: string
+          format: uuid
+          nullable: true
+        group_id:
+          type: integer
+          nullable: true
+      required:
+      - message
+    QuizzyChatResponse:
+      type: object
+      properties:
+        reply:
+          type: string
+        agent_id:
+          type: string
+        model:
+          type: string
+        conversation_id:
+          type: string
+          format: uuid
+      required:
+      - agent_id
+      - conversation_id
+      - model
+      - reply
     ScenarioEnum:
       enum:
       - classroom
@@ -1661,7 +2027,19 @@ components:
       - label
       - school
       - workspace
-    StatusEnum:
+    Status148Enum:
+      enum:
+      - present
+      - absent
+      - late
+      - excused
+      type: string
+      description: |-
+        * `present` - Present
+        * `absent` - Absent
+        * `late` - Late
+        * `excused` - Excused
+    Status95aEnum:
       enum:
       - pending
       - ready

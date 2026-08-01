@@ -4,6 +4,40 @@
  */
 
 export interface paths {
+    "/api/attendance/bulk/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** @description PUT /api/attendance/bulk/ — atomic upsert for one group+date. */
+        put: operations["attendance_bulk_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/attendance/roster/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /api/attendance/roster/ — full group roster merged with saved rows. */
+        get: operations["attendance_roster_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/csrf/": {
         parameters: {
             query?: never;
@@ -311,6 +345,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/quizzy/chat/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST /api/quizzy/chat/ — Composer turn + persist conversation. */
+        post: operations["quizzy_chat_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quizzy/conversations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /api/quizzy/conversations/ — owner's threads in active workspace. */
+        get: operations["quizzy_conversations_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quizzy/conversations/{conversation_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET/PATCH/DELETE /api/quizzy/conversations/<id>/. */
+        get: operations["quizzy_conversations_retrieve"];
+        put?: never;
+        post?: never;
+        /** @description GET/PATCH/DELETE /api/quizzy/conversations/<id>/. */
+        delete: operations["quizzy_conversations_destroy"];
+        options?: never;
+        head?: never;
+        /** @description GET/PATCH/DELETE /api/quizzy/conversations/<id>/. */
+        patch: operations["quizzy_conversations_partial_update"];
+        trace?: never;
+    };
     "/api/school-years/": {
         parameters: {
             query?: never;
@@ -427,6 +514,29 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AttendanceBulkEntry: {
+            student: number;
+            status: components["schemas"]["Status148Enum"];
+            /** @default  */
+            notes: string;
+        };
+        AttendanceBulkRequest: {
+            group: number;
+            /** Format: date */
+            date: string;
+            entries: components["schemas"]["AttendanceBulkEntry"][];
+        };
+        AttendanceBulkResponse: {
+            saved: number;
+        };
+        AttendanceRosterEntry: {
+            student: number;
+            first_name: string;
+            last_name_paternal: string;
+            curp: string;
+            status: components["schemas"]["Status148Enum"];
+            notes: string;
+        };
         /** @description An official content with its verified learning processes. */
         CatalogContent: {
             readonly id: string;
@@ -483,6 +593,27 @@ export interface components {
             content_id: string;
             pda_ids: string[];
         };
+        ConversationDetail: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly title: string;
+            readonly agent_id: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            readonly messages: components["schemas"]["Message"][];
+        };
+        ConversationList: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly title: string;
+            readonly agent_id: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
         /**
          * @description The provisioning receipt as the polling client sees it.
          *
@@ -493,7 +624,7 @@ export interface components {
             /** Format: uuid */
             readonly id: string;
             readonly persona: string;
-            readonly status: components["schemas"]["StatusEnum"];
+            readonly status: components["schemas"]["Status95aEnum"];
             /** Format: uuid */
             readonly workspace: string | null;
             readonly email: string | null;
@@ -553,7 +684,7 @@ export interface components {
             readonly content_selections: components["schemas"]["ContentSelection"][];
             readonly title: string;
             readonly proyecto: unknown;
-            readonly status: components["schemas"]["StatusEnum"];
+            readonly status: components["schemas"]["Status95aEnum"];
             readonly failure_reason: string;
             readonly provider: string;
             readonly model_name: string;
@@ -629,7 +760,31 @@ export interface components {
             id: string;
             name: string;
             type: string;
-            role: components["schemas"]["RoleEnum"];
+            role: components["schemas"]["MembershipListRoleEnum"];
+        };
+        /**
+         * @description * `owner` - Owner
+         *     * `admin` - Admin
+         *     * `member` - Member
+         * @enum {string}
+         */
+        MembershipListRoleEnum: "owner" | "admin" | "member";
+        Message: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly role: components["schemas"]["MessageRoleEnum"];
+            readonly content: string;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /**
+         * @description * `user` - User
+         *     * `assistant` - Assistant
+         * @enum {string}
+         */
+        MessageRoleEnum: "user" | "assistant";
+        PatchedConversationRename: {
+            title?: string;
         };
         PatchedGroup: {
             readonly id?: number;
@@ -675,16 +830,24 @@ export interface components {
          * @description * `teacher_minimal` - teacher_minimal
          *     * `teacher_full` - teacher_full
          *     * `quota_exhausted` - quota_exhausted
+         *     * `showcase` - showcase
          * @enum {string}
          */
-        PersonaEnum: "teacher_minimal" | "teacher_full" | "quota_exhausted";
-        /**
-         * @description * `owner` - Owner
-         *     * `admin` - Admin
-         *     * `member` - Member
-         * @enum {string}
-         */
-        RoleEnum: "owner" | "admin" | "member";
+        PersonaEnum: "teacher_minimal" | "teacher_full" | "quota_exhausted" | "showcase";
+        QuizzyChatRequest: {
+            message: string;
+            agent_id?: string | null;
+            /** Format: uuid */
+            conversation_id?: string | null;
+            group_id?: number | null;
+        };
+        QuizzyChatResponse: {
+            reply: string;
+            agent_id: string;
+            model: string;
+            /** Format: uuid */
+            conversation_id: string;
+        };
         /**
          * @description * `classroom` - Classroom
          *     * `school` - School
@@ -708,12 +871,20 @@ export interface components {
             readonly workspace: string;
         };
         /**
+         * @description * `present` - Present
+         *     * `absent` - Absent
+         *     * `late` - Late
+         *     * `excused` - Excused
+         * @enum {string}
+         */
+        Status148Enum: "present" | "absent" | "late" | "excused";
+        /**
          * @description * `pending` - Pending
          *     * `ready` - Ready
          *     * `failed` - Failed
          * @enum {string}
          */
-        StatusEnum: "pending" | "ready" | "failed";
+        Status95aEnum: "pending" | "ready" | "failed";
         Student: {
             readonly id: number;
             group: number;
@@ -738,6 +909,53 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    attendance_bulk_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AttendanceBulkRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["AttendanceBulkRequest"];
+                "multipart/form-data": components["schemas"]["AttendanceBulkRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendanceBulkResponse"];
+                };
+            };
+        };
+    };
+    attendance_roster_list: {
+        parameters: {
+            query: {
+                date: string;
+                group: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendanceRosterEntry"][];
+                };
+            };
+        };
+    };
     auth_csrf_retrieve: {
         parameters: {
             query?: never;
@@ -1225,6 +1443,118 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GenerationQuota"];
+                };
+            };
+        };
+    };
+    quizzy_chat_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuizzyChatRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["QuizzyChatRequest"];
+                "multipart/form-data": components["schemas"]["QuizzyChatRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizzyChatResponse"];
+                };
+            };
+        };
+    };
+    quizzy_conversations_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationList"][];
+                };
+            };
+        };
+    };
+    quizzy_conversations_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationDetail"];
+                };
+            };
+        };
+    };
+    quizzy_conversations_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    quizzy_conversations_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedConversationRename"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedConversationRename"];
+                "multipart/form-data": components["schemas"]["PatchedConversationRename"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationList"];
                 };
             };
         };

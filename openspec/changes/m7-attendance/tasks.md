@@ -61,13 +61,13 @@ Satisfies: attendance §Roster Read Endpoint, §Bulk Upsert Endpoint, §Status E
 
 Sequential, depends on D1. Est. ~280–360 lines. PR2 base = `main` (after PR1 merged).
 
-- [ ] D2.1 RED: failing HTTP tests in `backend/attendance/tests/test_api.py` — `GET /api/attendance/roster/?group=&date=` (mixed saved/unsaved, empty group, cross-workspace isolation, missing params 400); `PUT /api/attendance/bulk/` (atomic N rows, wrong-group 400 no partial write, invalid status `tardy`, notes >500); `X-Workspace-Id` required.
-- [ ] D2.2 RED: failing capability tests in `backend/attendance/tests/test_api.py` (or extend `backend/workspaces/tests/test_permissions.py`) — view `action=roster` maps to `view_workspace`; `action=bulk` maps to `edit_content`; membership without `edit_content` gets 403 on bulk before any write.
-- [ ] D2.3 GREEN: `backend/attendance/serializers.py` — roster query/response, bulk request/response; `@extend_schema` on views.
-- [ ] D2.4 GREEN: `backend/attendance/views.py` — `AttendanceRosterView` (GET, `capability_map={"get":"view_workspace"}`, `action="roster"`), `AttendanceBulkView` (PUT, `capability_map={"put":"edit_content"}`, `action="bulk"`) mirroring `quizzy/views.py` APIView pattern; delegate to services.
-- [ ] D2.5 GREEN: `backend/attendance/urls.py` + wire `path("api/attendance/", include(...))` in `backend/config/urls.py`.
-- [ ] D2.6 GREEN: regenerate `backend/schema.yaml` (`npm run gen:schema` from frontend) + `npm run gen:api` → update `frontend/src/lib/api/schema.d.ts`.
-- [ ] D2.7 Verify: `uv run pytest backend/attendance/` green; schema drift workflow inputs clean. Commit `[M7] add attendance roster and bulk API`.
+- [x] D2.1 RED: failing HTTP tests in `backend/attendance/tests/test_api.py` — `GET /api/attendance/roster/?group=&date=` (mixed saved/unsaved, empty group, cross-workspace isolation, missing params 400); `PUT /api/attendance/bulk/` (atomic N rows, wrong-group 400 no partial write, invalid status `tardy`, notes >500); `X-Workspace-Id` required.
+- [x] D2.2 RED: failing capability tests in `backend/attendance/tests/test_api.py` (or extend `backend/workspaces/tests/test_permissions.py`) — view `action=roster` maps to `view_workspace`; `action=bulk` maps to `edit_content`; membership without `edit_content` gets 403 on bulk before any write.
+- [x] D2.3 GREEN: `backend/attendance/serializers.py` — roster query/response, bulk request/response; `@extend_schema` on views.
+- [x] D2.4 GREEN: `backend/attendance/views.py` — `AttendanceRosterView` (GET, `capability_map={"roster":"view_workspace"}`, `action="roster"`), `AttendanceBulkView` (PUT, `capability_map={"bulk":"edit_content"}`, `action="bulk"`) mirroring `quizzy/views.py` APIView pattern; delegate to services.
+- [x] D2.5 GREEN: `backend/attendance/urls.py` + wire `path("api/attendance/", include(...))` in `backend/config/urls.py`.
+- [x] D2.6 GREEN: regenerate `backend/schema.yaml` (`npm run gen:schema` from frontend) + `npm run gen:api` → update `frontend/src/lib/api/schema.d.ts`.
+- [x] D2.7 Verify: `uv run pytest backend/attendance/` green; schema drift workflow inputs clean. Commit `[M7] add attendance roster and bulk API`.
 
 ---
 
