@@ -1,7 +1,8 @@
 # Spec: mcp-tool-surface
 
-Read-only MCP tool surface over the scoped API: transport-agnostic sync
-registry, five tools, stdio and flag-gated Streamable-HTTP transports.
+MCP tool surface over the scoped API: transport-agnostic sync registry,
+read tools plus school-structure CRUD, stdio and flag-gated Streamable-HTTP
+transports. Update/delete tools require an explicit confirmation gate.
 
 ## Requirements
 
@@ -46,24 +47,77 @@ raw `KeyError`, an `AttributeError`, or an unhandled traceback.
 - THEN the dispatcher MUST raise a typed unknown-tool error carrying the offending name
 - AND the caller MUST NOT observe a `KeyError` or an unhandled traceback
 
-### Requirement: MCP Surface Is Read-Only in v1
+### Requirement: School-Structure Tools and Read Tools Are Registered
 
-The MCP tool surface MUST expose exactly five tools, all read-only:
-`list_groups`, `list_lesson_plans`, `get_lesson_plan`, `get_quota`, and
-`search_catalog`. No registered tool MAY create, update, or delete any row.
-Mutation tools are out of scope for this change.
+The MCP tool surface MUST register the original read tools
+(`list_groups`, `list_lesson_plans`, `get_lesson_plan`, `get_quota`,
+`search_catalog`) plus teaching-context and school-structure tools:
 
-#### Scenario: Exactly the five read-only tools are registered
+| Tool | Capability | Mode |
+|---|---|---|
+| `list_groups`, `list_lesson_plans`, `get_lesson_plan`, `get_quota`, `search_catalog` | `view_workspace` | read |
+| `get_teaching_context`, `list_school_years`, `list_students` | `view_workspace` | read |
+| `create_school`, `create_school_year`, `create_group`, `create_student` | `edit_content` | create |
+| `update_school`, `update_school_year`, `update_group`, `update_student` | `edit_content` | update |
+| `delete_school`, `delete_school_year`, `delete_group`, `delete_student` | `edit_content` | delete |
+
+Lesson-plan mutation tools are out of scope for this surface.
+
+#### Scenario: Read and school-structure tools share one registry
 
 - GIVEN the MCP tool registry is loaded
 - WHEN the registered tool names are listed
-- THEN they MUST be exactly `list_groups`, `list_lesson_plans`, `get_lesson_plan`, `get_quota`, and `search_catalog`
+- THEN they MUST include the five original read tools and the school-structure CRUD tools above
+- AND create tools MUST map to `edit_content`
+- AND read tools MUST map to `view_workspace`
 
-#### Scenario: No tool performs a write
+### Requirement: Update and Delete Require Confirmation
 
-- GIVEN any tool in the registry
-- WHEN the tool is invoked with valid arguments
-- THEN it MUST NOT create, update, or delete any database row
+Every update and delete tool MUST accept a boolean `confirm` argument. When
+`confirm` is absent or not strictly `true`, the tool MUST return a
+`needs_confirmation` payload carrying `status`, `action`, and `preview`, and
+MUST NOT create, update, or delete any database row. When `confirm` is `true`,
+the tool MUST perform the mutation via the existing school/student service layer
+and return the HTTP serializer shape for the affected resource (or a deleted
+acknowledgement for deletes).
+
+Create tools MUST NOT require `confirm`.
+
+#### Scenario: Delete without confirm does not write
+
+- GIVEN an authenticated caller with `edit_content`
+- WHEN `delete_student` is invoked without `confirm: true`
+- THEN the response MUST have `status` equal to `needs_confirmation`
+- AND the student row MUST still exist
+
+#### Scenario: Delete with confirm removes the row
+
+- GIVEN an authenticated caller with `edit_content`
+- WHEN `delete_student` is invoked with `confirm: true` for an existing student
+- THEN the student row MUST be deleted
+- AND the response MUST acknowledge the deletion
+
+### Requirement: Teaching Context Defaults to Last School Year
+
+The system MUST expose `get_teaching_context`, which resolves the workspace's
+último ciclo escolar as the maximum lexicographic `SchoolYear.label` and lists
+all groups whose school year has that label. When exactly one such group
+exists, `default_group_id` MUST be that group's id; otherwise
+`default_group_id` MUST be null.
+
+#### Scenario: Single group in last cycle yields default_group_id
+
+- GIVEN a workspace whose latest school-year label has exactly one group
+- WHEN `get_teaching_context` is invoked
+- THEN `group_count` MUST be 1
+- AND `default_group_id` MUST equal that group's id
+
+#### Scenario: Multiple groups leave default_group_id null
+
+- GIVEN a workspace whose latest school-year label has two or more groups
+- WHEN `get_teaching_context` is invoked
+- THEN `group_count` MUST be greater than 1
+- AND `default_group_id` MUST be null
 
 ### Requirement: Tool Payloads Reuse the Existing HTTP Shapes
 
@@ -76,9 +130,14 @@ surface, rather than defining a second shape for the same concept:
 | `get_quota` | the `GET /api/lesson-plans/quota/` payload (`period`, `used`, `limit`, `remaining`) |
 | `search_catalog` | the frozen-catalog records already exposed by the catalog surface |
 | `list_groups` | the group identity fields the catalog surface already labels a group with |
+| `list_school_years`, school year create/update | `SchoolYearSerializer` |
+| school create/update | `SchoolSerializer` |
+| group create/update | `GroupSerializer` |
+| `list_students`, student create/update | `StudentSerializer` |
 
 A tool MUST NOT introduce a divergent field name or a parallel representation of
-a concept that already has one.
+a concept that already has one (except the confirm-gate envelope, which wraps
+`preview` using those shapes).
 
 #### Scenario: get_lesson_plan returns the serializer shape
 
@@ -168,6 +227,55 @@ missing, malformed, unknown, or revoked bearer token MUST yield 401.
 - WHEN the request invokes `list_groups`
 - THEN the response MUST return workspace A's groups
 
+### Requirement: create_student Defaults to Último Ciclo
+
+`create_student` MUST resolve the target group against the último ciclo escolar
+(max lexicographic `SchoolYear.label`) unless the caller passes an explicit
+`school_year_label`. When `group_id` is omitted and that cycle has exactly one
+group, the tool MUST use that group. When `group_id` points at a group outside
+the resolved cycle, the tool MUST reject the call without writing a row.
+
+#### Scenario: Omit group_id with a single last-cycle group
+
+- GIVEN a workspace whose latest school-year label has exactly one group
+- WHEN `create_student` is invoked with name fields and no `group_id`
+- THEN a student MUST be created in that group
+- AND the response MUST include `school_year_label` equal to the latest label
+
+#### Scenario: group_id from an older cycle is rejected
+
+- GIVEN a workspace with groups in both `2022-2023` and `2025-2026`
+- WHEN `create_student` is invoked with a `group_id` from `2022-2023` and no `school_year_label`
+- THEN the call MUST fail with a tool input error
+- AND no student row MUST be created
+
+### Requirement: Person-Name Create/Update Pause on Orthography Issues
+
+`create_student` and `update_student` MUST check person-name fields for common
+Spanish accent omissions (e.g. `Perez` → `Pérez`, `Martinez` → `Martínez`).
+When issues are found and neither `apply_suggested` nor `keep_as_typed` is
+strictly `true`, the tool MUST return
+`status: needs_orthography_clarification` with `typed`, `suggested`, and
+`issues`, and MUST NOT write a row. When `apply_suggested` is `true`, the tool
+MUST persist the suggested spelling. When `keep_as_typed` is `true`, the tool
+MUST persist the typed spelling unchanged.
+
+#### Scenario: Missing accents pause create_student
+
+- GIVEN a workspace with a creatable group in the last cycle
+- WHEN `create_student` is invoked with `last_name_paternal=Perez` and no
+  orthography flag
+- THEN the response MUST have `status` equal to `needs_orthography_clarification`
+- AND `suggested.last_name_paternal` MUST be `Pérez`
+- AND no student row MUST be created
+
+#### Scenario: apply_suggested writes accented names
+
+- GIVEN the same workspace
+- WHEN `create_student` is invoked with `Perez` / `Martinez` and
+  `apply_suggested=true`
+- THEN a student MUST be created with `Pérez` / `Martínez`
+
 ---
 
-**Source**: Quizzy P4 — MCP server over the scoped API (proposal: `quizzy-p4-mcp-server`)
+**Source**: Quizzy P4 — MCP server over the scoped API (proposal: `quizzy-p4-mcp-server`); Quizzy MCP tenant CRUD

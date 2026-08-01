@@ -18,21 +18,42 @@ User = get_user_model()
 
 
 class TestRegisteredTools:
-    """2a.2: Exactly five names are registered."""
+    """Registered read + school-structure tools share one registry."""
 
-    def test_exactly_five_tools_registered(self):
-        """The registry must expose exactly the five read-only tools."""
+    def test_registry_includes_read_and_school_structure_tools(self):
+        """Capability map and registry stay in sync and include CRUD tools."""
         from mcp_server.registry import _TOOLS, CAPABILITY_MAP
 
-        # Assert the capability map and registry both list exactly five tools.
-        assert set(CAPABILITY_MAP.keys()) == {
+        expected_read = {
             "list_groups",
             "list_lesson_plans",
             "get_lesson_plan",
             "get_quota",
             "search_catalog",
+            "get_teaching_context",
+            "list_school_years",
+            "list_students",
         }
+        expected_write = {
+            "create_school",
+            "create_school_year",
+            "create_group",
+            "create_student",
+            "update_school",
+            "update_school_year",
+            "update_group",
+            "update_student",
+            "delete_school",
+            "delete_school_year",
+            "delete_group",
+            "delete_student",
+        }
+        assert expected_read | expected_write == set(CAPABILITY_MAP.keys())
         assert set(_TOOLS.keys()) == set(CAPABILITY_MAP.keys())
+        for name in expected_read:
+            assert CAPABILITY_MAP[name] == "view_workspace"
+        for name in expected_write:
+            assert CAPABILITY_MAP[name] == "edit_content"
 
 
 class TestUnknownToolError:

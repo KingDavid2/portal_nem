@@ -103,6 +103,7 @@ def test_chat_returns_composer_reply_and_persists(mock_run, membership, client_f
         message="¿Qué es un PDA?",
         agent_id=None,
         api_key="test-key",
+        membership=membership,
     )
 
 
@@ -136,6 +137,7 @@ def test_chat_follow_up_uses_stored_agent_id(mock_run, membership, client_for):
         message="explica más",
         agent_id="agent-abc",
         api_key="test-key",
+        membership=membership,
     )
     assert conversation.messages.count() == 2
 

@@ -1,7 +1,8 @@
-"""Five read-only MCP tool bodies (mcp-tool-surface + design D1–D3).
+"""Read-only MCP tool bodies for lesson plans / catalog / groups.
 
 Each tool enters `workspace_scope(membership.workspace_id)` itself. Payloads
-reuse the existing HTTP serializer shapes.
+reuse the existing HTTP serializer shapes. School-structure CRUD lives in
+``tools_school.py``.
 """
 
 from __future__ import annotations

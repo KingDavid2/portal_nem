@@ -1,18 +1,15 @@
 """`manage.py create_mcp_token` — mint an API token for a given membership.
 
 Prints the raw token exactly once; it cannot be retrieved again.
-No HTTP surface mints tokens in v1 — issuance is command-only.
+No HTTP surface mints tokens — issuance is command-only or Quizzy ephemeral.
 """
 
 from __future__ import annotations
 
-import hashlib
-import secrets
-
 from django.core.management.base import BaseCommand, CommandError
 from workspaces.models import Membership
 
-from mcp_server.models import WorkspaceApiToken
+from mcp_server.tokens import mint_ephemeral_token
 
 
 class Command(BaseCommand):
@@ -40,20 +37,8 @@ class Command(BaseCommand):
         except Membership.DoesNotExist:
             raise CommandError(f"Membership {membership_id} not found.")
 
-        # Generate raw token (256 bits of randomness, hex-encoded = 64 chars)
-        raw_token = secrets.token_hex(32)
+        raw_token, _row = mint_ephemeral_token(membership, name=name)
 
-        # Compute and store only the SHA-256 hash
-        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
-
-        # Create token row (no scope required — plain Model)
-        WorkspaceApiToken.objects.create(
-            membership=membership,
-            name=name,
-            token_hash=token_hash,
-        )
-
-        # Print raw token exactly once with explicit notice
         message = (
             f"Token created:\n"
             f"  Name: {name}\n"

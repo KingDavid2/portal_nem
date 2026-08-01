@@ -1,4 +1,4 @@
-"""stdio MCP transport (mcp-tool-surface — Slice 4).
+"""stdio MCP transport (mcp-tool-surface).
 
 Identity from PORTAL_NEM_MCP_TOKEN → resolve_membership → dispatch_async.
 ToolError subclasses render as isError; ToolNotFoundError keeps its fixed message.
@@ -18,40 +18,9 @@ from mcp.server.stdio import stdio_server
 
 from mcp_server.auth import resolve_membership
 from mcp_server.registry import CAPABILITY_MAP, ToolError, dispatch_async
+from mcp_server.tool_meta import TOOL_DESCRIPTIONS, TOOL_SCHEMAS
 
 TOKEN_ENV = "PORTAL_NEM_MCP_TOKEN"
-
-_TOOL_SCHEMAS: dict[str, dict] = {
-    "list_groups": {"type": "object", "properties": {}, "additionalProperties": False},
-    "list_lesson_plans": {
-        "type": "object",
-        "properties": {},
-        "additionalProperties": False,
-    },
-    "get_lesson_plan": {
-        "type": "object",
-        "properties": {"id": {}},
-        "required": ["id"],
-        "additionalProperties": False,
-    },
-    "get_quota": {"type": "object", "properties": {}, "additionalProperties": False},
-    "search_catalog": {
-        "type": "object",
-        "properties": {
-            "query": {"type": "string", "default": ""},
-            "field": {"type": ["string", "null"], "default": None},
-        },
-        "additionalProperties": False,
-    },
-}
-
-_TOOL_DESCRIPTIONS: dict[str, str] = {
-    "list_groups": "List groups in the authenticated workspace.",
-    "list_lesson_plans": "List lesson plans in the authenticated workspace.",
-    "get_lesson_plan": "Fetch one lesson plan by id (scoped to the workspace).",
-    "get_quota": "Return the workspace generation quota card.",
-    "search_catalog": "Search the frozen curriculum catalog by normalized substring.",
-}
 
 
 def _resolve_identity_from_env_sync():
@@ -111,12 +80,12 @@ async def handle_call_tool(
 
 
 async def handle_list_tools() -> list[types.Tool]:
-    """Advertise the five registered tools from CAPABILITY_MAP."""
+    """Advertise registered tools from CAPABILITY_MAP."""
     return [
         types.Tool(
             name=name,
-            description=_TOOL_DESCRIPTIONS.get(name, name),
-            inputSchema=_TOOL_SCHEMAS.get(
+            description=TOOL_DESCRIPTIONS.get(name, name),
+            inputSchema=TOOL_SCHEMAS.get(
                 name, {"type": "object", "properties": {}, "additionalProperties": True}
             ),
         )

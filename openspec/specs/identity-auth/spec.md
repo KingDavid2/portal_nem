@@ -183,13 +183,20 @@ is no TTL.
 - THEN no workspace-scoped ORM read or write MUST occur
 - AND no tool body MUST be executed
 
-### Requirement: Tokens Are Issued Only by a Management Command
+### Requirement: Tokens Are Issued by Management Command or Server-Side Ephemeral Mint
 
-Token issuance MUST be available only through a `manage.py create_mcp_token`
-command. The system MUST NOT expose a token-minting UI or API endpoint in v1.
-The command MUST print the raw token exactly once, at mint time, and MUST make
-clear it cannot be retrieved again. Any workspace MAY mint a token, including
-demo workspaces.
+Token issuance for operators MUST remain available through a
+`manage.py create_mcp_token` command. The system MUST NOT expose a
+token-minting UI or public HTTP API endpoint. The command MUST print the raw
+token exactly once, at mint time, and MUST make clear it cannot be retrieved
+again. Any workspace MAY mint a token, including demo workspaces.
+
+In addition, the Quizzy chat path MUST be allowed to mint an **ephemeral**
+`WorkspaceApiToken` server-side for the caller's membership so the Composer
+agent can attach the portal MCP server over stdio. The raw value MUST exist
+only in memory for that agent run, MUST NOT be returned to the browser, and
+the row MUST be revoked (non-null `revoked_at`) after the run completes
+(best-effort). The DRF API MUST still not expose a token-mint route.
 
 #### Scenario: Command mints a token and prints the raw value once
 
@@ -210,6 +217,13 @@ demo workspaces.
 - WHEN `manage.py create_mcp_token` is run for it
 - THEN a token MUST be minted and resolve to that membership
 
+#### Scenario: Quizzy ephemeral mint resolves then revokes
+
+- GIVEN an authenticated Quizzy chat membership
+- WHEN the chat path mints an ephemeral MCP token for that membership
+- THEN `resolve_membership` MUST return that membership for the raw token
+- AND after revoke, `resolve_membership` MUST return `None` for the same raw token
+
 ---
 
-**Source**: M2a — Tenancy Foundation Core (proposal: `2026-07-22-m2a-tenancy-core`); M3 — Frontend Foundation (proposal: `m3-frontend-foundation`); Quizzy P4 — MCP server (proposal: `quizzy-p4-mcp-server`)
+**Source**: M2a — Tenancy Foundation Core (proposal: `2026-07-22-m2a-tenancy-core`); M3 — Frontend Foundation (proposal: `m3-frontend-foundation`); Quizzy P4 — MCP server (proposal: `quizzy-p4-mcp-server`); Quizzy MCP tenant CRUD

@@ -265,8 +265,8 @@ def test_search_catalog_empty_workspace_independent_of_rows(
     ).data
 
 
-def test_no_shipped_tool_writes_any_row(membership_factory, group_factory):
-    """3.9 — all five tools create, update, or delete no row."""
+def test_no_shipped_read_tool_writes_any_row(membership_factory, group_factory):
+    """Original read tools create, update, or delete no row."""
     from mcp_server.registry import ToolNotFoundError, dispatch
 
     membership = membership_factory()
@@ -277,6 +277,9 @@ def test_no_shipped_tool_writes_any_row(membership_factory, group_factory):
         ("get_lesson_plan", {"id": plan.pk}),
         ("get_quota", {}),
         ("search_catalog", {"query": "lenguajes"}),
+        ("get_teaching_context", {}),
+        ("list_school_years", {}),
+        ("list_students", {}),
     ):
         with CaptureQueriesContext(connection) as ctx:
             dispatch(name, args, membership)

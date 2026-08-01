@@ -103,8 +103,9 @@ MCP tool dispatch MUST route every authorization decision through
 capability map from tool name to capability — the same discipline
 `WorkspacePermission` already applies to DRF view actions. The tool name MUST
 first be translated through that map; the raw tool name (e.g. `"get_quota"`)
-MUST NOT be passed to `has_permission`. Because the v1 surface is read-only,
-every one of the five tools MUST map to `view_workspace`.
+MUST NOT be passed to `has_permission`. Read tools MUST map to
+`view_workspace`; create/update/delete school-structure tools MUST map to
+`edit_content`.
 
 No tool body, dispatcher, or transport MAY compare `membership.role` against a
 literal string as a substitute for this check.
@@ -127,6 +128,13 @@ denied by the scoped manager and RLS.
 - WHEN that caller invokes each of `list_groups`, `list_lesson_plans`, `get_lesson_plan`, `get_quota`, and `search_catalog`
 - THEN every call MUST be denied
 - AND no tool body MUST execute a scoped read
+
+#### Scenario: Create tool requires edit_content
+
+- GIVEN a `Membership` that lacks `edit_content`
+- WHEN that caller invokes `create_student`
+- THEN the call MUST be denied
+- AND no student row MUST be created
 
 #### Scenario: No tool compares a role string inline
 

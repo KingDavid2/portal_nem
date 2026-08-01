@@ -100,7 +100,12 @@ def create_conversation_turn(
         )
         agent_id = conversation.agent_id or None
 
-    reply = run_chat(message=message, agent_id=agent_id, api_key=api_key)
+    reply = run_chat(
+        message=message,
+        agent_id=agent_id,
+        api_key=api_key,
+        membership=membership,
+    )
 
     with transaction.atomic():
         if conversation is None:

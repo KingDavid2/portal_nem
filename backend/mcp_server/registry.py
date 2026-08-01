@@ -17,15 +17,29 @@ from workspaces.permissions import has_permission
 
 Tool = Callable[..., dict]
 
-# Tool name → capability mapping. Mirrors `lesson_plans/viewsets.py:64` for the
-# same `view_workspace` / `edit_content` discipline: raw action verbs are never
-# fed directly into `has_permission`.
+# Tool name → capability mapping. Mirrors viewset capability maps:
+# reads → view_workspace; school-structure mutations → edit_content.
 CAPABILITY_MAP: dict[str, str] = {
     "list_groups": "view_workspace",
     "list_lesson_plans": "view_workspace",
     "get_lesson_plan": "view_workspace",
     "get_quota": "view_workspace",
     "search_catalog": "view_workspace",
+    "get_teaching_context": "view_workspace",
+    "list_school_years": "view_workspace",
+    "list_students": "view_workspace",
+    "create_school": "edit_content",
+    "create_school_year": "edit_content",
+    "create_group": "edit_content",
+    "create_student": "edit_content",
+    "update_school": "edit_content",
+    "update_school_year": "edit_content",
+    "update_group": "edit_content",
+    "update_student": "edit_content",
+    "delete_school": "edit_content",
+    "delete_school_year": "edit_content",
+    "delete_group": "edit_content",
+    "delete_student": "edit_content",
 }
 
 
@@ -65,7 +79,7 @@ class ToolDenied(ToolError):
 
 
 # ---------------------------------------------------------------------------
-# Tool callables — bodies live in tools.py (Slice 3).
+# Tool callables — bodies live in tools.py / tools_school.py.
 # ---------------------------------------------------------------------------
 
 from mcp_server.tools import (  # noqa: E402
@@ -75,6 +89,23 @@ from mcp_server.tools import (  # noqa: E402
     list_lesson_plans,
     search_catalog,
 )
+from mcp_server.tools_school import (  # noqa: E402
+    create_group,
+    create_school,
+    create_school_year,
+    create_student,
+    delete_group,
+    delete_school,
+    delete_school_year,
+    delete_student,
+    get_teaching_context,
+    list_school_years,
+    list_students,
+    update_group,
+    update_school,
+    update_school_year,
+    update_student,
+)
 
 # Single registry mapping name → tool callable.
 _TOOLS: dict[str, Tool] = {
@@ -83,6 +114,21 @@ _TOOLS: dict[str, Tool] = {
     "get_lesson_plan": get_lesson_plan,
     "get_quota": get_quota,
     "search_catalog": search_catalog,
+    "get_teaching_context": get_teaching_context,
+    "list_school_years": list_school_years,
+    "list_students": list_students,
+    "create_school": create_school,
+    "create_school_year": create_school_year,
+    "create_group": create_group,
+    "create_student": create_student,
+    "update_school": update_school,
+    "update_school_year": update_school_year,
+    "update_group": update_group,
+    "update_student": update_student,
+    "delete_school": delete_school,
+    "delete_school_year": delete_school_year,
+    "delete_group": delete_group,
+    "delete_student": delete_student,
 }
 
 
