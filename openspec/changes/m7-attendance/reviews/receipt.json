@@ -1,0 +1,21 @@
+{
+  "schema": "gentle-ai.review-receipt/v2",
+  "lineage_id": "review-m7-attendance-remediation-78fd994",
+  "generation": 2,
+  "base_tree": "dc34e2b359af3de87ca08931e74dddb4e4733680",
+  "initial_review_tree": "5fc30efc717b96fb7d5ea59701937696d39f281a",
+  "final_candidate_tree": "5fc30efc717b96fb7d5ea59701937696d39f281a",
+  "paths_digest": "sha256:70d28a36702a169363346192616f1376e0ba7a2e0b5d87fee2f66daafdfb283a",
+  "fix_delta_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "policy_hash": "sha256:34fb63d7f29f8613cd4431382b1057398a4816f8a4c20fc34677fffc80a184f6",
+  "evidence_hash": "sha256:0009f06447fd09f1c65c9cf27a4953fa6601121a30475035d326f36e75bce822",
+  "risk_level": "high",
+  "selected_lenses": [
+    "review-risk",
+    "review-resilience",
+    "review-readability",
+    "review-reliability"
+  ],
+  "resolved_finding_ids": null,
+  "terminal_state": "approved"
+}
