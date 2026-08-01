@@ -9,39 +9,35 @@ import {
   useDeleteGroupMutation,
   useGroupsQuery,
   useUpdateGroupMutation,
-  groupsForSchoolYear,
   type Group,
 } from "@/lib/api/groups";
-import { useSchoolsQuery } from "@/lib/api/schools";
-import { schoolYearsForSchool, useSchoolYearsQuery } from "@/lib/api/school-years";
 import { GroupForm } from "./group-form";
 import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
+import { useSchoolTeachingContext } from "@/lib/school-context/school-teaching-context";
 
 /** Group list/create/edit/delete screen, scoped to one selected School →
  * SchoolYear (frontend-foundation spec — "CRUD Screens Cover School
  * Structure Entities", Group). `/api/groups/` returns every group in the
  * workspace, so the picked school-year narrows the list client-side. */
 export default function GroupsPage() {
-  const schoolsQuery = useSchoolsQuery();
-  const schoolYearsQuery = useSchoolYearsQuery();
+  const {
+    schoolId,
+    schoolYearId,
+    setSchoolId,
+    setSchoolYearId,
+    schools,
+    visibleSchoolYears,
+    visibleGroups,
+  } = useSchoolTeachingContext();
   const groupsQuery = useGroupsQuery();
   const createMutation = useCreateGroupMutation();
   const updateMutation = useUpdateGroupMutation();
   const deleteMutation = useDeleteGroupMutation();
 
-  const [selectedSchoolId, setSelectedSchoolId] = useState<number | null>(null);
-  const [selectedSchoolYearId, setSelectedSchoolYearId] = useState<number | null>(null);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [rowError, setRowError] = useState<string | null>(null);
-
-  const schools = schoolsQuery.data ?? [];
-  const visibleSchoolYears = schoolYearsForSchool(
-    schoolYearsQuery.data ?? [],
-    selectedSchoolId,
-  );
-  const visibleGroups = groupsForSchoolYear(groupsQuery.data ?? [], selectedSchoolYearId);
 
   function handleCreate(input: { school_year: number; grado: number; grupo: string }) {
     setFormError(null);
@@ -104,10 +100,9 @@ export default function GroupsPage() {
           <span className="text-muted-foreground">Escuela</span>
           <Select
             className="h-8 w-auto rounded-lg bg-transparent px-2.5"
-            value={selectedSchoolId ?? ""}
+            value={schoolId ?? ""}
             onChange={(event) => {
-              setSelectedSchoolId(event.target.value ? Number(event.target.value) : null);
-              setSelectedSchoolYearId(null);
+              setSchoolId(event.target.value ? Number(event.target.value) : null);
               setEditingGroup(null);
               setFormError(null);
             }}
@@ -125,25 +120,25 @@ export default function GroupsPage() {
           <span className="text-muted-foreground">Ciclo escolar</span>
           <Select
             className="h-8 w-auto rounded-lg bg-transparent px-2.5"
-            value={selectedSchoolYearId ?? ""}
-            disabled={selectedSchoolId === null}
+            value={schoolYearId ?? ""}
+            disabled={schoolId === null}
             onChange={(event) => {
-              setSelectedSchoolYearId(event.target.value ? Number(event.target.value) : null);
+              setSchoolYearId(event.target.value ? Number(event.target.value) : null);
               setEditingGroup(null);
               setFormError(null);
             }}
           >
             <option value="">Selecciona un ciclo escolar…</option>
-            {visibleSchoolYears.map((schoolYear) => (
-              <option key={schoolYear.id} value={schoolYear.id}>
-                {schoolYear.label}
+            {visibleSchoolYears.map((year) => (
+              <option key={year.id} value={year.id}>
+                {year.label}
               </option>
             ))}
           </Select>
         </label>
       </div>
 
-      {selectedSchoolYearId === null ? (
+      {schoolYearId === null ? (
         <p className="text-muted-foreground">
           Selecciona una escuela y un ciclo escolar para ver sus grupos.
         </p>
@@ -151,7 +146,7 @@ export default function GroupsPage() {
         <>
           {editingGroup ? (
             <GroupForm
-              schoolYearId={selectedSchoolYearId}
+              schoolYearId={schoolYearId}
               initial={editingGroup}
               errorMessage={formError}
               isPending={updateMutation.isPending}
@@ -163,7 +158,7 @@ export default function GroupsPage() {
             />
           ) : (
             <GroupForm
-              schoolYearId={selectedSchoolYearId}
+              schoolYearId={schoolYearId}
               errorMessage={formError}
               isPending={createMutation.isPending}
               onSubmit={handleCreate}

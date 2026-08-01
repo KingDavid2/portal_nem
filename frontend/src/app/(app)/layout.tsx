@@ -8,6 +8,7 @@ import { BookOpen, GraduationCap, School, Sparkles, Users } from "lucide-react";
 import { LogoutButton } from "@/components/logout-button";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { NavItem } from "@/components/ui/nav-item";
+import { SchoolTeachingProvider } from "@/lib/school-context/school-teaching-context";
 
 /**
  * Shared shell for the school-structure CRUD screens (frontend-foundation
@@ -72,7 +73,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="mt-auto"><LogoutButton /></div>
         </div>
       </aside>
-      <main className="min-w-0 flex-1 p-8">{children}</main>
+      <main className="min-w-0 flex-1 p-8">
+        <SchoolTeachingProvider>{children}</SchoolTeachingProvider>
+      </main>
     </div>
   );
 }

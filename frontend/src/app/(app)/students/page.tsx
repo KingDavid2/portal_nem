@@ -4,9 +4,6 @@ import { useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
-import { groupsForSchoolYear, useGroupsQuery } from "@/lib/api/groups";
-import { useSchoolsQuery } from "@/lib/api/schools";
-import { schoolYearsForSchool, useSchoolYearsQuery } from "@/lib/api/school-years";
 import {
   studentsForGroup,
   useCreateStudentMutation,
@@ -18,6 +15,7 @@ import {
 import { StudentForm } from "./student-form";
 import { SchoolContextFilters } from "@/components/school-context-filters";
 import { Avatar } from "@/components/ui/avatar";
+import { useSchoolTeachingContext } from "@/lib/school-context/school-teaching-context";
 
 /** Student list/create/edit/delete screen, scoped to one selected School →
  * SchoolYear → Group (frontend-foundation spec — "CRUD Screens Cover School
@@ -26,28 +24,33 @@ import { Avatar } from "@/components/ui/avatar";
  * `/api/students/` returns every student in the workspace, so the picked
  * group narrows the list client-side. */
 export default function StudentsPage() {
-  const schoolsQuery = useSchoolsQuery();
-  const schoolYearsQuery = useSchoolYearsQuery();
-  const groupsQuery = useGroupsQuery();
+  const {
+    schoolId,
+    schoolYearId,
+    groupId,
+    setSchoolId,
+    setSchoolYearId,
+    setGroupId,
+    schools,
+    visibleSchoolYears,
+    visibleGroups,
+  } = useSchoolTeachingContext();
   const studentsQuery = useStudentsQuery();
   const createMutation = useCreateStudentMutation();
   const updateMutation = useUpdateStudentMutation();
   const deleteMutation = useDeleteStudentMutation();
 
-  const [selectedSchoolId, setSelectedSchoolId] = useState<number | null>(null);
-  const [selectedSchoolYearId, setSelectedSchoolYearId] = useState<number | null>(null);
-  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [rowError, setRowError] = useState<string | null>(null);
 
-  const schools = schoolsQuery.data ?? [];
-  const visibleSchoolYears = schoolYearsForSchool(
-    schoolYearsQuery.data ?? [],
-    selectedSchoolId,
-  );
-  const visibleGroups = groupsForSchoolYear(groupsQuery.data ?? [], selectedSchoolYearId);
-  const visibleStudents = studentsForGroup(studentsQuery.data ?? [], selectedGroupId);
+  const visibleStudents = studentsForGroup(studentsQuery.data ?? [], groupId);
+
+  function handleSchoolChange(id: number | null) {
+    setSchoolId(id);
+    setEditingStudent(null);
+    setFormError(null);
+  }
 
   function handleCreate(input: {
     group: number;
@@ -126,13 +129,23 @@ export default function StudentsPage() {
         schools={schools.map((school) => ({ id: school.id, label: school.name }))}
         schoolYears={visibleSchoolYears.map((year) => ({ id: year.id, label: year.label }))}
         groups={visibleGroups.map((group) => ({ id: group.id, label: `${group.grado}${group.grupo}` }))}
-        schoolId={selectedSchoolId} schoolYearId={selectedSchoolYearId} groupId={selectedGroupId}
-        onSchoolChange={(id) => { setSelectedSchoolId(id); setEditingStudent(null); setFormError(null); }}
-        onSchoolYearChange={(id) => { setSelectedSchoolYearId(id); setEditingStudent(null); setFormError(null); }}
-        onGroupChange={(id) => { setSelectedGroupId(id); setEditingStudent(null); setFormError(null); }}
+        schoolId={schoolId}
+        schoolYearId={schoolYearId}
+        groupId={groupId}
+        onSchoolChange={handleSchoolChange}
+        onSchoolYearChange={(id) => {
+          setSchoolYearId(id);
+          setEditingStudent(null);
+          setFormError(null);
+        }}
+        onGroupChange={(id) => {
+          setGroupId(id);
+          setEditingStudent(null);
+          setFormError(null);
+        }}
       />
 
-      {selectedGroupId === null ? (
+      {groupId === null ? (
         <p className="text-muted-foreground">
           Selecciona una escuela, un ciclo escolar y un grupo para ver sus alumnos.
         </p>
@@ -140,7 +153,7 @@ export default function StudentsPage() {
         <>
           {editingStudent ? (
             <StudentForm
-              groupId={selectedGroupId}
+              groupId={groupId}
               initial={editingStudent}
               errorMessage={formError}
               isPending={updateMutation.isPending}
@@ -152,7 +165,7 @@ export default function StudentsPage() {
             />
           ) : (
             <StudentForm
-              groupId={selectedGroupId}
+              groupId={groupId}
               errorMessage={formError}
               isPending={createMutation.isPending}
               onSubmit={handleCreate}

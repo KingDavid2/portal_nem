@@ -15,15 +15,13 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useSchoolsQuery } from "@/lib/api/schools";
-import { schoolYearsForSchool, useSchoolYearsQuery } from "@/lib/api/school-years";
-import { groupsForSchoolYear, useGroupsQuery } from "@/lib/api/groups";
 import {
   lessonPlansForGroup,
   useDeleteLessonPlanMutation,
   useLessonPlansQuery,
   type LessonPlan,
 } from "@/lib/api/lesson-plans";
+import { useSchoolTeachingContext } from "@/lib/school-context/school-teaching-context";
 import { StatusChip } from "@/components/ui/status-chip";
 import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
@@ -32,26 +30,25 @@ type StatusFilter = "all" | LessonPlan["status"];
 
 export default function PlaneacionesPage() {
   const router = useRouter();
-  const schoolsQuery = useSchoolsQuery();
-  const schoolYearsQuery = useSchoolYearsQuery();
-  const groupsQuery = useGroupsQuery();
+  const {
+    schoolId,
+    schoolYearId,
+    groupId,
+    setSchoolId,
+    setSchoolYearId,
+    setGroupId,
+    schools,
+    visibleSchoolYears,
+    visibleGroups,
+  } = useSchoolTeachingContext();
   const lessonPlansQuery = useLessonPlansQuery();
   const deleteMutation = useDeleteLessonPlanMutation();
 
-  const [selectedSchoolId, setSelectedSchoolId] = useState<number | null>(null);
-  const [selectedSchoolYearId, setSelectedSchoolYearId] = useState<number | null>(null);
-  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
   const [campoFilter, setCampoFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [rowError, setRowError] = useState<string | null>(null);
 
-  const schools = schoolsQuery.data ?? [];
-  const visibleSchoolYears = schoolYearsForSchool(
-    schoolYearsQuery.data ?? [],
-    selectedSchoolId,
-  );
-  const visibleGroups = groupsForSchoolYear(groupsQuery.data ?? [], selectedSchoolYearId);
-  const groupPlans = lessonPlansForGroup(lessonPlansQuery.data ?? [], selectedGroupId);
+  const groupPlans = lessonPlansForGroup(lessonPlansQuery.data ?? [], groupId);
   // Derived from the loaded rows rather than a hardcoded list: the filter can
   // only usefully offer campos this group actually has plans for.
   const availableCampos = [...new Set(groupPlans.map((plan) => plan.campo))].sort();
@@ -112,8 +109,8 @@ export default function PlaneacionesPage() {
         <Button
           size="lg"
           className="shadow-[0_2px_6px_color-mix(in_oklch,var(--primary),transparent_68%)]"
-          disabled={selectedGroupId === null}
-          onClick={() => router.push(`/planeaciones/nueva?group=${selectedGroupId}`)}
+          disabled={groupId === null}
+          onClick={() => router.push(`/planeaciones/nueva?group=${groupId}`)}
         >
           <Plus />
           Nueva planeación
@@ -123,12 +120,8 @@ export default function PlaneacionesPage() {
       <Card className="grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-5">
         <SelectField
           label="Escuela"
-          value={selectedSchoolId ?? ""}
-          onChange={(value) => {
-            setSelectedSchoolId(value ? Number(value) : null);
-            setSelectedSchoolYearId(null);
-            setSelectedGroupId(null);
-          }}
+          value={schoolId ?? ""}
+          onChange={(value) => setSchoolId(value ? Number(value) : null)}
         >
           <option value="">Selecciona una escuela…</option>
           {schools.map((school) => (
@@ -138,26 +131,21 @@ export default function PlaneacionesPage() {
 
         <SelectField
           label="Ciclo escolar"
-          value={selectedSchoolYearId ?? ""}
-          disabled={selectedSchoolId === null}
-          onChange={(value) => {
-            setSelectedSchoolYearId(value ? Number(value) : null);
-            setSelectedGroupId(null);
-          }}
+          value={schoolYearId ?? ""}
+          disabled={schoolId === null}
+          onChange={(value) => setSchoolYearId(value ? Number(value) : null)}
         >
           <option value="">Selecciona un ciclo…</option>
-          {visibleSchoolYears.map((schoolYear) => (
-            <option key={schoolYear.id} value={schoolYear.id}>{schoolYear.label}</option>
+          {visibleSchoolYears.map((year) => (
+            <option key={year.id} value={year.id}>{year.label}</option>
           ))}
         </SelectField>
 
         <SelectField
           label="Grupo"
-          value={selectedGroupId ?? ""}
-          disabled={selectedSchoolYearId === null}
-          onChange={(value) => {
-            setSelectedGroupId(value ? Number(value) : null);
-          }}
+          value={groupId ?? ""}
+          disabled={schoolYearId === null}
+          onChange={(value) => setGroupId(value ? Number(value) : null)}
         >
           <option value="">Selecciona un grupo…</option>
           {visibleGroups.map((group) => (
@@ -199,7 +187,7 @@ export default function PlaneacionesPage() {
 
       {rowError ? <p className="text-sm text-destructive" role="alert">{rowError}</p> : null}
 
-      {selectedGroupId === null ? (
+      {groupId === null ? (
         <Card className="flex min-h-56 flex-col items-center justify-center gap-3 border border-dashed bg-card/50 text-center shadow-none">
           <span className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
             <BookOpen className="size-5" />

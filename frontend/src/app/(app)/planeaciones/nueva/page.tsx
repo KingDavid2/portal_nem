@@ -12,6 +12,7 @@ import { useLessonPlanFieldsQuery, useLessonPlanCatalogQuery, useGenerationQuota
 import { useCreateLessonPlanMutation } from "@/lib/api/lesson-plans";
 import { ApiError } from "@/lib/api/errors";
 import { SummaryPanel } from "./summary-panel";
+import { useSchoolTeachingContext } from "@/lib/school-context/school-teaching-context";
 
 /** Reads `?group=<id>` off the URL, or `null` when it is absent or not a
  * number. `/planeaciones` links here carrying whichever group the teacher had
@@ -46,9 +47,12 @@ function quotaExceededMessage(error: unknown): string | undefined {
 function NewPlanFormInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  // Read once for the reducer's initial state only — afterwards `state.groupId`
-  // is the source of truth, so changing the select does not fight the URL.
-  const [state, dispatch] = useNewPlanForm(readGroupIdParam(searchParams.get("group")));
+  const { groupId: contextGroupId } = useSchoolTeachingContext();
+  // Prefer `?group=` when present; otherwise fall back to the shared teaching
+  // context so navigating here without a query still lands on the active group.
+  const [state, dispatch] = useNewPlanForm(
+    readGroupIdParam(searchParams.get("group")) ?? contextGroupId,
+  );
   const groupsQuery = useGroupsQuery();
   const fieldsQuery = useLessonPlanFieldsQuery();
   const catalogQuery = useLessonPlanCatalogQuery(state.groupId, state.fieldId);

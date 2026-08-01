@@ -4,9 +4,7 @@ import { useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
-import { useSchoolsQuery } from "@/lib/api/schools";
 import {
-  schoolYearsForSchool,
   useCreateSchoolYearMutation,
   useDeleteSchoolYearMutation,
   useSchoolYearsQuery,
@@ -16,28 +14,23 @@ import {
 import { SchoolYearForm } from "./school-year-form";
 import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
+import { useSchoolTeachingContext } from "@/lib/school-context/school-teaching-context";
 
 /** SchoolYear list/create/edit/delete screen, scoped to one selected School
  * (frontend-foundation spec — "CRUD Screens Cover School Structure
  * Entities", SchoolYear). `/api/school-years/` returns every school-year in
  * the workspace, so the picked school narrows the list client-side. */
 export default function SchoolYearsPage() {
-  const schoolsQuery = useSchoolsQuery();
+  const { schoolId, setSchoolId, schools, visibleSchoolYears } =
+    useSchoolTeachingContext();
   const schoolYearsQuery = useSchoolYearsQuery();
   const createMutation = useCreateSchoolYearMutation();
   const updateMutation = useUpdateSchoolYearMutation();
   const deleteMutation = useDeleteSchoolYearMutation();
 
-  const [selectedSchoolId, setSelectedSchoolId] = useState<number | null>(null);
   const [editingSchoolYear, setEditingSchoolYear] = useState<SchoolYear | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [rowError, setRowError] = useState<string | null>(null);
-
-  const schools = schoolsQuery.data ?? [];
-  const visibleSchoolYears = schoolYearsForSchool(
-    schoolYearsQuery.data ?? [],
-    selectedSchoolId,
-  );
 
   function handleCreate(input: { school: number; label: string }) {
     setFormError(null);
@@ -96,9 +89,9 @@ export default function SchoolYearsPage() {
         <span className="text-muted-foreground">Escuela</span>
         <Select
           className="h-8 w-auto rounded-lg bg-transparent px-2.5"
-          value={selectedSchoolId ?? ""}
+          value={schoolId ?? ""}
           onChange={(event) => {
-            setSelectedSchoolId(event.target.value ? Number(event.target.value) : null);
+            setSchoolId(event.target.value ? Number(event.target.value) : null);
             setEditingSchoolYear(null);
             setFormError(null);
           }}
@@ -112,13 +105,13 @@ export default function SchoolYearsPage() {
         </Select>
       </label>
 
-      {selectedSchoolId === null ? (
+      {schoolId === null ? (
         <p className="text-muted-foreground">Selecciona una escuela para ver sus ciclos escolares.</p>
       ) : (
         <>
           {editingSchoolYear ? (
             <SchoolYearForm
-              schoolId={selectedSchoolId}
+              schoolId={schoolId}
               initial={editingSchoolYear}
               errorMessage={formError}
               isPending={updateMutation.isPending}
@@ -130,7 +123,7 @@ export default function SchoolYearsPage() {
             />
           ) : (
             <SchoolYearForm
-              schoolId={selectedSchoolId}
+              schoolId={schoolId}
               errorMessage={formError}
               isPending={createMutation.isPending}
               onSubmit={handleCreate}
