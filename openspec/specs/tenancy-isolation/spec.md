@@ -244,6 +244,23 @@ context itself — hiding exactly the bug this requirement guards against.
 - THEN the test MUST fail if the tool relies on an inherited contextvar instead of entering `workspace_scope` itself
 - AND the test suite MUST document why an inline call from an already-scoped context is insufficient to prove this requirement
 
+### Requirement: RLS Coverage Extends to Attendance Records
+
+The system MUST enable Postgres row-level security with the `ws_isolation` policy in the NULLIF form (mirroring the existing `0004` migration pattern) on `attendance_attendancerecord`. The RLS migration MUST be reversible.
+
+#### Scenario: RLS enabled on attendance table
+
+- GIVEN the attendance migrations have been applied
+- WHEN RLS status is checked for `attendance_attendancerecord`
+- THEN row-level security MUST be enabled
+- AND the table MUST carry a `ws_isolation` policy using the NULLIF form
+
+#### Scenario: Foreign-workspace attendance row denied at database layer
+
+- GIVEN `app.workspace_id` is set to workspace A for the current transaction
+- WHEN a raw query attempts to read an `AttendanceRecord` belonging to workspace B
+- THEN Postgres MUST exclude that row from the result, independent of ORM filtering
+
 ---
 
-**Source**: M2a — Tenancy Foundation Core (proposal: `2026-07-22-m2a-tenancy-core`); M3 — School Structure (proposal: `m3-school-structure`); M3 — Frontend Foundation (proposal: `m3-frontend-foundation`); M4 — AI planeaciones (proposal: `m4-ai-planeaciones`); Quizzy P4 — MCP server (proposal: `quizzy-p4-mcp-server`)
+**Source**: M2a — Tenancy Foundation Core (proposal: `2026-07-22-m2a-tenancy-core`); M3 — School Structure (proposal: `m3-school-structure`); M3 — Frontend Foundation (proposal: `m3-frontend-foundation`); M4 — AI planeaciones (proposal: `m4-ai-planeaciones`); Quizzy P4 — MCP server (proposal: `quizzy-p4-mcp-server`); M7 — Daily Attendance (proposal: `m7-attendance`)
