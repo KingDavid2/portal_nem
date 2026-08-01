@@ -23,6 +23,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { MagicWandIcon } from "@/components/quizzy/magic-wand-icon";
+import { MarkdownContent } from "@/components/quizzy/markdown-content";
+import { SchoolContextFilters } from "@/components/school-context-filters";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { extractErrorMessage } from "@/lib/api/errors";
@@ -35,6 +37,7 @@ import {
   type QuizzyChatMessage,
   type QuizzyConversationSummary,
 } from "@/lib/api/quizzy-chat";
+import { useSchoolTeachingContext } from "@/lib/school-context/school-teaching-context";
 
 /**
  * Quizzy chat surface — «1 · Vacío» / thread from `designs/quizzy.pen`,
@@ -61,6 +64,17 @@ export default function QuizzyPage() {
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const threadEndRef = useRef<HTMLDivElement>(null);
+  const {
+    schoolId,
+    schoolYearId,
+    groupId,
+    setSchoolId,
+    setSchoolYearId,
+    setGroupId,
+    schools,
+    visibleSchoolYears,
+    visibleGroups,
+  } = useSchoolTeachingContext();
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState<QuizzyChatMessage[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -220,6 +234,7 @@ export default function QuizzyPage() {
       const data = await postQuizzyChat({
         message: text,
         conversationId,
+        groupId,
       });
       setConversationId(data.conversation_id);
       setMessages((prev) => [
@@ -254,7 +269,25 @@ export default function QuizzyPage() {
   const empty = messages.length === 0 && !loadingThread;
 
   return (
-    <section className="flex h-[calc(100vh-4rem)] min-h-[32rem] overflow-hidden rounded-xl bg-card shadow-card">
+    <div className="flex h-[calc(100vh-4rem)] min-h-[32rem] flex-col gap-4">
+      <SchoolContextFilters
+        schools={schools.map((school) => ({ id: school.id, label: school.name }))}
+        schoolYears={visibleSchoolYears.map((year) => ({
+          id: year.id,
+          label: year.label,
+        }))}
+        groups={visibleGroups.map((group) => ({
+          id: group.id,
+          label: `${group.grado}° ${group.grupo}`,
+        }))}
+        schoolId={schoolId}
+        schoolYearId={schoolYearId}
+        groupId={groupId}
+        onSchoolChange={setSchoolId}
+        onSchoolYearChange={setSchoolYearId}
+        onGroupChange={setGroupId}
+      />
+      <section className="flex min-h-0 flex-1 overflow-hidden rounded-xl bg-card shadow-card">
       <aside className="flex w-[240px] shrink-0 flex-col border-r border-border bg-muted/30">
         <div className="border-b border-border p-3">
           <Button
@@ -387,14 +420,10 @@ export default function QuizzyPage() {
             <div className="flex size-[98px] items-center justify-center rounded-full bg-primary/15 text-primary">
               <Sparkles aria-hidden className="size-11" />
             </div>
-            <div className="max-w-lg space-y-2 text-center">
+            <div className="max-w-lg text-center">
               <h2 className="text-xl font-semibold text-foreground">
                 Pregunta sobre tus planeaciones
               </h2>
-              <p className="text-[13px] leading-relaxed text-muted-foreground">
-                Stub de prueba: las respuestas salen de Cursor Composer. No edita
-                el repo a propósito; no uses esto en producción.
-              </p>
             </div>
             <div className="grid w-full max-w-3xl gap-3 sm:grid-cols-2">
               {STARTERS.map(({ label, icon: Icon }) => (
@@ -425,7 +454,11 @@ export default function QuizzyPage() {
                     : "mr-auto max-w-[min(40rem,90%)] rounded-lg border border-border bg-card px-4 py-3 text-[13px] leading-relaxed text-foreground shadow-sm"
                 }
               >
-                <p className="whitespace-pre-wrap">{message.content}</p>
+                {message.role === "assistant" ? (
+                  <MarkdownContent>{message.content}</MarkdownContent>
+                ) : (
+                  <p className="whitespace-pre-wrap">{message.content}</p>
+                )}
               </div>
             ))}
             {pending ? (
@@ -483,5 +516,6 @@ export default function QuizzyPage() {
         </form>
       </div>
     </section>
+    </div>
   );
 }

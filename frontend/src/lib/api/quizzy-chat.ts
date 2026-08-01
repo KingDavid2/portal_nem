@@ -103,12 +103,14 @@ async function parseJsonOrThrow(response: Response): Promise<unknown> {
 export async function postQuizzyChat(input: {
   message: string;
   conversationId?: string | null;
+  groupId?: number | null;
 }): Promise<QuizzyChatResponse> {
   const response = await quizzyFetch("/api/quizzy/chat/", {
     method: "POST",
     json: {
       message: input.message,
       conversation_id: input.conversationId ?? null,
+      ...(input.groupId != null ? { group_id: input.groupId } : {}),
     },
   });
   return (await parseJsonOrThrow(response)) as QuizzyChatResponse;
