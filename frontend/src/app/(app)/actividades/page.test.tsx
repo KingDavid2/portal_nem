@@ -2,17 +2,24 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
+  ActivitiesFilters,
   ActivitiesListResponse,
   Activity,
   ActivityCreate,
   ScoresBulkRequest,
   ScoresMatrixResponse,
+  TypeEnum,
 } from "@/lib/api/grades";
+
+type ActivitiesArgs = [number | null, number | null, ActivitiesFilters?];
+type MatrixArgs = [number | null, number | null, Omit<ActivitiesFilters, "q">?];
 
 const mocks = vi.hoisted(() => ({
   groupId: 10 as number | null,
   setGroupId: vi.fn<(id: number | null) => void>(),
   visibleGroups: [{ id: 10, grado: 3, grupo: "A", school_year: 1, workspace: "w1" }],
+  activitiesCalls: [] as ActivitiesArgs[],
+  matrixCalls: [] as MatrixArgs[],
   activitiesQuery: {
     isLoading: false,
     isError: false,
@@ -60,19 +67,30 @@ vi.mock("@/lib/school-context/school-teaching-context", () => ({
   }),
 }));
 
-vi.mock("@/lib/api/grades", () => ({
-  useActivitiesQuery: () => mocks.activitiesQuery,
-  useCreateActivityMutation: () => ({ ...mocks.createMutation, mutate: mocks.createMutate }),
-  useScoreMatrixQuery: () => mocks.matrixQuery,
-  useBulkUpsertScoresMutation: () => ({ ...mocks.bulkMutation, mutate: mocks.bulkMutate }),
-}));
+vi.mock("@/lib/api/grades", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api/grades")>();
+  return {
+    ...actual,
+    useActivitiesQuery: (...args: ActivitiesArgs) => {
+      mocks.activitiesCalls.push(args);
+      return mocks.activitiesQuery;
+    },
+    useCreateActivityMutation: () => ({ ...mocks.createMutation, mutate: mocks.createMutate }),
+    useScoreMatrixQuery: (...args: MatrixArgs) => {
+      mocks.matrixCalls.push(args);
+      return mocks.matrixQuery;
+    },
+    useBulkUpsertScoresMutation: () => ({ ...mocks.bulkMutation, mutate: mocks.bulkMutate }),
+  };
+});
 
 vi.mock("@/lib/api/lesson-plan-catalog", () => ({
   useLessonPlanFieldsQuery: () => mocks.fieldsQuery,
   useLessonPlanCatalogQuery: () => mocks.catalogQuery,
 }));
 
-import Page, { displayScore, scoreDraftKey } from "./page";
+import Page, { displayAverage, displayScore, scoreDraftKey } from "./page";
+import { activitiesQueryEnabled } from "@/lib/api/grades";
 
 const activityRow: Activity = {
   id: 101,
@@ -145,6 +163,8 @@ async function withPeriodo(host: HTMLElement) {
 
 function resetMocks() {
   mocks.groupId = 10;
+  mocks.activitiesCalls = [];
+  mocks.matrixCalls = [];
   mocks.activitiesQuery = {
     isLoading: false,
     isError: false,
@@ -163,6 +183,11 @@ function resetMocks() {
   mocks.createMutation = { isPending: false, error: undefined };
   mocks.bulkMutate.mockReset();
   mocks.bulkMutation = { isPending: false, error: undefined };
+}
+
+function lastActivitiesArgs(): ActivitiesArgs {
+  expect(mocks.activitiesCalls.length).toBeGreaterThan(0);
+  return mocks.activitiesCalls[mocks.activitiesCalls.length - 1]!;
 }
 
 async function openPorAlumno(host: HTMLElement) {
@@ -264,6 +289,13 @@ describe("score draft helpers (D4)", () => {
     expect(displayScore("0.0")).toBe("0.0");
     expect(displayScore("8.5")).toBe("8.5");
   });
+
+  it("displayAverage shows em dash for null and keeps numeric strings", () => {
+    expect(displayAverage(null)).toBe("—");
+    expect(displayAverage(undefined)).toBe("—");
+    expect(displayAverage("")).toBe("—");
+    expect(displayAverage("8.3")).toBe("8.3");
+  });
 });
 
 describe("/actividades — Por alumno matrix (D4)", () => {
@@ -353,6 +385,148 @@ describe("/actividades — Por alumno matrix (D4)", () => {
     });
     expect(scoreInput(host, 1, 101)!.value).toBe("");
     expect(mocks.bulkMutate).not.toHaveBeenCalled();
+    await act(async () => root.unmount());
+  });
+});
+
+describe("/actividades — filters, stats, banner (D5)", () => {
+  beforeEach(resetMocks);
+
+  it("Periodo empty blocks fetch (termId null → query disabled)", async () => {
+    expect(activitiesQueryEnabled(10, null)).toBe(false);
+    expect(activitiesQueryEnabled(10, 1)).toBe(true);
+    const { host, root } = await mount();
+    const [group, term] = lastActivitiesArgs();
+    expect(group).toBe(10);
+    expect(term).toBeNull();
+    expect(host.textContent).not.toContain("Ensayo del agua");
+    await act(async () => root.unmount());
+  });
+
+  it("campo / asignatura / tipo / q filters are passed to the list query", async () => {
+    const { host, root } = await mount();
+    await withPeriodo(host);
+
+    const fieldSelect = host.querySelector<HTMLSelectElement>("select[name='fieldFilter']");
+    const subjectSelect = host.querySelector<HTMLSelectElement>("select[name='subjectFilter']");
+    const typeSelect = host.querySelector<HTMLSelectElement>("select[name='typeFilter']");
+    const qInput = host.querySelector<HTMLInputElement>("input[name='qFilter']");
+    expect(fieldSelect).not.toBeNull();
+    expect(subjectSelect).not.toBeNull();
+    expect(typeSelect).not.toBeNull();
+    expect(qInput).not.toBeNull();
+
+    await act(async () => {
+      typeInto(fieldSelect!, "languages");
+    });
+    expect(lastActivitiesArgs()[2]).toMatchObject({ field: "languages" });
+
+    await act(async () => {
+      typeInto(subjectSelect!, "espanol");
+    });
+    expect(lastActivitiesArgs()[2]).toMatchObject({
+      field: "languages",
+      subject: "espanol",
+    });
+
+    await act(async () => {
+      typeInto(typeSelect!, "task");
+    });
+    expect(lastActivitiesArgs()[2]).toMatchObject({
+      field: "languages",
+      subject: "espanol",
+      type: "task" as TypeEnum,
+    });
+
+    await act(async () => {
+      typeInto(qInput!, "agua");
+    });
+    expect(lastActivitiesArgs()[2]).toMatchObject({
+      field: "languages",
+      subject: "espanol",
+      type: "task",
+      q: "agua",
+    });
+
+    await act(async () => root.unmount());
+  });
+
+  it("stats cards match API stats from the list response", async () => {
+    mocks.activitiesQuery = {
+      ...mocks.activitiesQuery,
+      data: {
+        ...listResponse,
+        stats: {
+          total_activities: 18,
+          graded_activities: 14,
+          pending_activities: 4,
+          average_score: "8.3",
+        },
+      },
+    };
+    const { host, root } = await mount();
+    await withPeriodo(host);
+    expect(host.textContent).toMatch(/Actividades del periodo/i);
+    expect(host.querySelector("[data-stat='total']")?.textContent).toBe("18");
+    expect(host.textContent).toMatch(/Calificadas/i);
+    expect(host.querySelector("[data-stat='graded']")?.textContent).toBe("14");
+    expect(host.textContent).toMatch(/Pendientes por calificar/i);
+    expect(host.querySelector("[data-stat='pending']")?.textContent).toBe("4");
+    expect(host.textContent).toMatch(/Promedio de actividades/i);
+    expect(host.querySelector("[data-stat='average']")?.textContent).toBe("8.3");
+    await act(async () => root.unmount());
+  });
+
+  it("shows null average as em dash and different totals (triangulate stats)", async () => {
+    mocks.activitiesQuery = {
+      ...mocks.activitiesQuery,
+      data: {
+        ...listResponse,
+        stats: {
+          total_activities: 3,
+          graded_activities: 0,
+          pending_activities: 3,
+          average_score: null,
+        },
+      },
+    };
+    const { host, root } = await mount();
+    await withPeriodo(host);
+    expect(host.querySelector("[data-stat='total']")?.textContent).toBe("3");
+    expect(host.querySelector("[data-stat='graded']")?.textContent).toBe("0");
+    expect(host.querySelector("[data-stat='pending']")?.textContent).toBe("3");
+    expect(host.querySelector("[data-stat='average']")?.textContent).toBe("—");
+    await act(async () => root.unmount());
+  });
+
+  it("Exportar and auto-save are absent; Guardar only on Por alumno after edit", async () => {
+    const { host, root } = await mount();
+    await withPeriodo(host);
+    expect(host.textContent).not.toMatch(/Exportar/i);
+    expect(host.textContent).not.toMatch(/auto-?save|guardado automático/i);
+    expect(mocks.bulkMutate).not.toHaveBeenCalled();
+
+    await act(async () => {
+      click(btn(host, "Por alumno"));
+    });
+    await act(async () => {
+      typeInto(scoreInput(host, 2, 101)!, "6.5");
+    });
+    expect(mocks.bulkMutate).not.toHaveBeenCalled();
+    await act(async () => {
+      click(btn(host, "Guardar"));
+    });
+    expect(mocks.bulkMutate).toHaveBeenCalledTimes(1);
+    await act(async () => root.unmount());
+  });
+
+  it("Calificaciones banner is static copy and not a navigable link", async () => {
+    const { host, root } = await mount();
+    expect(host.textContent).toMatch(/Estas calificaciones alimentan Calificaciones/i);
+    const banner = [...host.querySelectorAll("[data-banner='calificaciones']")];
+    expect(banner).toHaveLength(1);
+    expect(banner[0]!.querySelector("a")).toBeNull();
+    expect(host.querySelector('a[href*="calificaciones"]')).toBeNull();
     await act(async () => root.unmount());
   });
 });

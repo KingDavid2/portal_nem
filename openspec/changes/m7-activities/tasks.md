@@ -123,9 +123,9 @@ Satisfies: remaining §Draft Until Guardar + Screen UX (stats, filters, Califica
 
 Sequential, depends on D4. Est. ~150–300 authored lines. PR5 base = `main` (after PR4 merged).
 
-- [ ] D5.1 RED: extend vitest — Periodo empty blocks fetch; campo/asignatura/tipo/q filters update list; stats cards match API `stats`; Exportar/auto-save absent; optional Calificaciones banner static/non-navigating.
-- [ ] D5.2 GREEN: polish `page.tsx` — wire filters+stats from list response; Periodo from `terms[]`; banner copy only; match frames `qkWxk`/`CteCl` density.
-- [ ] D5.3 Verify: full `npm run test -- --run src/app/\(app\)/actividades/` green; manual Periodo/filter/banner smoke. Commit `[M7] polish actividades filters stats and Periodo`.
+- [x] D5.1 RED: extend vitest — Periodo empty blocks fetch; campo/asignatura/tipo/q filters update list; stats cards match API `stats`; Exportar/auto-save absent; optional Calificaciones banner static/non-navigating.
+- [x] D5.2 GREEN: polish `page.tsx` — wire filters+stats from list response; Periodo from `terms[]`; banner copy only; match frames `qkWxk`/`CteCl` density.
+- [x] D5.3 Verify: full `npm run test -- --run src/app/\(app\)/actividades/` green; manual Periodo/filter/banner smoke. Commit `[M7] polish actividades filters stats and Periodo`.
 
 ---
 

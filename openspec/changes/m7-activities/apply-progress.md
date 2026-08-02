@@ -2,7 +2,7 @@
 
 **Mode**: Strict TDD  
 **Delivery**: force-chained / stacked-to-main  
-**Status**: D1 + D2 + D3 + D4 complete
+**Status**: D1 + D2 + D3 + D4 + D5 complete (all implementation units done)
 
 ## Completed Tasks
 
@@ -36,13 +36,21 @@
 - [x] D4.2 GREEN Por alumno matrix + draft Map + Guardar → bulk PUT
 - [x] D4.3 Verify focused vitest green + commit
 
+### D5 — Stats, filters, banner, Periodo polish
+**Branch**: `feat/m7-activities-d5` (from `feat/m7-activities-d4`)  
+**Commit**: `feat(actividades): polish filters, stats, and Periodo`
+
+- [x] D5.1 RED extend vitest — Periodo blocks fetch; campo/asignatura/tipo/q filters; stats from API; Exportar/auto-save absent; Calificaciones banner static
+- [x] D5.2 GREEN polish page — filters+stats+banner; Periodo from `terms[]`; StatCard density; Buscar only on Por actividad
+- [x] D5.3 Verify focused vitest green + commit
+
 ## Remaining
 
-- [ ] D5 (stats/filters/banner/Periodo polish)
+- None — D1–D5 complete. Ready for `sdd-verify` (full change). Do not archive until verify.
 
 ## TDD Cycle Evidence
 
-### D1–D3
+### D1–D4
 
 (see prior apply-progress revisions — preserved)
 
@@ -51,47 +59,48 @@
 | D1.8 | ✅ 31 passed |
 | D2.7 | ✅ 46 passed |
 | D3.5 | ✅ 5 passed |
+| D4.3 | ✅ 13 passed |
 
-### D4
+### D5
 
 | Task | Test File | Layer | Safety Net | RED | GREEN | TRIANGULATE | REFACTOR |
 |------|-----------|-------|------------|-----|-------|-------------|----------|
-| D4.1 | `actividades/page.test.tsx` | Integration | ✅ 5/5 | ✅ Written (5 fail) | — | — | — |
-| D4.2 | same | Integration | driven | driven | ✅ matrix+draft+Guardar | ✅ null vs 0.0; helpers; dirty-only bulk | ✅ pure `scoreDraftKey`/`displayScore`/`parseDraftEntries` |
-| D4.3 | vitest actividades | — | — | — | ✅ **13 passed** | — | — |
+| D5.1 | `actividades/page.test.tsx` | Integration | ✅ 13/13 | ✅ Written (4 fail: filters/stats×2/banner) | — | — | — |
+| D5.2 | same | Integration + unit | driven | driven | ✅ filters+stats+banner+Periodo | ✅ null average `—` vs `8.3`; `displayAverage` helper | ✅ StatCard + theme tokens (no invented info/warning) |
+| D5.3 | vitest actividades | — | — | — | ✅ **20 passed** | — | — |
 
 ## Work Unit Evidence
 
-### D4
+### D5
 
 | Evidence | Value |
 |---|---|
-| Focused test command and exact result | `npm run test -- --run 'src/app/(app)/actividades/'` → **13 passed** (1 file) |
-| Runtime harness command/scenario and exact result | Manual smoke deferred: Por alumno → edit cell → Guardar → reload. No dedicated E2E harness for this route. |
-| Rollback boundary | Revert matrix/draft/Guardar hunks in `page.tsx` + D4 tests in `page.test.tsx`; keep D3 list/modal/hooks |
+| Focused test command and exact result | `npm run test -- --run 'src/app/(app)/actividades/'` → **20 passed** (1 file) |
+| Runtime harness command/scenario and exact result | Manual smoke deferred: Periodo required; filters refresh list; banner non-navigating; Exportar absent. No dedicated E2E harness for this route. |
+| Rollback boundary | Revert polish hunks in `page.tsx` + D5 tests in `page.test.tsx`; keep D3 list/modal + D4 matrix/Guardar |
 
 ## Test Summary
 
-- **Total tests written (cumulative FE)**: 13 (5 D3 + 8 D4)
-- **Total tests passing (focused)**: 13
-- **Layers used**: Integration/jsdom (page), pure helpers
-- **Approval tests**: None — additive matrix surface
-- **Pure helpers**: `scoreDraftKey`, `displayScore`, `parseDraftEntries`
+- **Total tests written (cumulative FE)**: 20 (5 D3 + 8 D4 + 7 D5)
+- **Total tests passing (focused)**: 20
+- **Layers used**: Integration/jsdom (page), pure helpers (`scoreDraftKey`, `displayScore`, `displayAverage`)
+- **Approval tests**: None — additive polish surface
+- **Pure helpers**: `displayAverage`, `buildListFilters` (internal)
 
 ## Deviations from Design
 
-- Frame `CteCl` PROM./footer pagination deferred to D5 polish (matrix core only).
-- Filters (Campo/Asignatura/Tipo) on Por alumno deferred to D5.
-- Guardar sends dirty draft entries only (not full matrix) — matches draft Map semantics; LWW on server.
-- Authored ~381 changed lines (337+/44−) under 400 budget for page+test only.
+- Banner/stats use design-system primary/success/neutral tones (no `#26C6F9` / warning tokens — not in theme).
+- Buscar (`q`) shown only on Por actividad; Por alumno matrix filters omit `q` per API contract.
+- Frame `CteCl` PROM. column / footer pagination still deferred (out of D5 polish scope; matrix core from D4).
+- Authored ~358 changed lines (345+/13−) under 400 budget for page+test only.
 
 ## Issues / Risks
 
-- None blocking. Manual smoke still pending for verify.
+- None blocking. Manual smoke still pending for verify phase.
 
 ## Workload / PR Boundary
 
-- Mode: stacked PR slice (D4 → `feat/m7-activities-d3` / `main` after D3 merges)
-- Current work unit: D4
-- Boundary: Por alumno matrix + draft Map + Guardar; no stats/filters/banner polish (D5)
-- Next: `sdd-verify` (D4 slice) or `sdd-apply` D5
+- Mode: stacked PR slice (D5 → `feat/m7-activities-d4` / `main` after D4 merges)
+- Current work unit: D5 (final delivery)
+- Boundary: filters + stats + Periodo polish + static Calificaciones banner; no backend/layout/`grades.ts` changes
+- Next: `sdd-verify`
