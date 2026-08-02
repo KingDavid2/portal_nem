@@ -23,7 +23,7 @@
 | M4 | **AI planeaciones** (persisted + attached to group / school_year) | ✅ Done — `lesson_plans` app: ported M1 core behind `LLMProvider` port, `LessonPlan` ScopedModel + RLS, Celery generation task, DRF generate/CRUD/export; 189 backend tests | ✅ Done — Planeaciones screen: generate form + async poll + proyecto viewer + docx export; 35 frontend tests |
 | M5 | **Demo mode** — one-click seeded demo tenants behind `DEMO_MODE` | ✅ Done — `demo` app: `DemoSession` receipt + persona registry, provisioning through the real signup path, `teacher_minimal`/`teacher_full`/`quota_exhausted` personas, Celery provisioning task, three guest DRF endpoints registered only when the flag is on (`4577f64`..`ff5043c`) | ✅ Done — guest demo API layer + persona picker + session polling page that signs the guest into the provisioned workspace (`1de20fd`, `a35b3ba`) |
 | M6 | **Frontend design alignment** — align built screens to `designs/teachers.pen` + lock the design system | 🟡 Partial — the Nueva planeación alignment needed a backend contract it did not have: catalog enrichment, persisted project context, request validation, PDA grounding, monthly quota (`a4dd883`..`868be76`), then dotenv loading + an asignatura/periodo header (`fd247bc`, `675ce02`) and a generation-timeout fix the first live run forced (`a62868b`) | 🟡 In progress — **Nueva planeación + Selector de contenidos y PDAs done** (`/planeaciones/nueva`, end to end, unsmoked). Auth, school CRUD and the remaining planeaciones screens still to re-skin; `Select` and `ChoiceChip` primitives extracted and every hand-rolled select retired |
-| M7 | Attendance + grades entry grids (daily-use core) | ⬜ | ⬜ Attendance + grades entry grids (TanStack Table) |
+| M7 | Attendance + grades entry grids (daily-use core) | 🟡 Partial — **attendance done** — `attendance` app: `AttendanceRecord` + NULLIF RLS, day roster/bulk + Mon–Fri week API (`8c78cdd`..`d70af44`); grades still open | 🟡 Partial — **`/asistencia` done** — Diaria + Semanal grids, draft-until-Guardar, P/A/R/J tones (`7de8242`..`9085557`); Calificaciones still open |
 | M8 | report_card (boleta) PDF export (SEP deliverable) | ⬜ | ⬜ Boleta preview/download surface |
 | M9 | Billing + subscription | ⬜ | ⬜ Plan/checkout + billing settings screens |
 | M10 | Tutor/parent read-only portal | ⬜ | ⬜ Read-only tutor/parent portal |
@@ -378,9 +378,10 @@ contract M7–M10 implement against.
   - School structure — Alumnos, Nuevo Alumno (M3 CRUD). ⬜
   - Planeaciones — **Nueva planeación ✅**, **Selector de contenidos y PDAs ✅** (same page, frame `IA35k`);
     Planeaciones list ⬜, Proyecto — Detalle ⬜, Proyecto — Generando ⬜ (M4).
-- **Screens that stay design-only until their milestone** (visual contract, not built in M6): Asistencia,
-  Calificaciones (+ Secundaria), Actividades (+ Modal / Por alumno) → **M7**; Boletas, Boleta — Vista previa
-  → **M8**; Planes, Checkout, Pago pendiente — OXXO, Suscripción, Límite alcanzado → **M9**.
+- **Screens that stay design-only until their milestone** (visual contract, not built in M6): Asistencia
+  → **M7** (attendance half **shipped** — see Milestone 7); Calificaciones (+ Secundaria), Actividades
+  (+ Modal / Por alumno) → **M7** (grades still open); Boletas, Boleta — Vista previa → **M8**; Planes,
+  Checkout, Pago pendiente — OXXO, Suscripción, Límite alcanzado → **M9**.
 
 **Exit gate:** the auth, school-CRUD, and planeaciones screens match `teachers.pen` (layout, tokens, states)
 using shared design-system components; the reusable-component library is in `frontend/` and documented; a
@@ -459,16 +460,53 @@ server's own limit. Whoever reconciles ciclo-vs-month in M9 owns that modal.
 
 ---
 
-### Frontend per milestone (M7–M10) ⬜
+### Frontend per milestone (M7–M10)
 
 Each builds on the M3 foundation (auth/type plumbing) **and the M6 design system** — just screens + the
 milestone's API, composed from the shared component library.
 
-- **M7 — Attendance + grades:** the daily-use entry grids (TanStack Table) — attendance bulk-mark and
-  grades (campos formativos × periodos + observaciones).
-- **M8 — Boleta:** the report_card preview/download surface over the PDF export endpoint.
-- **M9 — Billing:** plan selection / checkout + billing-settings screens over the subscription API.
-- **M10 — Tutor/parent portal:** read-only portal (attendance + grades + boleta) for a restricted role.
+- **M7 — Attendance + grades:** 🟡 attendance half shipped (see Milestone 7). Grades entry grids
+  (campos formativos × periodos + observaciones) still open.
+- **M8 — Boleta:** the report_card preview/download surface over the PDF export endpoint. ⬜
+- **M9 — Billing:** plan selection / checkout + billing-settings screens over the subscription API. ⬜
+- **M10 — Tutor/parent portal:** read-only portal (attendance + grades + boleta) for a restricted role. ⬜
+
+---
+
+## Milestone 7 — Attendance + grades (daily-use core) 🟡 Partial
+
+**Goal:** the grids teachers touch every day — mark who showed up, then enter grades. M7 was scoped as
+attendance + grades; the attendance half shipped first (grades deferred on purpose).
+
+### Attendance ✅ Done
+
+**Shipped via SDD** (`m7-attendance`, archived `openspec/changes/archive/2026-08-01-m7-attendance/`)
+plus a week-matrix follow-up on `feat/m7-attendance-d3` (`8c78cdd`..`9085557`).
+
+**Backend — `attendance` app:**
+- `AttendanceRecord` (`ScopedModel`): unique student+date, status `present` / `absent` / `late` /
+  `excused`, optional notes; NULLIF RLS (`0001` + `0002_rls`).
+- Day API: `GET` roster (group+date) + atomic `PUT` bulk upsert.
+- Week API: Mon–Fri matrix read + notes-preserving week bulk upsert.
+- Authz: roster → `view_workspace`, bulk → `edit_content`.
+
+**Frontend — `/asistencia`:**
+- Shared Escuela/Ciclo/Grupo filters (`SchoolTeachingContext`).
+- **Diaria** grid: per-student status + Observación, live P/A/R/J counts, draft until Guardar.
+- **Semanal** matrix: alumnos × Mon–Fri status selects (no CURP / Observación in week view).
+- Tone tokens wired into `EstadoButton` / `StatCard`.
+
+**Verify (archive):** 22/22 tasks, 30 backend + 9 frontend tests green, 16/16 spec scenarios; week
+follow-up adds further coverage (suite now 43 pytest defs + 11 vitest). Specs live on main under
+`openspec/specs/attendance/`.
+
+**Out of attendance scope (deliberate):** Periodo/`Term`, auto-save, Exportar, pagination, tutor
+portal, versioning.
+
+### Grades ⬜ Open
+
+Calificaciones (+ Secundaria) and Actividades (+ Modal / Por alumno) from `teachers.pen` — campos
+formativos × periodos + observaciones. No `grades` app or UI yet.
 
 ---
 
