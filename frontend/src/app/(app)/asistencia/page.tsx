@@ -4,25 +4,38 @@ import { useEffect, useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Clock3,
   UserCheck,
   UserX,
 } from "lucide-react";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
+import { ChoiceChip } from "@/components/ui/choice-chip";
 import { EstadoButton } from "@/components/ui/estado-button";
 import { FormField } from "@/components/ui/form-field";
 import { Select } from "@/components/ui/select";
 import { StatCard } from "@/components/ui/stat-card";
 import {
   countAttendanceStatuses,
+  countWeekStatuses,
+  formatWeekdayHeader,
+  formatWeekRangeLabel,
   localTodayISO,
+  mondayOf,
   rosterToDraft,
+  shiftWeek,
   useAttendanceBulkMutation,
   useAttendanceRosterQuery,
+  useAttendanceWeekBulkMutation,
+  useAttendanceWeekQuery,
+  weekDates,
+  weekToDraft,
   type AttendanceRosterEntry,
   type AttendanceStatus,
   type DraftEntry,
+  type WeekDraft,
 } from "@/lib/api/attendance";
 import { useSchoolTeachingContext } from "@/lib/school-context/school-teaching-context";
 
@@ -37,32 +50,55 @@ const STATUS_BUTTONS: {
   { status: "excused", label: "J", tone: "excused" },
 ];
 
+const STATUS_OPTIONS: { value: AttendanceStatus; label: string }[] = [
+  { value: "present", label: "Presente" },
+  { value: "absent", label: "Ausente" },
+  { value: "late", label: "Retardo" },
+  { value: "excused", label: "Justificado" },
+];
+
+type ViewMode = "daily" | "weekly";
 type DraftRow = AttendanceRosterEntry & DraftEntry;
 
-/** Daily attendance grid (attendance spec — Daily Attendance Screen, LXprh).
- * Draft state stays local until Guardar asistencia; Marcar todos presentes is
- * client-only. Periodo and Exportar are intentionally omitted. */
+type WeekRow = {
+  student: number;
+  first_name: string;
+  last_name_paternal: string;
+  days: Record<string, AttendanceStatus>;
+};
+
+/** Daily + weekly attendance grids (attendance spec). Draft state stays local
+ * until Guardar asistencia. Periodo and Exportar are intentionally omitted. */
 export default function AsistenciaPage() {
   const { groupId, setGroupId, visibleGroups } = useSchoolTeachingContext();
+  const [view, setView] = useState<ViewMode>("daily");
   const [date, setDate] = useState(localTodayISO);
+  const [weekStart, setWeekStart] = useState(() => mondayOf(localTodayISO()));
   const [draft, setDraft] = useState<Map<number, DraftEntry>>(new Map());
+  const [weekDraft, setWeekDraft] = useState<WeekDraft>(new Map());
   const [draftDirty, setDraftDirty] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const rosterQuery = useAttendanceRosterQuery(groupId, date);
+  const weekQuery = useAttendanceWeekQuery(groupId, weekStart);
   const bulkMutation = useAttendanceBulkMutation();
-  const saving = bulkMutation.isPending;
+  const weekBulkMutation = useAttendanceWeekBulkMutation();
+  const saving =
+    view === "daily" ? bulkMutation.isPending : weekBulkMutation.isPending;
 
-  // Reset dirty when the teacher changes group/date context.
   useEffect(() => {
     setDraftDirty(false);
-  }, [groupId, date]);
+  }, [groupId, date, weekStart, view]);
 
-  // Hydrate draft from server only while clean — never clobber unsaved edits on refetch.
   useEffect(() => {
-    if (!rosterQuery.isSuccess || draftDirty) return;
+    if (!rosterQuery.isSuccess || draftDirty || view !== "daily") return;
     setDraft(rosterToDraft(rosterQuery.data ?? []));
-  }, [rosterQuery.data, rosterQuery.isSuccess, draftDirty]);
+  }, [rosterQuery.data, rosterQuery.isSuccess, draftDirty, view]);
+
+  useEffect(() => {
+    if (!weekQuery.isSuccess || draftDirty || view !== "weekly") return;
+    if (weekQuery.data) setWeekDraft(weekToDraft(weekQuery.data));
+  }, [weekQuery.data, weekQuery.isSuccess, draftDirty, view]);
 
   const rows = useMemo<DraftRow[]>(() => {
     const roster = rosterQuery.data ?? [];
@@ -75,20 +111,60 @@ export default function AsistenciaPage() {
     });
   }, [rosterQuery.data, draft]);
 
-  const counts = countAttendanceStatuses(
-    new Map(rows.map((row) => [row.student, { status: row.status, notes: row.notes }])),
-  );
+  const weekRows = useMemo<WeekRow[]>(() => {
+    const students = weekQuery.data?.students ?? [];
+    const dates = weekQuery.data?.dates ?? weekDates(weekStart);
+    return students.map((row) => {
+      const days = weekDraft.get(row.student) ?? { ...row.days };
+      const filled: Record<string, AttendanceStatus> = {};
+      for (const d of dates) {
+        filled[d] = days[d] ?? "present";
+      }
+      return {
+        student: row.student,
+        first_name: row.first_name,
+        last_name_paternal: row.last_name_paternal,
+        days: filled,
+      };
+    });
+  }, [weekQuery.data, weekDraft, weekStart]);
 
-  function updateStudent(
-    studentId: number,
-    patch: Partial<DraftEntry>,
-  ) {
+  const dailyCounts = countAttendanceStatuses(
+    new Map(
+      rows.map((row) => [row.student, { status: row.status, notes: row.notes }]),
+    ),
+  );
+  const weekCounts = countWeekStatuses(
+    new Map(weekRows.map((row) => [row.student, row.days])),
+  );
+  const counts = view === "daily" ? dailyCounts : weekCounts;
+
+  function updateStudent(studentId: number, patch: Partial<DraftEntry>) {
     if (saving) return;
     setDraftDirty(true);
     setDraft((prev) => {
       const next = new Map(prev);
-      const current = next.get(studentId) ?? { status: "present" as AttendanceStatus, notes: "" };
+      const current = next.get(studentId) ?? {
+        status: "present" as AttendanceStatus,
+        notes: "",
+      };
       next.set(studentId, { ...current, ...patch });
+      return next;
+    });
+  }
+
+  function updateWeekCell(
+    studentId: number,
+    cellDate: string,
+    status: AttendanceStatus,
+  ) {
+    if (saving) return;
+    setDraftDirty(true);
+    setWeekDraft((prev) => {
+      const next = new Map(prev);
+      const current = { ...(next.get(studentId) ?? {}) };
+      current[cellDate] = status;
+      next.set(studentId, current);
       return next;
     });
   }
@@ -96,11 +172,24 @@ export default function AsistenciaPage() {
   function markAllPresent() {
     if (saving) return;
     setDraftDirty(true);
-    setDraft((prev) => {
+    if (view === "daily") {
+      setDraft((prev) => {
+        const next = new Map(prev);
+        for (const studentId of next.keys()) {
+          const current = next.get(studentId)!;
+          next.set(studentId, { ...current, status: "present" });
+        }
+        return next;
+      });
+      return;
+    }
+    const dates = weekQuery.data?.dates ?? weekDates(weekStart);
+    setWeekDraft((prev) => {
       const next = new Map(prev);
       for (const studentId of next.keys()) {
-        const current = next.get(studentId)!;
-        next.set(studentId, { ...current, status: "present" });
+        const days: Record<string, AttendanceStatus> = {};
+        for (const d of dates) days[d] = "present";
+        next.set(studentId, days);
       }
       return next;
     });
@@ -109,16 +198,38 @@ export default function AsistenciaPage() {
   function handleSave() {
     if (groupId === null || saving) return;
     setSaveError(null);
-    bulkMutation.mutate(
-      {
-        group: groupId,
-        date,
-        entries: rows.map((row) => ({
-          student: row.student,
-          status: row.status,
-          notes: row.notes,
-        })),
-      },
+
+    if (view === "daily") {
+      if (rows.length === 0) return;
+      bulkMutation.mutate(
+        {
+          group: groupId,
+          date,
+          entries: rows.map((row) => ({
+            student: row.student,
+            status: row.status,
+            notes: row.notes,
+          })),
+        },
+        {
+          onSuccess: () => setDraftDirty(false),
+          onError: (error) => setSaveError(error.message),
+        },
+      );
+      return;
+    }
+
+    if (weekRows.length === 0) return;
+    const dates = weekQuery.data?.dates ?? weekDates(weekStart);
+    const entries = weekRows.flatMap((row) =>
+      dates.map((d) => ({
+        student: row.student,
+        date: d,
+        status: row.days[d] ?? ("present" as AttendanceStatus),
+      })),
+    );
+    weekBulkMutation.mutate(
+      { group: groupId, week_start: weekStart, entries },
       {
         onSuccess: () => setDraftDirty(false),
         onError: (error) => setSaveError(error.message),
@@ -126,7 +237,7 @@ export default function AsistenciaPage() {
     );
   }
 
-  const columns = useMemo<ColumnDef<DraftRow, unknown>[]>(
+  const dailyColumns = useMemo<ColumnDef<DraftRow, unknown>[]>(
     () => [
       {
         header: "#",
@@ -177,7 +288,9 @@ export default function AsistenciaPage() {
             value={row.original.notes}
             disabled={saving}
             onChange={(event) =>
-              updateStudent(row.original.student, { notes: event.target.value })
+              updateStudent(row.original.student, {
+                notes: event.target.value,
+              })
             }
           />
         ),
@@ -186,58 +299,196 @@ export default function AsistenciaPage() {
     [rows, saving],
   );
 
+  const dates = weekQuery.data?.dates ?? weekDates(weekStart);
+
+  const weekColumns = useMemo<ColumnDef<WeekRow, unknown>[]>(() => {
+    const cols: ColumnDef<WeekRow, unknown>[] = [
+      {
+        header: "#",
+        cell: ({ row }) => row.index + 1,
+      },
+      {
+        header: "Alumno",
+        cell: ({ row }) =>
+          `${row.original.first_name} ${row.original.last_name_paternal}`,
+      },
+    ];
+    dates.forEach((iso, index) => {
+      cols.push({
+        id: iso,
+        header: formatWeekdayHeader(iso, index),
+        cell: ({ row }) => (
+          <Select
+            aria-label={`${row.original.first_name} ${formatWeekdayHeader(iso, index)}`}
+            className="h-9 min-w-[7.5rem] text-xs"
+            value={row.original.days[iso] ?? "present"}
+            disabled={saving}
+            onChange={(event) =>
+              updateWeekCell(
+                row.original.student,
+                iso,
+                event.target.value as AttendanceStatus,
+              )
+            }
+          >
+            {STATUS_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        ),
+      });
+    });
+    return cols;
+  }, [dates, saving, weekRows]);
+
   const groupOptions = visibleGroups.map((group) => ({
     id: group.id,
     label: `${group.grado} ${group.grupo}`,
   }));
 
+  const tableRows = view === "daily" ? rows : weekRows;
+  const isLoading =
+    view === "daily" ? rosterQuery.isLoading : weekQuery.isLoading;
+  const isError = view === "daily" ? rosterQuery.isError : weekQuery.isError;
+
   return (
     <div className="space-y-6">
       <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Asistencia</h1>
-          <p className="text-sm text-muted-foreground">Asistencia diaria</p>
+        <div className="space-y-3">
+          <div>
+            <h1 className="text-2xl font-semibold">Asistencia</h1>
+            <p className="text-sm text-muted-foreground">
+              {view === "daily" ? "Asistencia diaria" : "Asistencia semanal"}
+            </p>
+          </div>
+          <div
+            className="flex flex-wrap gap-2"
+            role="group"
+            aria-label="Vista de asistencia"
+          >
+            <ChoiceChip
+              selected={view === "daily"}
+              onClick={() => setView("daily")}
+            >
+              Diaria
+            </ChoiceChip>
+            <ChoiceChip
+              selected={view === "weekly"}
+              onClick={() => setView("weekly")}
+            >
+              Semanal
+            </ChoiceChip>
+          </div>
         </div>
         <Button
           onClick={handleSave}
-          disabled={groupId === null || saving || rows.length === 0}
+          disabled={groupId === null || saving || tableRows.length === 0}
         >
           Guardar asistencia
         </Button>
       </header>
 
-      <div className="grid gap-4 rounded-xl bg-card p-5 shadow-card md:grid-cols-[1fr_1fr_auto]">
-        <FormField label="Grupo">
-          <Select
-            value={groupId ?? ""}
-            disabled={saving}
-            onChange={(event) =>
-              setGroupId(event.target.value ? Number(event.target.value) : null)
-            }
-          >
-            <option value="">Selecciona un grupo…</option>
-            {groupOptions.map((group) => (
-              <option key={group.id} value={group.id}>
-                {group.label}
-              </option>
-            ))}
-          </Select>
-        </FormField>
-        <FormField label="Fecha">
-          <input
-            type="date"
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            value={date}
-            disabled={saving}
-            onChange={(event) => setDate(event.target.value)}
-          />
-        </FormField>
-        <div className="flex items-end">
-          <Button type="button" variant="outline" disabled={saving} onClick={markAllPresent}>
-            Marcar todos presentes
-          </Button>
+      {view === "daily" ? (
+        <div className="grid gap-4 rounded-xl bg-card p-5 shadow-card md:grid-cols-[1fr_1fr_auto]">
+          <FormField label="Grupo">
+            <Select
+              value={groupId ?? ""}
+              disabled={saving}
+              onChange={(event) =>
+                setGroupId(
+                  event.target.value ? Number(event.target.value) : null,
+                )
+              }
+            >
+              <option value="">Selecciona un grupo…</option>
+              {groupOptions.map((group) => (
+                <option key={group.id} value={group.id}>
+                  {group.label}
+                </option>
+              ))}
+            </Select>
+          </FormField>
+          <FormField label="Fecha">
+            <input
+              type="date"
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              value={date}
+              disabled={saving}
+              onChange={(event) => setDate(event.target.value)}
+            />
+          </FormField>
+          <div className="flex items-end">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={saving}
+              onClick={markAllPresent}
+            >
+              Marcar todos presentes
+            </Button>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="grid gap-4 rounded-xl bg-card p-5 shadow-card md:grid-cols-[1fr_auto_auto]">
+          <FormField label="Grupo">
+            <Select
+              value={groupId ?? ""}
+              disabled={saving}
+              onChange={(event) =>
+                setGroupId(
+                  event.target.value ? Number(event.target.value) : null,
+                )
+              }
+            >
+              <option value="">Selecciona un grupo…</option>
+              {groupOptions.map((group) => (
+                <option key={group.id} value={group.id}>
+                  {group.label}
+                </option>
+              ))}
+            </Select>
+          </FormField>
+          <FormField label="Semana">
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                aria-label="Semana anterior"
+                disabled={saving}
+                onClick={() => setWeekStart((prev) => shiftWeek(prev, -1))}
+              >
+                <ChevronLeft className="size-4" />
+              </Button>
+              <span className="min-w-[9rem] text-center text-sm font-medium">
+                {formatWeekRangeLabel(weekStart)}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                aria-label="Semana siguiente"
+                disabled={saving}
+                onClick={() => setWeekStart((prev) => shiftWeek(prev, 1))}
+              >
+                <ChevronRight className="size-4" />
+              </Button>
+            </div>
+          </FormField>
+          <div className="flex items-end">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={saving}
+              onClick={markAllPresent}
+            >
+              Marcar todos presentes
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
@@ -266,27 +517,39 @@ export default function AsistenciaPage() {
         />
       </div>
 
-      {rosterQuery.isLoading ? (
+      {isLoading ? (
         <p className="text-muted-foreground">Cargando roster…</p>
-      ) : rosterQuery.isError ? (
+      ) : isError ? (
         <p className="text-destructive">No se pudo cargar la asistencia.</p>
       ) : (
-        <div className="rounded-xl bg-card p-0 shadow-card">
-          <DataTable
-            columns={columns}
-            data={rows}
-            emptyMessage={
-              groupId === null
-                ? "Selecciona un grupo para ver el roster."
-                : "No hay alumnos en este grupo."
-            }
-          />
+        <div className="overflow-x-auto rounded-xl bg-card p-0 shadow-card">
+          {view === "daily" ? (
+            <DataTable
+              columns={dailyColumns}
+              data={rows}
+              emptyMessage={
+                groupId === null
+                  ? "Selecciona un grupo para ver el roster."
+                  : "No hay alumnos en este grupo."
+              }
+            />
+          ) : (
+            <DataTable
+              columns={weekColumns}
+              data={weekRows}
+              emptyMessage={
+                groupId === null
+                  ? "Selecciona un grupo para ver el roster."
+                  : "No hay alumnos en este grupo."
+              }
+            />
+          )}
         </div>
       )}
 
-      {rows.length > 0 && (
+      {tableRows.length > 0 && (
         <p className="text-sm text-muted-foreground">
-          Mostrando 1–{rows.length} de {rows.length} alumnos
+          Mostrando 1–{tableRows.length} de {tableRows.length} alumnos
         </p>
       )}
 

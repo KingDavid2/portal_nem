@@ -1,7 +1,11 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { AttendanceRosterEntry, AttendanceStatus } from "@/lib/api/attendance";
+import type {
+  AttendanceRosterEntry,
+  AttendanceStatus,
+  AttendanceWeekResponse,
+} from "@/lib/api/attendance";
 
 const mocks = vi.hoisted(() => ({
   groupId: 10 as number | null,
@@ -16,10 +20,20 @@ const mocks = vi.hoisted(() => ({
     isSuccess: true,
     data: [] as AttendanceRosterEntry[],
   },
+  weekQuery: {
+    isLoading: false,
+    isError: false,
+    isSuccess: true,
+    data: null as AttendanceWeekResponse | null,
+  },
   bulkMutate: vi.fn<
     (input: unknown, opts?: { onSuccess?: () => void }) => void
   >(),
+  weekBulkMutate: vi.fn<
+    (input: unknown, opts?: { onSuccess?: () => void }) => void
+  >(),
   bulkMutation: { isPending: false, error: undefined as unknown },
+  weekBulkMutation: { isPending: false, error: undefined as unknown },
 }));
 
 vi.mock("@/lib/school-context/school-teaching-context", () => ({
@@ -43,10 +57,16 @@ vi.mock("@/lib/api/attendance", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/attendance")>();
   return {
     ...actual,
+    localTodayISO: () => "2026-07-29",
     useAttendanceRosterQuery: () => mocks.rosterQuery,
+    useAttendanceWeekQuery: () => mocks.weekQuery,
     useAttendanceBulkMutation: () => ({
       ...mocks.bulkMutation,
       mutate: mocks.bulkMutate,
+    }),
+    useAttendanceWeekBulkMutation: () => ({
+      ...mocks.weekBulkMutation,
+      mutate: mocks.weekBulkMutate,
     }),
   };
 });
@@ -71,6 +91,43 @@ const roster: AttendanceRosterEntry[] = [
     notes: "",
   },
 ];
+
+const weekMatrix: AttendanceWeekResponse = {
+  week_start: "2026-07-27",
+  dates: [
+    "2026-07-27",
+    "2026-07-28",
+    "2026-07-29",
+    "2026-07-30",
+    "2026-07-31",
+  ],
+  students: [
+    {
+      student: 1,
+      first_name: "Ana",
+      last_name_paternal: "López",
+      days: {
+        "2026-07-27": "present",
+        "2026-07-28": "present",
+        "2026-07-29": "present",
+        "2026-07-30": "present",
+        "2026-07-31": "present",
+      },
+    },
+    {
+      student: 2,
+      first_name: "Beto",
+      last_name_paternal: "García",
+      days: {
+        "2026-07-27": "present",
+        "2026-07-28": "present",
+        "2026-07-29": "present",
+        "2026-07-30": "present",
+        "2026-07-31": "present",
+      },
+    },
+  ],
+};
 
 function statValue(host: HTMLElement, label: string) {
   const card = [...host.querySelectorAll("section")].find((section) =>
@@ -97,6 +154,12 @@ function typeInto(el: HTMLInputElement, value: string) {
   el.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
+function selectChip(host: HTMLElement, label: string) {
+  return [...host.querySelectorAll("button")].find(
+    (button) => button.textContent?.trim() === label,
+  )!;
+}
+
 async function mount() {
   const host = document.createElement("div");
   const root = createRoot(host);
@@ -113,8 +176,16 @@ describe("/asistencia", () => {
       isSuccess: true,
       data: roster,
     };
+    mocks.weekQuery = {
+      isLoading: false,
+      isError: false,
+      isSuccess: true,
+      data: weekMatrix,
+    };
     mocks.bulkMutate.mockReset();
+    mocks.weekBulkMutate.mockReset();
     mocks.bulkMutation = { isPending: false, error: undefined };
+    mocks.weekBulkMutation = { isPending: false, error: undefined };
   });
 
   it("defaults draft rows to present and stat cards match draft counts", async () => {
@@ -182,6 +253,49 @@ describe("/asistencia", () => {
     expect(groupSelect.value).toBe("10");
     const dateInput = host.querySelector<HTMLInputElement>("input[type='date']")!;
     expect(dateInput.value).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    await act(async () => root.unmount());
+  });
+
+  it("toggles to Semanal and shows weekday headers without CURP or Observación", async () => {
+    const { host, root } = await mount();
+    await act(async () => click(selectChip(host, "Semanal")));
+    expect(host.textContent).toContain("Asistencia semanal");
+    expect(host.textContent).toContain("Lun 27");
+    expect(host.textContent).toContain("Vie 31");
+    expect(host.textContent).not.toContain("CURP");
+    expect(host.textContent).not.toContain("Observación");
+    expect(statValue(host, "Presentes")).toBe("10");
+    await act(async () => root.unmount());
+  });
+
+  it("Semanal select change stays draft until Guardar week bulk", async () => {
+    const { host, root } = await mount();
+    await act(async () => click(selectChip(host, "Semanal")));
+    const cellSelect = host.querySelectorAll("select")[1] as HTMLSelectElement;
+    await act(async () => {
+      cellSelect.value = "absent";
+      cellSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(mocks.weekBulkMutate).not.toHaveBeenCalled();
+    expect(statValue(host, "Ausentes")).toBe("1");
+    const save = [...host.querySelectorAll("button")].find((button) =>
+      button.textContent?.includes("Guardar asistencia"),
+    )!;
+    await act(async () => click(save));
+    expect(mocks.weekBulkMutate).toHaveBeenCalledTimes(1);
+    const payload = mocks.weekBulkMutate.mock.calls[0]![0] as {
+      group: number;
+      week_start: string;
+      entries: { student: number; date: string; status: AttendanceStatus }[];
+    };
+    expect(payload.group).toBe(10);
+    expect(payload.week_start).toBe("2026-07-27");
+    expect(payload.entries).toHaveLength(10);
+    expect(
+      payload.entries.find(
+        (entry) => entry.student === 1 && entry.date === "2026-07-27",
+      ),
+    ).toMatchObject({ status: "absent" });
     await act(async () => root.unmount());
   });
 });

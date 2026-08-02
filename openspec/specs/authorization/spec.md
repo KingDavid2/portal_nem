@@ -151,7 +151,7 @@ denied by the scoped manager and RLS.
 
 ### Requirement: Attendance Endpoints Map Custom Actions to Capabilities
 
-Attendance DRF views MUST authorize through `WorkspacePermission` with an explicit `capability_map` for custom actions: `roster` MUST map to `view_workspace`; `bulk` MUST map to `edit_content`. The literal action names `roster` and `bulk` MUST NOT be passed to `has_permission` — only the mapped capability names.
+Attendance DRF views MUST authorize through `WorkspacePermission` with an explicit `capability_map` for custom actions: `roster` and `week` MUST map to `view_workspace`; `bulk` and `week_bulk` MUST map to `edit_content`. The literal action names MUST NOT be passed to `has_permission` — only the mapped capability names.
 
 #### Scenario: Roster action maps to view_workspace
 
@@ -163,6 +163,20 @@ Attendance DRF views MUST authorize through `WorkspacePermission` with an explic
 #### Scenario: Bulk action maps to edit_content
 
 - GIVEN an attendance view with `action = "bulk"`
+- WHEN `WorkspacePermission.has_permission` evaluates the request
+- THEN it MUST resolve the required capability to `edit_content`
+- AND MUST call `has_permission(membership, "edit_content")`
+
+#### Scenario: Week action maps to view_workspace
+
+- GIVEN an attendance view with `action = "week"`
+- WHEN `WorkspacePermission.has_permission` evaluates the request
+- THEN it MUST resolve the required capability to `view_workspace`
+- AND MUST call `has_permission(membership, "view_workspace")`
+
+#### Scenario: Week bulk action maps to edit_content
+
+- GIVEN an attendance view with `action = "week_bulk"`
 - WHEN `WorkspacePermission.has_permission` evaluates the request
 - THEN it MUST resolve the required capability to `edit_content`
 - AND MUST call `has_permission(membership, "edit_content")`
