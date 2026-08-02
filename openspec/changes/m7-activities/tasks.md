@@ -81,13 +81,13 @@ Satisfies: grades §Activities List and Create, §Scores Matrix Endpoint, §Bulk
 
 Sequential, depends on D1. Est. ~280–380 authored lines (+ OpenAPI regen excluded). PR2 base = `main` (after PR1 merged).
 
-- [ ] D2.1 RED: failing HTTP tests in `backend/grades/tests/test_api.py` — `GET/POST /api/grades/activities/` (group+term required, filters, create then list, foreign group denied, `X-Workspace-Id` required); `GET /api/grades/scores/matrix/` mixed cells null≠0; `PUT /api/grades/scores/bulk/` atomic N / wrong student rollback / OOB score.
-- [ ] D2.2 RED: failing capability tests in `test_api.py` — `list`/`matrix`→`view_workspace`; `create`/`bulk`→`edit_content`; membership without `edit_content` 403 on POST/PUT before write; without `view_workspace` 403 on GET.
-- [ ] D2.3 GREEN: `backend/grades/serializers.py` — activities list/create, matrix, bulk request/response; `@extend_schema` on views.
-- [ ] D2.4 GREEN: `backend/grades/views.py` — `APIView`s mirroring attendance/quizzy: activities list/create (`capability_map` list/create), matrix (`action="matrix"`), bulk (`action="bulk"`); call `ensure_terms` on list/create/matrix; delegate to services.
-- [ ] D2.5 GREEN: `backend/grades/urls.py` + wire `path("api/grades/", include(...))` in `backend/config/urls.py`.
-- [ ] D2.6 GREEN: regenerate `backend/schema.yaml` (`npm run gen:schema`) + `npm run gen:api` → `frontend/src/lib/api/schema.d.ts` (not authored budget; split D2b if PR overflows).
-- [ ] D2.7 Verify: `uv run pytest backend/grades/` green; schema drift inputs clean. Commit `[M7] add grades activities and scores API`.
+- [x] D2.1 RED: failing HTTP tests in `backend/grades/tests/test_api.py` — `GET/POST /api/grades/activities/` (group+term required, filters, create then list, foreign group denied, `X-Workspace-Id` required); `GET /api/grades/scores/matrix/` mixed cells null≠0; `PUT /api/grades/scores/bulk/` atomic N / wrong student rollback / OOB score.
+- [x] D2.2 RED: failing capability tests in `test_api.py` — `list`/`matrix`→`view_workspace`; `create`/`bulk`→`edit_content`; membership without `edit_content` 403 on POST/PUT before write; without `view_workspace` 403 on GET.
+- [x] D2.3 GREEN: `backend/grades/serializers.py` — activities list/create, matrix, bulk request/response; `@extend_schema` on views.
+- [x] D2.4 GREEN: `backend/grades/views.py` — `APIView`s mirroring attendance/quizzy: activities list/create (`capability_map` list/create), matrix (`action="matrix"`), bulk (`action="bulk"`); call `ensure_terms` on list/create/matrix; delegate to services.
+- [x] D2.5 GREEN: `backend/grades/urls.py` + wire `path("api/grades/", include(...))` in `backend/config/urls.py`.
+- [x] D2.6 GREEN: regenerate `backend/schema.yaml` (`npm run gen:schema`) + `npm run gen:api` → `frontend/src/lib/api/schema.d.ts` (not authored budget; split D2b if PR overflows).
+- [x] D2.7 Verify: `uv run pytest backend/grades/` green; schema drift inputs clean. Commit `[M7] add grades activities and scores API`.
 
 ---
 

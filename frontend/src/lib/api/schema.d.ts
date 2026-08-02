@@ -205,6 +205,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/grades/activities/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET/POST /api/grades/activities/. */
+        get: operations["grades_activities_retrieve"];
+        put?: never;
+        /** @description GET/POST /api/grades/activities/. */
+        post: operations["grades_activities_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/grades/scores/bulk/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** @description PUT /api/grades/scores/bulk/. */
+        put: operations["grades_scores_bulk_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/grades/scores/matrix/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /api/grades/scores/matrix/. */
+        get: operations["grades_scores_matrix_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/groups/": {
         parameters: {
             query?: never;
@@ -548,6 +600,42 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        ActivitiesListResponse: {
+            terms: components["schemas"]["Term"][];
+            activities: components["schemas"]["Activity"][];
+            stats: components["schemas"]["ActivitiesStats"];
+        };
+        ActivitiesStats: {
+            total_activities: number;
+            graded_activities: number;
+            pending_activities: number;
+            /** Format: decimal */
+            average_score: string | null;
+        };
+        Activity: {
+            id: number;
+            group: number;
+            term: number;
+            title: string;
+            type: string;
+            /** Format: date */
+            due_date: string;
+            field: string;
+            subject_ids: string[];
+            description: string;
+        };
+        ActivityCreate: {
+            group: number;
+            term: number;
+            title: string;
+            type: components["schemas"]["TypeEnum"];
+            /** Format: date */
+            due_date: string;
+            field: string;
+            subject_ids: string[];
+            /** @default  */
+            description: string;
+        };
         AttendanceBulkEntry: {
             student: number;
             status: components["schemas"]["Status148Enum"];
@@ -930,6 +1018,31 @@ export interface components {
             /** Format: uuid */
             readonly workspace: string;
         };
+        ScoreCell: {
+            student: number;
+            activity: number;
+            /** Format: decimal */
+            score: string | null;
+        };
+        ScoresBulkEntry: {
+            student: number;
+            activity: number;
+            /** Format: decimal */
+            score?: string | null;
+        };
+        ScoresBulkRequest: {
+            group: number;
+            entries: components["schemas"]["ScoresBulkEntry"][];
+        };
+        ScoresBulkResponse: {
+            saved: number;
+        };
+        ScoresMatrixResponse: {
+            terms: components["schemas"]["Term"][];
+            students: components["schemas"]["StudentBrief"][];
+            activities: components["schemas"]["Activity"][];
+            scores: components["schemas"]["ScoreCell"][];
+        };
         /**
          * @description * `present` - Present
          *     * `absent` - Absent
@@ -955,6 +1068,23 @@ export interface components {
             /** Format: uuid */
             readonly workspace: string;
         };
+        StudentBrief: {
+            id: number;
+            first_name: string;
+            last_name_paternal: string;
+        };
+        Term: {
+            id: number;
+            number: number;
+        };
+        /**
+         * @description * `task` - Tarea
+         *     * `activity` - Actividad
+         *     * `project` - Proyecto
+         *     * `exam` - Examen
+         * @enum {string}
+         */
+        TypeEnum: "task" | "activity" | "project" | "exam";
         User: {
             readonly id: number;
             /** Format: email */
@@ -1204,6 +1334,119 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DemoSession"];
+                };
+            };
+        };
+    };
+    grades_activities_retrieve: {
+        parameters: {
+            query: {
+                field?: string;
+                group: number;
+                q?: string;
+                subject?: string;
+                term: number;
+                /**
+                 * @description * `task` - Tarea
+                 *     * `activity` - Actividad
+                 *     * `project` - Proyecto
+                 *     * `exam` - Examen
+                 */
+                type?: "task" | "activity" | "project" | "exam";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivitiesListResponse"];
+                };
+            };
+        };
+    };
+    grades_activities_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivityCreate"];
+                "application/x-www-form-urlencoded": components["schemas"]["ActivityCreate"];
+                "multipart/form-data": components["schemas"]["ActivityCreate"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Activity"];
+                };
+            };
+        };
+    };
+    grades_scores_bulk_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScoresBulkRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ScoresBulkRequest"];
+                "multipart/form-data": components["schemas"]["ScoresBulkRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScoresBulkResponse"];
+                };
+            };
+        };
+    };
+    grades_scores_matrix_retrieve: {
+        parameters: {
+            query: {
+                field?: string;
+                group: number;
+                subject?: string;
+                term: number;
+                /**
+                 * @description * `task` - Tarea
+                 *     * `activity` - Actividad
+                 *     * `project` - Proyecto
+                 *     * `exam` - Examen
+                 */
+                type?: "task" | "activity" | "project" | "exam";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScoresMatrixResponse"];
                 };
             };
         };

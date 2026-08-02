@@ -259,6 +259,166 @@ paths:
               schema:
                 $ref: '#/components/schemas/DemoSession'
           description: ''
+  /api/grades/activities/:
+    get:
+      operationId: grades_activities_retrieve
+      description: GET/POST /api/grades/activities/.
+      parameters:
+      - in: query
+        name: field
+        schema:
+          type: string
+          minLength: 1
+      - in: query
+        name: group
+        schema:
+          type: integer
+        required: true
+      - in: query
+        name: q
+        schema:
+          type: string
+          minLength: 1
+      - in: query
+        name: subject
+        schema:
+          type: string
+          minLength: 1
+      - in: query
+        name: term
+        schema:
+          type: integer
+        required: true
+      - in: query
+        name: type
+        schema:
+          enum:
+          - task
+          - activity
+          - project
+          - exam
+          type: string
+          minLength: 1
+        description: |-
+          * `task` - Tarea
+          * `activity` - Actividad
+          * `project` - Proyecto
+          * `exam` - Examen
+      tags:
+      - grades
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivitiesListResponse'
+          description: ''
+    post:
+      operationId: grades_activities_create
+      description: GET/POST /api/grades/activities/.
+      tags:
+      - grades
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivityCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ActivityCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ActivityCreate'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Activity'
+          description: ''
+  /api/grades/scores/bulk/:
+    put:
+      operationId: grades_scores_bulk_update
+      description: PUT /api/grades/scores/bulk/.
+      tags:
+      - grades
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScoresBulkRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ScoresBulkRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ScoresBulkRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScoresBulkResponse'
+          description: ''
+  /api/grades/scores/matrix/:
+    get:
+      operationId: grades_scores_matrix_retrieve
+      description: GET /api/grades/scores/matrix/.
+      parameters:
+      - in: query
+        name: field
+        schema:
+          type: string
+          minLength: 1
+      - in: query
+        name: group
+        schema:
+          type: integer
+        required: true
+      - in: query
+        name: subject
+        schema:
+          type: string
+          minLength: 1
+      - in: query
+        name: term
+        schema:
+          type: integer
+        required: true
+      - in: query
+        name: type
+        schema:
+          enum:
+          - task
+          - activity
+          - project
+          - exam
+          type: string
+          minLength: 1
+        description: |-
+          * `task` - Tarea
+          * `activity` - Actividad
+          * `project` - Proyecto
+          * `exam` - Examen
+      tags:
+      - grades
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScoresMatrixResponse'
+          description: ''
   /api/groups/:
     get:
       operationId: groups_list
@@ -1169,6 +1329,110 @@ paths:
           description: ''
 components:
   schemas:
+    ActivitiesListResponse:
+      type: object
+      properties:
+        terms:
+          type: array
+          items:
+            $ref: '#/components/schemas/Term'
+        activities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Activity'
+        stats:
+          $ref: '#/components/schemas/ActivitiesStats'
+      required:
+      - activities
+      - stats
+      - terms
+    ActivitiesStats:
+      type: object
+      properties:
+        total_activities:
+          type: integer
+        graded_activities:
+          type: integer
+        pending_activities:
+          type: integer
+        average_score:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,1})?$
+          nullable: true
+      required:
+      - average_score
+      - graded_activities
+      - pending_activities
+      - total_activities
+    Activity:
+      type: object
+      properties:
+        id:
+          type: integer
+        group:
+          type: integer
+        term:
+          type: integer
+        title:
+          type: string
+        type:
+          type: string
+        due_date:
+          type: string
+          format: date
+        field:
+          type: string
+        subject_ids:
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+      required:
+      - description
+      - due_date
+      - field
+      - group
+      - id
+      - subject_ids
+      - term
+      - title
+      - type
+    ActivityCreate:
+      type: object
+      properties:
+        group:
+          type: integer
+        term:
+          type: integer
+        title:
+          type: string
+          maxLength: 200
+        type:
+          $ref: '#/components/schemas/TypeEnum'
+        due_date:
+          type: string
+          format: date
+        field:
+          type: string
+          maxLength: 64
+        subject_ids:
+          type: array
+          items:
+            type: string
+            maxLength: 64
+        description:
+          type: string
+          default: ''
+      required:
+      - due_date
+      - field
+      - group
+      - subject_ids
+      - term
+      - title
+      - type
     AttendanceBulkEntry:
       type: object
       properties:
@@ -2159,6 +2423,80 @@ components:
       - label
       - school
       - workspace
+    ScoreCell:
+      type: object
+      properties:
+        student:
+          type: integer
+        activity:
+          type: integer
+        score:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,2}(?:\.\d{0,1})?$
+          nullable: true
+      required:
+      - activity
+      - score
+      - student
+    ScoresBulkEntry:
+      type: object
+      properties:
+        student:
+          type: integer
+        activity:
+          type: integer
+        score:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,2}(?:\.\d{0,1})?$
+          nullable: true
+      required:
+      - activity
+      - student
+    ScoresBulkRequest:
+      type: object
+      properties:
+        group:
+          type: integer
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScoresBulkEntry'
+      required:
+      - entries
+      - group
+    ScoresBulkResponse:
+      type: object
+      properties:
+        saved:
+          type: integer
+      required:
+      - saved
+    ScoresMatrixResponse:
+      type: object
+      properties:
+        terms:
+          type: array
+          items:
+            $ref: '#/components/schemas/Term'
+        students:
+          type: array
+          items:
+            $ref: '#/components/schemas/StudentBrief'
+        activities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Activity'
+        scores:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScoreCell'
+      required:
+      - activities
+      - scores
+      - students
+      - terms
     Status148Enum:
       enum:
       - present
@@ -2211,6 +2549,41 @@ components:
       - id
       - last_name_paternal
       - workspace
+    StudentBrief:
+      type: object
+      properties:
+        id:
+          type: integer
+        first_name:
+          type: string
+        last_name_paternal:
+          type: string
+      required:
+      - first_name
+      - id
+      - last_name_paternal
+    Term:
+      type: object
+      properties:
+        id:
+          type: integer
+        number:
+          type: integer
+      required:
+      - id
+      - number
+    TypeEnum:
+      enum:
+      - task
+      - activity
+      - project
+      - exam
+      type: string
+      description: |-
+        * `task` - Tarea
+        * `activity` - Actividad
+        * `project` - Proyecto
+        * `exam` - Examen
     User:
       type: object
       properties:
