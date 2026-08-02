@@ -9,11 +9,16 @@ import { FormField } from "@/components/ui/form-field";
 import { Select } from "@/components/ui/select";
 import {
   useActivitiesQuery,
+  useBulkUpsertScoresMutation,
   useCreateActivityMutation,
+  useScoreMatrixQuery,
   type ActivityCreate,
+  type ScoresBulkRequest,
   type Term,
   type TypeEnum,
 } from "@/lib/api/grades";
+
+type ScoreBulkEntry = ScoresBulkRequest["entries"][number];
 import {
   useLessonPlanCatalogQuery,
   useLessonPlanFieldsQuery,
@@ -51,8 +56,36 @@ const EMPTY: ModalDraft = {
 };
 const fieldCls =
   "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm";
+const cellCls =
+  "h-9 w-16 rounded-md border border-input bg-background px-2 text-center text-sm";
 
-/** Por actividad list + Nueva modal. Por alumno matrix lands in D4. */
+/** Draft Map key: `${studentId}:${activityId}` */
+export function scoreDraftKey(studentId: number, activityId: number) {
+  return `${studentId}:${activityId}`;
+}
+
+/** null/undefined = unscored (empty display); never coerce to 0.0 */
+export function displayScore(score: string | null | undefined): string {
+  return score == null ? "" : score;
+}
+
+function parseDraftEntries(draft: Map<string, string>): ScoreBulkEntry[] {
+  const entries: ScoreBulkEntry[] = [];
+  for (const [key, raw] of draft) {
+    const [studentRaw, activityRaw] = key.split(":");
+    const student = Number(studentRaw);
+    const activity = Number(activityRaw);
+    if (!Number.isFinite(student) || !Number.isFinite(activity)) continue;
+    const trimmed = raw.trim();
+    entries.push({
+      student,
+      activity,
+      score: trimmed === "" ? null : trimmed,
+    });
+  }
+  return entries;
+}
+
 export default function ActividadesPage() {
   const { groupId, setGroupId, visibleGroups } = useSchoolTeachingContext();
   const [view, setView] = useState<ViewMode>("by-activity");
@@ -60,19 +93,47 @@ export default function ActividadesPage() {
   const [open, setOpen] = useState(false);
   const [modal, setModal] = useState<ModalDraft>(EMPTY);
   const [formError, setFormError] = useState<string | null>(null);
+  const [draft, setDraft] = useState<Map<string, string>>(() => new Map());
 
   const listQ = useActivitiesQuery(groupId, termId);
+  const matrixQ = useScoreMatrixQuery(groupId, view === "by-student" ? termId : null);
   const createM = useCreateActivityMutation();
+  const bulkM = useBulkUpsertScoresMutation();
   const fieldsQ = useLessonPlanFieldsQuery();
   const catalogQ = useLessonPlanCatalogQuery(groupId, open ? modal.field : "");
 
-  const terms = listQ.data?.terms ?? FALLBACK_TERMS;
+  const terms = listQ.data?.terms ?? matrixQ.data?.terms ?? FALLBACK_TERMS;
   const activities = termId === null ? [] : (listQ.data?.activities ?? []);
+  const matrixStudents = matrixQ.data?.students ?? [];
+  const matrixActivities = matrixQ.data?.activities ?? [];
   const subjects = catalogQ.data?.subjects ?? [];
   const groups = useMemo(
     () => visibleGroups.map((g) => ({ id: g.id, label: `${g.grado} ${g.grupo}` })),
     [visibleGroups],
   );
+
+  const serverScores = useMemo(() => {
+    const map = new Map<string, string | null>();
+    for (const cell of matrixQ.data?.scores ?? []) {
+      map.set(scoreDraftKey(cell.student, cell.activity), cell.score);
+    }
+    return map;
+  }, [matrixQ.data?.scores]);
+
+  function cellValue(studentId: number, activityId: number): string {
+    const key = scoreDraftKey(studentId, activityId);
+    if (draft.has(key)) return draft.get(key)!;
+    return displayScore(serverScores.get(key));
+  }
+
+  function setCellDraft(studentId: number, activityId: number, value: string) {
+    const key = scoreDraftKey(studentId, activityId);
+    setDraft((prev) => {
+      const next = new Map(prev);
+      next.set(key, value);
+      return next;
+    });
+  }
 
   function close() {
     setOpen(false);
@@ -103,6 +164,16 @@ export default function ActividadesPage() {
     });
   }
 
+  function saveScores() {
+    if (groupId === null || draft.size === 0) return;
+    bulkM.mutate(
+      { group: groupId, entries: parseDraftEntries(draft) },
+      {
+        onSuccess: () => setDraft(new Map()),
+      },
+    );
+  }
+
   return (
     <div className="space-y-6">
       <header className="flex flex-wrap items-start justify-between gap-4">
@@ -117,17 +188,28 @@ export default function ActividadesPage() {
             </ChoiceChip>
           </div>
         </div>
-        <Button
-          type="button"
-          disabled={groupId === null || termId === null}
-          onClick={() => {
-            setFormError(null);
-            setModal(EMPTY);
-            setOpen(true);
-          }}
-        >
-          Nueva actividad
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {view === "by-student" ? (
+            <Button
+              type="button"
+              disabled={groupId === null || termId === null || draft.size === 0 || bulkM.isPending}
+              onClick={saveScores}
+            >
+              Guardar
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            disabled={groupId === null || termId === null}
+            onClick={() => {
+              setFormError(null);
+              setModal(EMPTY);
+              setOpen(true);
+            }}
+          >
+            Nueva actividad
+          </Button>
+        </div>
       </header>
 
       <div className="grid gap-4 rounded-xl bg-card p-5 shadow-card md:grid-cols-2">
@@ -148,7 +230,10 @@ export default function ActividadesPage() {
             name="termId"
             aria-label="Periodo"
             value={termId ?? ""}
-            onChange={(e) => setTermId(e.target.value ? Number(e.target.value) : null)}
+            onChange={(e) => {
+              setTermId(e.target.value ? Number(e.target.value) : null);
+              setDraft(new Map());
+            }}
           >
             <option value="">Selecciona un periodo…</option>
             {terms.map((t) => (
@@ -159,7 +244,56 @@ export default function ActividadesPage() {
       </div>
 
       {view === "by-student" ? (
-        <p className="text-muted-foreground">Vista Por alumno — matriz en la siguiente entrega.</p>
+        termId === null ? (
+          <p className="text-muted-foreground">Selecciona un periodo para ver la matriz.</p>
+        ) : matrixQ.isLoading ? (
+          <p className="text-muted-foreground">Cargando matriz…</p>
+        ) : matrixQ.isError ? (
+          <p className="text-destructive">No se pudo cargar la matriz de calificaciones.</p>
+        ) : matrixStudents.length === 0 || matrixActivities.length === 0 ? (
+          <p className="text-muted-foreground">No hay alumnos o actividades en este periodo.</p>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-border">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground">
+                <tr>
+                  <th className="sticky left-0 bg-muted/40 px-4 py-3 font-medium">Alumno</th>
+                  {matrixActivities.map((a) => (
+                    <th key={a.id} className="px-3 py-3 font-medium">
+                      <div className="max-w-[8rem] truncate normal-case">{a.title}</div>
+                      <div className="mt-0.5 font-normal normal-case opacity-70">{a.due_date}</div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {matrixStudents.map((s) => (
+                  <tr key={s.id} className="border-t border-border">
+                    <td className="sticky left-0 bg-background px-4 py-3 font-medium whitespace-nowrap">
+                      {s.first_name} {s.last_name_paternal}
+                    </td>
+                    {matrixActivities.map((a) => {
+                      const key = scoreDraftKey(s.id, a.id);
+                      return (
+                        <td key={a.id} className="px-3 py-2">
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            aria-label={`Calificación ${s.first_name} ${s.last_name_paternal} — ${a.title}`}
+                            data-score-key={key}
+                            className={cellCls}
+                            value={cellValue(s.id, a.id)}
+                            onChange={(e) => setCellDraft(s.id, a.id, e.target.value)}
+                          />
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
       ) : termId === null ? (
         <p className="text-muted-foreground">Selecciona un periodo para ver las actividades.</p>
       ) : listQ.isLoading ? (

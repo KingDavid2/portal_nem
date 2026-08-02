@@ -111,9 +111,9 @@ Satisfies: grades §Draft Until Guardar + Screen (Por alumno drafts until Guarda
 
 Sequential, depends on D3. Est. ~280–400 authored lines. PR4 base = `main` (after PR3 merged).
 
-- [ ] D4.1 RED: extend `page.test.tsx` — toggle to Por alumno; draft `Map` key `${student}:${activity}`; edit without Guardar does not call bulk; Guardar sends entries; null cell stays null on refetch mock; unscored ≠ 0.0 display.
-- [ ] D4.2 GREEN: implement Por alumno matrix in `page.tsx` — students×activities from matrix API; client draft Map; **Guardar** → `PUT …/scores/bulk/`; LWW accept response.
-- [ ] D4.3 Verify: `npm run test -- --run src/app/\(app\)/actividades/` green for matrix/draft/Guardar; manual edit → Guardar → reload. Commit `[M7] add actividades score matrix and Guardar`.
+- [x] D4.1 RED: extend `page.test.tsx` — toggle to Por alumno; draft `Map` key `${student}:${activity}`; edit without Guardar does not call bulk; Guardar sends entries; null cell stays null on refetch mock; unscored ≠ 0.0 display.
+- [x] D4.2 GREEN: implement Por alumno matrix in `page.tsx` — students×activities from matrix API; client draft Map; **Guardar** → `PUT …/scores/bulk/`; LWW accept response.
+- [x] D4.3 Verify: `npm run test -- --run src/app/\(app\)/actividades/` green for matrix/draft/Guardar; manual edit → Guardar → reload. Commit `[M7] add actividades score matrix and Guardar`.
 
 ---
 
