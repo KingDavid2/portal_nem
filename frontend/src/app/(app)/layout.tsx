@@ -8,6 +8,7 @@ import {
   BookOpen,
   ClipboardCheck,
   GraduationCap,
+  NotebookPen,
   School,
   Sparkles,
   Users,
@@ -25,6 +26,7 @@ import { SchoolTeachingProvider } from "@/lib/school-context/school-teaching-con
  * refuses to send without `X-Workspace-Id` (`client.ts` `MissingWorkspaceError`).
  *
  * Quizzy sits after Planeaciones per `designs/quizzy.pen` (sidebar · sparkles).
+ * Actividades (NotebookPen) follows Alumnos (after Asistencia when that nav lands).
  */
 
 const NAV_ITEMS = [
@@ -33,6 +35,7 @@ const NAV_ITEMS = [
   { href: "/groups", label: "Grupos", icon: Users },
   { href: "/students", label: "Alumnos", icon: GraduationCap },
   { href: "/asistencia", label: "Asistencia", icon: ClipboardCheck },
+  { href: "/actividades", label: "Actividades", icon: NotebookPen },
   { href: "/planeaciones", label: "Planeaciones", icon: BookOpen },
   { href: "/quizzy", label: "Quizzy", icon: Sparkles },
 ] as const;

@@ -2,7 +2,7 @@
 
 **Mode**: Strict TDD  
 **Delivery**: force-chained / stacked-to-main  
-**Status**: D1 + D2 complete
+**Status**: D1 + D2 + D3 complete
 
 ## Completed Tasks
 
@@ -10,94 +10,84 @@
 **Branch**: `feat/m7-activities-d1` (from `origin/main`)  
 **Commit**: `feat(grades): add models, RLS, and services`
 
-- [x] D1.1 RED model tests
-- [x] D1.2 RED RLS tests
-- [x] D1.3 RED service tests
-- [x] D1.4 GREEN apps/models
-- [x] D1.5 GREEN migrations + RLS
-- [x] D1.6 GREEN services
-- [x] D1.7 GREEN INSTALLED_APPS
-- [x] D1.8 Verify + commit
+- [x] D1.1–D1.8
 
 ### D2 — DRF activities + matrix/bulk API
 **Branch**: `feat/m7-activities-d2` (from `feat/m7-activities-d1`)  
 **Commit**: `feat(grades): add activities and scores API`
 
-- [x] D2.1 RED HTTP tests (activities/matrix/bulk)
-- [x] D2.2 RED capability tests (list/create/matrix/bulk)
-- [x] D2.3 GREEN serializers
-- [x] D2.4 GREEN views (`ensure_terms` + services)
-- [x] D2.5 GREEN urls + `api/grades/` include
-- [x] D2.6 GREEN OpenAPI regen (`schema.yaml` + `schema.d.ts`)
-- [x] D2.7 Verify + commit
+- [x] D2.1–D2.7
+
+### D3 — Frontend hooks + Por actividad list/modal + nav
+**Branch**: `feat/m7-activities-d3` (from `feat/m7-activities-d2`)  
+**Commit**: `feat(actividades): add list, modal, and grades hooks`
+
+- [x] D3.1 RED vitest list/modal stubs
+- [x] D3.2 GREEN `frontend/src/lib/api/grades.ts`
+- [x] D3.3 GREEN `/actividades` page (toggle + Por actividad table + create modal)
+- [x] D3.4 GREEN nav `NotebookPen` → `/actividades`
+- [x] D3.5 Verify focused vitest green + commit
 
 ## Remaining
 
-- [ ] D3–D5 (not in this batch)
+- [ ] D4–D5 (not in this batch)
 
 ## TDD Cycle Evidence
 
-### D1
+### D1–D2
+
+(see prior apply-progress revisions — preserved)
+
+| Task | Result |
+|------|--------|
+| D1.8 | ✅ 31 passed |
+| D2.7 | ✅ 46 passed |
+
+### D3
 
 | Task | Test File | Layer | Safety Net | RED | GREEN | TRIANGULATE | REFACTOR |
 |------|-----------|-------|------------|-----|-------|-------------|----------|
-| D1.1 | `backend/grades/tests/test_models.py` | Unit | N/A (new) | ✅ Written (`ModuleNotFoundError`) | ✅ 16 model tests pass | ✅ ScopedModel / uniqueness / ProtectedError / null≠0 / empty subjects | ✅ Clean |
-| D1.2 | `backend/grades/tests/test_rls.py` | Integration (Postgres RLS) | N/A (new) | ✅ Written | ✅ 5 RLS tests pass | ✅ 3 tables + no-context + foreign-ws | ➖ Single policy form |
-| D1.3 | `backend/grades/tests/test_services.py` | Unit/Integration | N/A (new) | ✅ Written | ✅ 10 service tests pass | ✅ ensure_terms idempotent; bad tipo/empty/cross-field; filters+stats; matrix null; bulk 10.5 + wrong student + workspace | ✅ Extracted `_filter_activities` / `_compute_stats` |
-| D1.4–D1.7 | (same) | — | N/A | Driven by D1.1–D1.3 | ✅ Implemented | Covered above | Minimal |
-| D1.8 | `uv run pytest backend/grades/` | — | — | — | ✅ 31 passed; makemigrations clean | — | — |
-
-### D2
-
-| Task | Test File | Layer | Safety Net | RED | GREEN | TRIANGULATE | REFACTOR |
-|------|-----------|-------|------------|-----|-------|-------------|----------|
-| D2.1 | `backend/grades/tests/test_api.py` | Integration (APIClient) | ✅ 31/31 | ✅ Written (404 / ModuleNotFoundError) | ✅ HTTP paths pass | ✅ create+list; filters; foreign 404; matrix null≠0; bulk N / wrong student / OOB | ✅ Decimal assertions |
-| D2.2 | `backend/grades/tests/test_api.py` | Unit + Integration | ✅ 31/31 | ✅ Written | ✅ Cap map + 403 write/read | ✅ list/create/matrix/bulk maps; viewer-only write deny; no-cap read deny | ➖ Map tests single-path |
-| D2.3–D2.5 | (same) | — | — | Driven by D2.1–D2.2 | ✅ serializers/views/urls | Covered above | ✅ `_resolve_group_and_term` |
-| D2.6 | OpenAPI regen | — | — | — | ✅ `npm run gen:all` | ➖ Structural | N/A |
-| D2.7 | `uv run pytest backend/grades/` | — | — | — | ✅ **46 passed** | — | — |
+| D3.1 | `frontend/src/app/(app)/actividades/page.test.tsx` | Integration (jsdom) | N/A (new) | ✅ Written (`Failed to resolve import "./page"`) | ✅ 5/5 | ✅ Periodo empty vs selected; dialog open; POST payload; no Guardar/Exportar | ✅ Compacted helpers |
+| D3.2 | (driven by page tests + hooks used) | Unit hooks | N/A (new) | Driven by D3.1 | ✅ grades.ts hooks | ✅ list/create/matrix/bulk surfaces | ✅ Compressed query helpers |
+| D3.3 | same page.test | Integration | N/A | Driven by D3.1 | ✅ page.tsx | Covered above | ✅ Lean modal/list |
+| D3.4 | layout nav | Structural | N/A | ➖ Triangulation skipped: single nav entry | ✅ NotebookPen → `/actividades` | ➖ Single | ➖ None needed |
+| D3.5 | `npm run test -- --run src/app/(app)/actividades/` | — | — | — | ✅ **5 passed** | — | — |
 
 ## Work Unit Evidence
 
-### D1
+### D3
 
 | Evidence | Value |
 |---|---|
-| Focused test command and exact result | `uv run pytest backend/grades/` → **31 passed** in ~2.0s |
-| Runtime harness command/scenario and exact result | `uv run python manage.py makemigrations --check --dry-run` → **No changes detected**. Rollback harness: `uv run python manage.py migrate grades zero` (not executed; reversible migrations present) |
-| Rollback boundary | Drop `backend/grades/`; remove `grades` from `INSTALLED_APPS` in `backend/config/settings.py`; revert `openspec/changes/m7-activities/` if desired |
-
-### D2
-
-| Evidence | Value |
-|---|---|
-| Focused test command and exact result | `uv run pytest grades/` (cwd `backend/`) → **46 passed** in ~3.9s |
-| Runtime harness command/scenario and exact result | `npm run gen:all` → schema + `schema.d.ts` regenerated with `/api/grades/activities/`, `/api/grades/scores/matrix/`, `/api/grades/scores/bulk/`. Manual curl deferred (local servers may use other apps); APIClient suite covers authz + contracts. |
-| Rollback boundary | Revert `backend/grades/{serializers,views,urls}.py`, `backend/grades/tests/test_api.py`, `backend/config/urls.py` grades include, and OpenAPI regen files; keep D1 domain (models/services/migrations) |
+| Focused test command and exact result | `npm run test -- --run 'src/app/(app)/actividades/'` → **5 passed** (1 file) in ~0.5s |
+| Runtime harness command/scenario and exact result | Manual smoke deferred to verify/PR: `/actividades` → pick Periodo → Nueva → Crear → list refresh. No dedicated E2E harness in repo for this route. |
+| Rollback boundary | Remove `frontend/src/app/(app)/actividades/`, `frontend/src/lib/api/grades.ts`; revert Actividades nav row in `layout.tsx`; keep D2 API |
 
 ## Test Summary
 
-- **Total tests written (cumulative)**: 46 (31 D1 + 15 D2 API)
-- **Total tests passing**: 46
-- **Layers used**: Unit (models/services/cap maps), Integration/RLS, Integration/APIClient
-- **Approval tests**: None — new code
-- **Pure helpers**: D1 `_filter_activities` / `_compute_stats` / `_validate_*`; D2 `_terms_payload` / `_resolve_group_and_term`
+- **Total tests written (cumulative FE D3)**: 5
+- **Total tests passing (focused)**: 5
+- **Backend grades suite**: untouched this batch (D2: 46 passed previously)
+- **Layers used**: Integration/jsdom (page), typed API hooks
+- **Approval tests**: None — new FE surface
+- **Pure helpers**: `activitiesQueryEnabled`
 
 ## Deviations from Design
 
-- `Term.school_year` uses `PROTECT` (spec) rather than design’s CASCADE wording — spec is authoritative (D1).
-- Design ownership table listed `settings.py` under D2; tasks assign `INSTALLED_APPS` to D1 (followed tasks).
-- D2 mirrors attendance/quizzy `APIView` + `capability_map`; activities view sets `action` to `list`/`create` in `initial()` (spec keys, not raw HTTP verbs).
+- Asistencia nav item is not on this branch/`main`; Actividades placed after Alumnos (slot after where Asistencia will land).
+- Modal omits “Seleccionar todas las asignaturas del campo” control to keep page lean (D5 polish candidate); multi-checkbox still works.
+- `FALLBACK_TERMS` uses ids 1–3 until first successful list returns real `terms[]` (chicken-and-egg: list requires term id). Real workspaces with non-1..3 term PKs need a bootstrap path (D5 / follow-up).
+- Filters/stats/banner deferred to D5; Por alumno matrix/Guardar deferred to D4 (stub toggle only).
+- Authored volume ~616 lines (over 400 budget) after aggressive lean — single D3 commit per orchestrator request; PR may need D3a/D3b split if reviewer enforces hard cap.
 
 ## Issues / Risks
 
-- D1 authored volume exceeded ~400-line review budget (tests + openspec inflate).
-- D2 authored ~999 lines (serializers+views+urls+tests+config); product-only ~398; API tests ~601. OpenAPI regen (~1100 lines) excluded from authored budget per tasks. PR may need reviewer note.
-- Attendance mirror lived on `feat/m7-attendance-d*` (used for patterns); not on `main`.
+- **400-line budget overrun**: ~616 authored (grades.ts ~121 + page ~285 + test ~199 + layout ~11). Split option (list shell vs modal) available if PR review requires it.
+- Term-id bootstrap via `FALLBACK_TERMS` may 404 against non-empty DBs until terms are known.
 
 ## Workload / PR Boundary
 
-- Mode: stacked PR slice (D2 → previous D1 branch / `main` after D1 merges)
-- Current work unit: D2
-- Boundary: grades DRF surface + OpenAPI regen; domain models/services unchanged
-- Next: D3 frontend hooks + Por actividad list/modal + nav on `feat/m7-activities-d3`
+- Mode: stacked PR slice (D3 → previous D2 branch / `main` after D2 merges)
+- Current work unit: D3
+- Boundary: FE hooks + Por actividad list/modal + nav; no matrix Guardar (D4); no stats/filters polish (D5)
+- Next: `sdd-apply` D4 or `sdd-verify` for D3 slice

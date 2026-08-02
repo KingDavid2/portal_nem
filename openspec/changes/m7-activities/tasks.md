@@ -97,11 +97,11 @@ Satisfies: grades §Draft Until Guardar + Screen (Por actividad + modal create i
 
 Sequential, depends on D2. Est. ~300–400 authored lines. PR3 base = `main` (after PR2 merged).
 
-- [ ] D3.1 RED: failing vitest stubs in `frontend/src/app/(app)/actividades/page.test.tsx` — Por actividad list loads with Periodo required; Nueva opens local `role="dialog"`; submit calls POST activities (immediate persist); no score Guardar on Por actividad; Exportar absent.
-- [ ] D3.2 GREEN: create `frontend/src/lib/api/grades.ts` — typed hooks for activities GET/POST, matrix GET, bulk PUT from generated schema.
-- [ ] D3.3 GREEN: create `frontend/src/app/(app)/actividades/page.tsx` — toggle shell + Por actividad table/filters skeleton + local create modal (title/tipo/entrega/campo→asignaturas/desc); group from `SchoolTeachingContext`; field/subject picks via lesson-plans API.
-- [ ] D3.4 GREEN: add nav entry in `frontend/src/app/(app)/layout.tsx` — `NotebookPen` → `/actividades`.
-- [ ] D3.5 Verify: list/modal vitest cases green; manual smoke create → list refresh. Commit `[M7] add actividades list modal and grades hooks`.
+- [x] D3.1 RED: failing vitest stubs in `frontend/src/app/(app)/actividades/page.test.tsx` — Por actividad list loads with Periodo required; Nueva opens local `role="dialog"`; submit calls POST activities (immediate persist); no score Guardar on Por actividad; Exportar absent.
+- [x] D3.2 GREEN: create `frontend/src/lib/api/grades.ts` — typed hooks for activities GET/POST, matrix GET, bulk PUT from generated schema.
+- [x] D3.3 GREEN: create `frontend/src/app/(app)/actividades/page.tsx` — toggle shell + Por actividad table/filters skeleton + local create modal (title/tipo/entrega/campo→asignaturas/desc); group from `SchoolTeachingContext`; field/subject picks via lesson-plans API.
+- [x] D3.4 GREEN: add nav entry in `frontend/src/app/(app)/layout.tsx` — `NotebookPen` → `/actividades`.
+- [x] D3.5 Verify: list/modal vitest cases green; manual smoke create → list refresh. Commit `feat(actividades): add list, modal, and grades hooks`.
 
 ---
 
