@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     "schools",
     "students",
     "attendance",
+    "grades",
     "lesson_plans",
     "demo",
     "mcp_server",
