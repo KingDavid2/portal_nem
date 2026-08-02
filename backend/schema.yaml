@@ -61,6 +61,61 @@ paths:
                 items:
                   $ref: '#/components/schemas/AttendanceRosterEntry'
           description: ''
+  /api/attendance/week/:
+    get:
+      operationId: attendance_week_retrieve
+      description: GET /api/attendance/week/ — Mon–Fri matrix for one group.
+      parameters:
+      - in: query
+        name: group
+        schema:
+          type: integer
+        required: true
+      - in: query
+        name: week_start
+        schema:
+          type: string
+          format: date
+        required: true
+      tags:
+      - attendance
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttendanceWeekResponse'
+          description: ''
+  /api/attendance/week/bulk/:
+    put:
+      operationId: attendance_week_bulk_update
+      description: PUT /api/attendance/week/bulk/ — atomic status upsert for Mon–Fri;
+        notes preserved.
+      tags:
+      - attendance
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttendanceWeekBulkRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AttendanceWeekBulkRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AttendanceWeekBulkRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttendanceBulkResponse'
+          description: ''
   /api/auth/csrf/:
     get:
       operationId: auth_csrf_retrieve
@@ -1172,6 +1227,83 @@ components:
       - last_name_paternal
       - notes
       - status
+      - student
+    AttendanceWeekBulkEntry:
+      type: object
+      properties:
+        student:
+          type: integer
+        date:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/Status148Enum'
+      required:
+      - date
+      - status
+      - student
+    AttendanceWeekBulkRequest:
+      type: object
+      properties:
+        group:
+          type: integer
+        week_start:
+          type: string
+          format: date
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttendanceWeekBulkEntry'
+      required:
+      - entries
+      - group
+      - week_start
+    AttendanceWeekResponse:
+      type: object
+      properties:
+        week_start:
+          type: string
+          format: date
+        dates:
+          type: array
+          items:
+            type: string
+            format: date
+        students:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttendanceWeekStudent'
+      required:
+      - dates
+      - students
+      - week_start
+    AttendanceWeekStudent:
+      type: object
+      properties:
+        student:
+          type: integer
+        first_name:
+          type: string
+        last_name_paternal:
+          type: string
+        days:
+          type: object
+          additionalProperties:
+            enum:
+            - present
+            - absent
+            - late
+            - excused
+            type: string
+            description: |-
+              * `present` - Present
+              * `absent` - Absent
+              * `late` - Late
+              * `excused` - Excused
+      required:
+      - days
+      - first_name
+      - last_name_paternal
       - student
     CatalogContent:
       type: object

@@ -38,6 +38,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/attendance/week/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /api/attendance/week/ — Mon–Fri matrix for one group. */
+        get: operations["attendance_week_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/attendance/week/bulk/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** @description PUT /api/attendance/week/bulk/ — atomic status upsert for Mon–Fri; notes preserved. */
+        put: operations["attendance_week_bulk_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/csrf/": {
         parameters: {
             query?: never;
@@ -537,6 +571,32 @@ export interface components {
             status: components["schemas"]["Status148Enum"];
             notes: string;
         };
+        AttendanceWeekBulkEntry: {
+            student: number;
+            /** Format: date */
+            date: string;
+            status: components["schemas"]["Status148Enum"];
+        };
+        AttendanceWeekBulkRequest: {
+            group: number;
+            /** Format: date */
+            week_start: string;
+            entries: components["schemas"]["AttendanceWeekBulkEntry"][];
+        };
+        AttendanceWeekResponse: {
+            /** Format: date */
+            week_start: string;
+            dates: string[];
+            students: components["schemas"]["AttendanceWeekStudent"][];
+        };
+        AttendanceWeekStudent: {
+            student: number;
+            first_name: string;
+            last_name_paternal: string;
+            days: {
+                [key: string]: "present" | "absent" | "late" | "excused";
+            };
+        };
         /** @description An official content with its verified learning processes. */
         CatalogContent: {
             readonly id: string;
@@ -952,6 +1012,53 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AttendanceRosterEntry"][];
+                };
+            };
+        };
+    };
+    attendance_week_retrieve: {
+        parameters: {
+            query: {
+                group: number;
+                week_start: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendanceWeekResponse"];
+                };
+            };
+        };
+    };
+    attendance_week_bulk_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AttendanceWeekBulkRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["AttendanceWeekBulkRequest"];
+                "multipart/form-data": components["schemas"]["AttendanceWeekBulkRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendanceBulkResponse"];
                 };
             };
         };

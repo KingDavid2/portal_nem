@@ -14,8 +14,11 @@ from attendance.serializers import (
     AttendanceBulkResponseSerializer,
     AttendanceRosterEntrySerializer,
     AttendanceRosterQuerySerializer,
+    AttendanceWeekBulkRequestSerializer,
+    AttendanceWeekQuerySerializer,
+    AttendanceWeekResponseSerializer,
 )
-from attendance.services import bulk_upsert, get_roster
+from attendance.services import bulk_upsert, bulk_upsert_week, get_roster, get_week_roster
 from schools.models import Group
 from students.models import Student
 from workspaces.permissions import WorkspacePermission
@@ -97,6 +100,94 @@ class AttendanceBulkView(APIView):
                 membership=request.membership,
                 group=group,
                 date=date,
+                entries=entries,
+            )
+        except ValidationError as exc:
+            return Response(exc.message_dict, status=HTTP_400_BAD_REQUEST)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=HTTP_400_BAD_REQUEST)
+
+        return Response({"saved": len(entries)})
+
+
+class AttendanceWeekView(APIView):
+    """GET /api/attendance/week/ — Mon–Fri matrix for one group."""
+
+    permission_classes = [IsAuthenticated, WorkspacePermission]
+    capability_map = {"week": "view_workspace"}
+    action = "week"
+
+    @extend_schema(
+        parameters=[AttendanceWeekQuerySerializer],
+        responses={200: AttendanceWeekResponseSerializer},
+    )
+    def get(self, request):
+        query = AttendanceWeekQuerySerializer(data=request.query_params)
+        if not query.is_valid():
+            return Response(query.errors, status=HTTP_400_BAD_REQUEST)
+
+        group = Group.objects.filter(pk=query.validated_data["group"]).first()
+        if group is None:
+            return Response({"detail": "Not found."}, status=HTTP_404_NOT_FOUND)
+        week_start = query.validated_data["week_start"]
+
+        try:
+            matrix = get_week_roster(
+                membership=request.membership, group=group, week_start=week_start
+            )
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=HTTP_400_BAD_REQUEST)
+
+        return Response(AttendanceWeekResponseSerializer(matrix).data)
+
+
+class AttendanceWeekBulkView(APIView):
+    """PUT /api/attendance/week/bulk/ — atomic status upsert for Mon–Fri; notes preserved."""
+
+    permission_classes = [IsAuthenticated, WorkspacePermission]
+    capability_map = {"week_bulk": "edit_content"}
+    action = "week_bulk"
+
+    @extend_schema(
+        request=AttendanceWeekBulkRequestSerializer,
+        responses={200: AttendanceBulkResponseSerializer},
+    )
+    def put(self, request):
+        serializer = AttendanceWeekBulkRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+
+        group = Group.objects.filter(pk=serializer.validated_data["group"]).first()
+        if group is None:
+            return Response({"detail": "Not found."}, status=HTTP_404_NOT_FOUND)
+        week_start = serializer.validated_data["week_start"]
+        entries_data = serializer.validated_data["entries"]
+
+        student_ids = [entry["student"] for entry in entries_data]
+        students_by_id = {
+            student.pk: student
+            for student in Student.objects.filter(pk__in=student_ids)
+        }
+        if len(students_by_id) != len(set(student_ids)):
+            return Response(
+                {"detail": "Student does not belong to the supplied group."},
+                status=HTTP_400_BAD_REQUEST,
+            )
+
+        entries = [
+            {
+                "student": students_by_id[entry["student"]],
+                "date": entry["date"],
+                "status": entry["status"],
+            }
+            for entry in entries_data
+        ]
+
+        try:
+            bulk_upsert_week(
+                membership=request.membership,
+                group=group,
+                week_start=week_start,
                 entries=entries,
             )
         except ValidationError as exc:

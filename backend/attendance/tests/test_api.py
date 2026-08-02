@@ -352,3 +352,228 @@ def test_bulk_denied_without_edit_content(
 
     assert response.status_code == 403
     assert AttendanceRecord.objects.count() == 0
+
+
+def test_week_rejects_non_monday(membership_factory, api_client_for, group_for):
+    membership = membership_factory("member")
+    group_id = group_for(membership)
+    client = api_client_for(membership)
+
+    response = client.get(
+        "/api/attendance/week/",
+        {"group": group_id, "week_start": "2026-08-01"},  # Saturday
+    )
+
+    assert response.status_code == 400
+
+
+def test_week_returns_matrix_with_defaults(
+    membership_factory, api_client_for, group_for, student_for
+):
+    from attendance.models import AttendanceRecord
+
+    membership = membership_factory("member")
+    group_id = group_for(membership)
+    student_a = student_for(membership, group_id, first_name="Ana")
+    student_for(membership, group_id, first_name="Beto")
+    AttendanceRecord.objects.create(
+        workspace=membership.workspace,
+        student_id=student_a,
+        date=datetime.date(2026, 7, 27),
+        status=AttendanceRecord.Status.ABSENT,
+        notes="Enferma",
+    )
+    client = api_client_for(membership)
+
+    response = client.get(
+        "/api/attendance/week/",
+        {"group": group_id, "week_start": "2026-07-27"},
+    )
+
+    assert response.status_code == 200
+    assert response.data["week_start"] == "2026-07-27"
+    assert response.data["dates"] == [
+        "2026-07-27",
+        "2026-07-28",
+        "2026-07-29",
+        "2026-07-30",
+        "2026-07-31",
+    ]
+    by_name = {row["first_name"]: row for row in response.data["students"]}
+    assert by_name["Ana"]["days"]["2026-07-27"] == "absent"
+    assert by_name["Ana"]["days"]["2026-07-28"] == "present"
+    assert by_name["Beto"]["days"]["2026-07-27"] == "present"
+    assert "curp" not in by_name["Ana"]
+    assert "notes" not in by_name["Ana"]
+
+
+def test_week_foreign_workspace_group_returns_404(
+    membership_factory, api_client_for, group_for
+):
+    membership_a = membership_factory("member")
+    membership_b = membership_factory("member")
+    foreign_group = group_for(membership_b)
+    client_a = api_client_for(membership_a)
+
+    response = client_a.get(
+        "/api/attendance/week/",
+        {"group": foreign_group, "week_start": "2026-07-27"},
+    )
+
+    assert response.status_code == 404
+
+
+def test_week_bulk_persists_and_preserves_notes(
+    membership_factory, api_client_for, group_for, student_for
+):
+    from attendance.models import AttendanceRecord
+
+    membership = membership_factory("member")
+    group_id = group_for(membership)
+    student_id = student_for(membership, group_id, first_name="Ana")
+    AttendanceRecord.objects.create(
+        workspace=membership.workspace,
+        student_id=student_id,
+        date=datetime.date(2026, 7, 27),
+        status=AttendanceRecord.Status.ABSENT,
+        notes="Keep me",
+    )
+    client = api_client_for(membership)
+
+    response = client.put(
+        "/api/attendance/week/bulk/",
+        {
+            "group": group_id,
+            "week_start": "2026-07-27",
+            "entries": [
+                {"student": student_id, "date": "2026-07-27", "status": "late"},
+                {"student": student_id, "date": "2026-07-28", "status": "excused"},
+            ],
+        },
+        format="json",
+    )
+
+    assert response.status_code == 200
+    assert response.data["saved"] == 2
+
+    week = client.get(
+        "/api/attendance/week/",
+        {"group": group_id, "week_start": "2026-07-27"},
+    )
+    assert week.status_code == 200
+    days = week.data["students"][0]["days"]
+    assert days["2026-07-27"] == "late"
+    assert days["2026-07-28"] == "excused"
+
+    daily = client.get(
+        "/api/attendance/roster/",
+        {"group": group_id, "date": "2026-07-27"},
+    )
+    assert daily.data[0]["notes"] == "Keep me"
+    assert daily.data[0]["status"] == "late"
+
+
+def test_week_bulk_rejects_date_outside_window(
+    membership_factory, api_client_for, group_for, student_for
+):
+    from attendance.models import AttendanceRecord
+
+    membership = membership_factory("member")
+    group_id = group_for(membership)
+    student_id = student_for(membership, group_id)
+    client = api_client_for(membership)
+
+    response = client.put(
+        "/api/attendance/week/bulk/",
+        {
+            "group": group_id,
+            "week_start": "2026-07-27",
+            "entries": [
+                {"student": student_id, "date": "2026-08-01", "status": "present"},
+            ],
+        },
+        format="json",
+    )
+
+    assert response.status_code == 400
+    assert AttendanceRecord.objects.count() == 0
+
+
+def test_week_bulk_rejects_student_not_in_group_no_partial_write(
+    membership_factory, api_client_for, group_for, student_for
+):
+    from attendance.models import AttendanceRecord
+
+    membership = membership_factory("member")
+    other = membership_factory("member")
+    group_id = group_for(membership)
+    foreign_group = group_for(other)
+    student_in_group = student_for(membership, group_id, first_name="Ana")
+    outsider = student_for(other, foreign_group, first_name="Carla")
+    client = api_client_for(membership)
+
+    response = client.put(
+        "/api/attendance/week/bulk/",
+        {
+            "group": group_id,
+            "week_start": "2026-07-27",
+            "entries": [
+                {"student": student_in_group, "date": "2026-07-27", "status": "present"},
+                {"student": outsider, "date": "2026-07-27", "status": "absent"},
+            ],
+        },
+        format="json",
+    )
+
+    assert response.status_code == 400
+    assert AttendanceRecord.objects.count() == 0
+
+
+def test_week_capability_maps_to_view_workspace(membership_factory, monkeypatch):
+    from attendance.views import AttendanceWeekView
+    from workspaces import permissions
+
+    membership = membership_factory("member")
+    calls = []
+
+    def fake_has_permission(passed_membership, action):
+        calls.append((passed_membership, action))
+        return True
+
+    monkeypatch.setattr(permissions, "has_permission", fake_has_permission)
+
+    class FakeRequest:
+        pass
+
+    request = FakeRequest()
+    request.membership = membership
+    view = AttendanceWeekView()
+    view.action = "week"
+
+    assert permissions.WorkspacePermission().has_permission(request, view) is True
+    assert calls == [(membership, "view_workspace")]
+
+
+def test_week_bulk_capability_maps_to_edit_content(membership_factory, monkeypatch):
+    from attendance.views import AttendanceWeekBulkView
+    from workspaces import permissions
+
+    membership = membership_factory("member")
+    calls = []
+
+    def fake_has_permission(passed_membership, action):
+        calls.append((passed_membership, action))
+        return True
+
+    monkeypatch.setattr(permissions, "has_permission", fake_has_permission)
+
+    class FakeRequest:
+        pass
+
+    request = FakeRequest()
+    request.membership = membership
+    view = AttendanceWeekBulkView()
+    view.action = "week_bulk"
+
+    assert permissions.WorkspacePermission().has_permission(request, view) is True
+    assert calls == [(membership, "edit_content")]
